@@ -133,7 +133,7 @@ function Sidebar({ model, edits, activeId, onSelect, onImport, onUpdateSchedule,
         )}
       </div>
 
-      <div className="side-foot" style={{ flexDirection: 'column', gap: 8 }}>
+      <div className="side-foot" style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px' }}>
         <button className="btn block sm primary" onClick={onExport}><Icon name="download" size={14} />Export decks…</button>
         {onUpdateSchedule && <button className="btn block sm" onClick={onUpdateSchedule}><Icon name="reset" size={14} />Update schedule…</button>}
         <button className="btn block sm ghost" onClick={onImport}><Icon name="upload" size={14} />Import schedule</button>

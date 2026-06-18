@@ -50,7 +50,7 @@ function LocItem({ loc, edit, name, active, onClick }) {
   );
 }
 
-function Sidebar({ model, edits, activeId, onSelect, onImport, onExport, navSort, view, onOverview, removed, onRestore, onRenameSchedule, onGoHome }) {
+function Sidebar({ model, edits, activeId, onSelect, onImport, onUpdateSchedule, onExport, navSort, view, onOverview, removed, onRestore, onRenameSchedule, onGoHome }) {
   const [q, setQ] = useState('');
   const [showHidden, setShowHidden] = useState(false);
   const ql = q.trim().toLowerCase();
@@ -135,7 +135,8 @@ function Sidebar({ model, edits, activeId, onSelect, onImport, onExport, navSort
 
       <div className="side-foot" style={{ flexDirection: 'column', gap: 8 }}>
         <button className="btn block sm primary" onClick={onExport}><Icon name="download" size={14} />Export decks…</button>
-        <button className="btn block sm" onClick={onImport}><Icon name="upload" size={14} />Import schedule</button>
+        {onUpdateSchedule && <button className="btn block sm" onClick={onUpdateSchedule}><Icon name="reset" size={14} />Update schedule…</button>}
+        <button className="btn block sm ghost" onClick={onImport}><Icon name="upload" size={14} />Import schedule</button>
       </div>
     </aside>
   );

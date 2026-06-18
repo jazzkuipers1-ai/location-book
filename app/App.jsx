@@ -43,7 +43,7 @@ function buildFromText(text) {
   return model;
 }
 
-function ImportModal({ onClose, onApply, current }) {
+function ImportModal({ onClose, onApply, current, title }) {
   const [stage, setStage] = useState('idle'); // idle | parsing | done | error
   const [model, setModel] = useState(null);
   const [err, setErr] = useState('');
@@ -67,7 +67,7 @@ function ImportModal({ onClose, onApply, current }) {
         <div className="modal-h" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <div className="kicker">Fuzzlecheck → Locations</div>
-            <h3>Import shooting schedule</h3>
+            <h3>{title || 'Import shooting schedule'}</h3>
           </div>
           <IconBtn name="x" onClick={onClose} title="Close" />
         </div>
@@ -93,7 +93,7 @@ function ImportModal({ onClose, onApply, current }) {
                 {model.locations.length} locations · {model.sceneTotal} scenes · {model.days.filter(d => !d.off).length} shoot days
                 <div style={{ marginTop: 8, color: 'var(--ink-3)' }}>{model.locations.slice(0, 8).map(l => l.name).join(' · ')}{model.locations.length > 8 ? ' …' : ''}</div>
               </div>
-              {current && <div style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 10 }}>The app will compare this to your current schedule and show you exactly what changed before applying anything.</div>}
+              {current && <div style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 10 }}>This will replace the current schedule. Use "Update schedule" from the sidebar to compare changes first.</div>}
             </div>
           )}
           <div className="modal-foot">
@@ -311,6 +311,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated }) {
   });
   const [view, setView] = useState('board');
   const [showImport, setShowImport] = useState(false);
+  const [showUpdateSchedule, setShowUpdateSchedule] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [combineBase, setCombineBase] = useState(null);
@@ -523,15 +524,15 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated }) {
 
   const applyImport = useCallback(m => {
     setShowImport(false);
-    // If there's already a schedule with locations, show the diff modal
-    if (state.model && state.model.locations.length > 0) {
-      setDiffPending({ newModel: m });
-    } else {
-      setState(s => ({ ...s, model: m, scheduleName: m.scheduleName, removed: [], activeId: m.locations[0] ? m.locations[0].id : null }));
-      setView('board');
-      setToast({ msg: 'Imported ' + m.locations.length + ' locations from ' + m.scheduleName });
-    }
-  }, [state.model]);
+    setState(s => ({ ...s, model: m, scheduleName: m.scheduleName, removed: [], activeId: m.locations[0] ? m.locations[0].id : null }));
+    setView('board');
+    setToast({ msg: 'Imported ' + m.locations.length + ' locations from ' + m.scheduleName });
+  }, []);
+
+  const applyUpdateSchedule = useCallback(m => {
+    setShowUpdateSchedule(false);
+    setDiffPending({ newModel: m });
+  }, []);
 
   const quickExport = () => { if (activeLoc) setDeck({ entries: [{ loc: activeLoc, edit, name: locName(activeLoc, state.edits) }], opts: { cover: t.deckCover, overview: true, scenes: false, photos: true, sketches: true, measurements: true, designs: true, moodboard: true } }); };
 
@@ -546,7 +547,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated }) {
     <div className="app">
       <Sidebar model={model} edits={state.edits} activeId={activeLoc ? activeLoc.id : null} navSort={t.navSort}
         view={view} onOverview={() => setView('board')} removed={removed} onRestore={restoreLoc}
-        onSelect={openLoc} onImport={() => setShowImport(true)} onExport={() => setShowExport(true)}
+        onSelect={openLoc} onImport={() => setShowImport(true)} onUpdateSchedule={() => setShowUpdateSchedule(true)} onExport={() => setShowExport(true)}
         onRenameSchedule={name => setState(s => ({ ...s, model: { ...s.model, scheduleName: name }, scheduleName: name }))}
         onGoHome={onGoHome} />
       <main className="main">
@@ -580,7 +581,8 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated }) {
             <button className="btn primary" onClick={() => setShowImport(true)} style={{ marginTop: 12 }}>Import a Fuzzlecheck PDF</button></div>
         )}
       </main>
-      {showImport && <ImportModal current={!!model} onClose={() => setShowImport(false)} onApply={applyImport} />}
+      {showImport && <ImportModal current={false} onClose={() => setShowImport(false)} onApply={applyImport} />}
+      {showUpdateSchedule && <ImportModal current={true} title="Update shooting schedule" onClose={() => setShowUpdateSchedule(false)} onApply={applyUpdateSchedule} />}
       {showExport && <ExportModal model={model} edits={state.edits} removed={removed}
         preselect={activeLoc && view === 'file' ? [activeLoc.id] : null} defaultCover={t.deckCover}
         onClose={() => setShowExport(false)} onExport={(e, opts) => { setDeck({ entries: e, opts }); setShowExport(false); }} />}

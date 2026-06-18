@@ -93,13 +93,13 @@ function ImportModal({ onClose, onApply, current }) {
                 {model.locations.length} locations · {model.sceneTotal} scenes · {model.days.filter(d => !d.off).length} shoot days
                 <div style={{ marginTop: 8, color: 'var(--ink-3)' }}>{model.locations.slice(0, 8).map(l => l.name).join(' · ')}{model.locations.length > 8 ? ' …' : ''}</div>
               </div>
-              {current && <div style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 10 }}>Your existing adjustments & images are kept for any location that still appears.</div>}
+              {current && <div style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 10 }}>The app will compare this to your current schedule and show you exactly what changed before applying anything.</div>}
             </div>
           )}
           <div className="modal-foot">
             <span className="mono" style={{ fontSize: 10.5, color: 'var(--ink-3)' }}>Parsed locally in your browser.</span>
             {stage === 'done'
-              ? <button className="btn primary" onClick={() => onApply(model)}><Icon name="check" size={15} />Use this schedule</button>
+              ? <button className="btn primary" onClick={() => onApply(model)}><Icon name="check" size={15} />{current ? 'Review changes…' : 'Use this schedule'}</button>
               : <button className="btn" onClick={onClose}>Cancel</button>}
           </div>
         </div>
@@ -314,6 +314,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated }) {
   const [showExport, setShowExport] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [combineBase, setCombineBase] = useState(null);
+  const [diffPending, setDiffPending] = useState(null); // { newModel }
   const [deck, setDeck] = useState(null); // { entries, opts }
   const [toast, setToast] = useState(null);
 
@@ -521,10 +522,16 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated }) {
   const openCombine = id => setCombineBase(id);
 
   const applyImport = useCallback(m => {
-    setState(s => ({ ...s, model: m, scheduleName: m.scheduleName, removed: [], activeId: m.locations[0] ? m.locations[0].id : null }));
-    setShowImport(false); setView('board');
-    setToast({ msg: 'Imported ' + m.locations.length + ' locations from ' + m.scheduleName });
-  }, []);
+    setShowImport(false);
+    // If there's already a schedule with locations, show the diff modal
+    if (state.model && state.model.locations.length > 0) {
+      setDiffPending({ newModel: m });
+    } else {
+      setState(s => ({ ...s, model: m, scheduleName: m.scheduleName, removed: [], activeId: m.locations[0] ? m.locations[0].id : null }));
+      setView('board');
+      setToast({ msg: 'Imported ' + m.locations.length + ' locations from ' + m.scheduleName });
+    }
+  }, [state.model]);
 
   const quickExport = () => { if (activeLoc) setDeck({ entries: [{ loc: activeLoc, edit, name: locName(activeLoc, state.edits) }], opts: { cover: t.deckCover, overview: true, scenes: false, photos: true, sketches: true, measurements: true, designs: true, moodboard: true } }); };
 
@@ -582,6 +589,20 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated }) {
       {showShare && activeLoc && <ShareModal loc={activeLoc} edit={edit} name={locName(activeLoc, state.edits)} scheduleName={model.scheduleName}
         onClose={() => setShowShare(false)}
         onShareIdSaved={sid => patchActive({ shareId: sid })} />}
+      {diffPending && <ScheduleDiffModal
+        oldModel={state.model}
+        newModel={diffPending.newModel}
+        edits={state.edits}
+        removed={state.removed || []}
+        onClose={() => setDiffPending(null)}
+        onApply={result => {
+          setStateWithHistory(s => ({ ...s, ...result }));
+          setDiffPending(null);
+          setView('board');
+          const n = result.model.locations.length;
+          setToast({ msg: 'Schedule updated · ' + n + ' location' + (n !== 1 ? 's' : '') });
+        }}
+      />}
       {toast && <div className="toast"><span>{toast.msg}</span>{toast.undo && <button onClick={() => { toast.undo(); setToast(null); }}>Undo</button>}</div>}
       {panelEl(t, setTweak)}
     </div>

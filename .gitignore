@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+location-book-app/node_modules/
+
+# Build output
+location-book-app/dist/
+
+# macOS
+.DS_Store
+
+# Environment / secrets
+.env
+.env.local

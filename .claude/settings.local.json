@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(pkill -f \"vite\")",
+      "Bash(curl -s http://localhost:5173/src/App.tsx)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/src/seed.ts)",
+      "mcp__Claude_in_Chrome__navigate",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "Bash(open \"http://localhost:5173\")",
+      "Read(//private/tmp/**)",
+      "Bash(python3 -c ' *)",
+      "Bash(pip3 install *)",
+      "Bash(cp \"/Users/jazzkuipers/Desktop/DC-Croatia Shoot 15-06-2026.pdf\" /tmp/schedule.pdf)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(npx tsc *)",
+      "Bash(kill 8898)",
+      "Bash(npx vite *)",
+      "Bash(ls -la /Users/jazzkuipers/.npm/_cacache/content-v2/sha512/cb/ 2>&1)",
+      "Bash(vercel --prod --yes)",
+      "Bash(npx vercel *)",
+      "Bash(sed -i '' 's/import { Icon, Img, IconBtn, Stepper,/import { Icon, Img, IconBtn, Stepper, DayStepper,/' src/LocationFile.tsx)",
+      "Bash(sed -i '' 's/<Stepper value={edit\\\\.prepDays} onChange={v => onPatch\\({ prepDays: v }\\)}/<DayStepper value={edit.prepDays} onChange={v => onPatch\\({ prepDays: v }\\)}/' src/LocationFile.tsx)",
+      "Bash(sed -i '' 's/<Stepper value={edit\\\\.wrapDays} onChange={v => onPatch\\({ wrapDays: v }\\)}/<DayStepper value={edit.wrapDays} onChange={v => onPatch\\({ wrapDays: v }\\)}/' src/LocationFile.tsx)",
+      "Bash(git --version)",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
+    ]
+  }
+}

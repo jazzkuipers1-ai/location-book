@@ -194,10 +194,16 @@ const GAL_KINDS = [
   { id: 'moodboard', label: 'Moodboard', icon: 'grid' },
 ];
 
-function GalleryCell({ item, onCap, onNote, onRemove, onDraw, onCrop }) {
+function GalleryCell({ item, onCap, onNote, onRemove, onDraw, onCrop, onDragStart, onDragEnter, onDragEnd, isDragOver }) {
   return (
-    <div className="gal-item">
+    <div className={'gal-item' + (isDragOver ? ' drag-over' : '')}
+      draggable
+      onDragStart={onDragStart}
+      onDragEnter={onDragEnter}
+      onDragEnd={onDragEnd}
+      onDragOver={e => e.preventDefault()}>
       <div className="gal-cell">
+        <div className="gal-drag-handle" title="Drag to reorder"><Icon name="grip" size={14} /></div>
         <Img imgId={shownId(item)} />
         {(item.strokes && item.strokes.length || item.annotatedId) ? <span className="annot-badge"><Icon name="edit" size={12} /></span> : null}
         <div className="tools">
@@ -234,15 +240,36 @@ function Dropzone({ onFiles }) {
 
 function Gallery({ items, onChange, onDraw }) {
   const [cropId, setCropId] = useState(null);
+  const [dragOver, setDragOver] = useState(null);
+  const dragIdx = useRef(null);
+
   const add = async fl => { const ids = await filesToIds(fl); onChange([...items, ...ids.map(id => ({ id, cap: '', note: '', strokes: [] }))]); };
   const remove = async (it) => { if (it.annotatedId) await LB.db.delImage(it.annotatedId); await LB.db.delImage(it.id); onChange(items.filter(i => i.id !== it.id)); };
   const patch = (id, p) => onChange(items.map(i => i.id === id ? { ...i, ...p } : i));
+
+  const handleDragStart = idx => { dragIdx.current = idx; };
+  const handleDragEnter = idx => { setDragOver(idx); };
+  const handleDragEnd = () => {
+    if (dragIdx.current !== null && dragOver !== null && dragIdx.current !== dragOver) {
+      const next = [...items];
+      const [moved] = next.splice(dragIdx.current, 1);
+      next.splice(dragOver, 0, moved);
+      onChange(next);
+    }
+    dragIdx.current = null;
+    setDragOver(null);
+  };
+
   return (
     <div className="gal-grid">
-      {items.map(it => <GalleryCell key={it.id} item={it}
+      {items.map((it, idx) => <GalleryCell key={it.id} item={it}
         onCap={c => patch(it.id, { cap: c })} onNote={n => patch(it.id, { note: n })}
         onRemove={() => remove(it)} onDraw={() => onDraw(it)}
-        onCrop={() => setCropId(it.id)} />)}
+        onCrop={() => setCropId(it.id)}
+        onDragStart={() => handleDragStart(idx)}
+        onDragEnter={() => handleDragEnter(idx)}
+        onDragEnd={handleDragEnd}
+        isDragOver={dragOver === idx && dragIdx.current !== idx} />)}
       <Dropzone onFiles={add} />
       {cropId && <CropModal imgId={cropId} onClose={() => setCropId(null)}
         onDone={newId => { patch(cropId, { id: newId }); setCropId(null); }} />}

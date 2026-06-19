@@ -43,6 +43,7 @@
       sceneCount: r.scene_count || 0,
       regions: r.regions || [],
       accessCode: r.access_code,
+      passwordHash: r.password_hash || null,
       updatedAt: new Date(r.updated_at).getTime(),
       createdAt: new Date(r.created_at).getTime(),
     }));
@@ -67,6 +68,7 @@
       ...(patch.locationCount !== undefined && { location_count: patch.locationCount }),
       ...(patch.sceneCount !== undefined && { scene_count: patch.sceneCount }),
       ...(patch.regions !== undefined && { regions: patch.regions }),
+      ...(patch.passwordHash !== undefined && { password_hash: patch.passwordHash }),
       updated_at: new Date().toISOString(),
     }).eq('id', id);
     return !error;

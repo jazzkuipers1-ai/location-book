@@ -295,6 +295,10 @@ function saveProjectState(projectId, state) {
   try { localStorage.setItem('lb_state_v2_' + projectId, JSON.stringify(state)); } catch (e) {}
 }
 
+function isUnlocked(projectId, hash) {
+  return !!hash && sessionStorage.getItem('lb_unlocked_' + projectId) === hash;
+}
+
 function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash, onSetPassword }) {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const [state, setState] = useState(() => {
@@ -310,6 +314,16 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
     return { model, edits, removed: [], activeId: active ? active.id : null, scheduleName: model.scheduleName };
   });
   const [view, setView] = useState('board');
+  // Lock gate — checked against state.passwordHash which syncs via Supabase
+  const [appLocked, setAppLocked] = useState(() => {
+    const hash = projectPasswordHash;
+    return !!hash && !isUnlocked(projectId, hash);
+  });
+  useEffect(() => {
+    const hash = state.passwordHash || projectPasswordHash;
+    if (hash && !isUnlocked(projectId, hash)) setAppLocked(true);
+  }, [state.passwordHash]);
+
   const [showImport, setShowImport] = useState(false);
   const [showUpdateSchedule, setShowUpdateSchedule] = useState(false);
   const [showSetPassword, setShowSetPassword] = useState(false);
@@ -537,6 +551,16 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
 
   const quickExport = () => { if (activeLoc) setDeck({ entries: [{ loc: activeLoc, edit, name: locName(activeLoc, state.edits) }], opts: { cover: t.deckCover, overview: true, scenes: false, photos: true, sketches: true, measurements: true, designs: true, moodboard: true } }); };
 
+  if (appLocked) {
+    const hash = state.passwordHash || projectPasswordHash;
+    return <UnlockModal projectName={state.model ? state.model.scheduleName : 'Project'} onClose={onGoHome} onUnlock={enteredHash => {
+      if (enteredHash !== hash) return false;
+      sessionStorage.setItem('lb_unlocked_' + projectId, hash);
+      setAppLocked(false);
+      return true;
+    }} />;
+  }
+
   if (deck) {
     return (<>
       <Deck entries={deck.entries} scheduleName={model.scheduleName} opts={deck.opts} onClose={() => setDeck(null)} />
@@ -593,13 +617,30 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
       {showShare && activeLoc && <ShareModal loc={activeLoc} edit={edit} name={locName(activeLoc, state.edits)} scheduleName={model.scheduleName}
         onClose={() => setShowShare(false)}
         onShareIdSaved={sid => patchActive({ shareId: sid })} />}
-      {showSetPassword && onSetPassword && <SetPasswordModal
-        hasPassword={!!projectPasswordHash}
+      {showSetPassword && <SetPasswordModal
+        hasPassword={!!(state.passwordHash || projectPasswordHash)}
         onClose={() => setShowSetPassword(false)}
         onSave={async action => {
-          const ok = await onSetPassword(action);
-          if (ok !== false && !action.check) setShowSetPassword(false);
-          return ok;
+          const currentHash = state.passwordHash || projectPasswordHash;
+          if (action.check) {
+            const matches = action.check === currentHash;
+            if (!matches) return false;
+            if (action.remove) {
+              setState(s => { const {passwordHash, ...rest} = s; return rest; });
+              onProjectUpdated({ passwordHash: null });
+              sessionStorage.removeItem('lb_unlocked_' + projectId);
+              setShowSetPassword(false);
+              return true;
+            }
+            return true;
+          }
+          if (action.newHash !== undefined) {
+            setState(s => ({ ...s, passwordHash: action.newHash }));
+            onProjectUpdated({ passwordHash: action.newHash });
+            sessionStorage.setItem('lb_unlocked_' + projectId, action.newHash);
+            setShowSetPassword(false);
+            return true;
+          }
         }}
       />}
       {diffPending && <ScheduleDiffModal
@@ -781,7 +822,7 @@ function HomeRouter() {
         onGoHome={() => setActiveProjectId(null)}
         onProjectUpdated={patch => handleProjectUpdated(activeProjectId, patch)}
         projectPasswordHash={(projects.find(p => p.id === activeProjectId) || {}).passwordHash}
-        onSetPassword={action => handleSetPassword(activeProjectId, action)}
+        onSetPassword={null}
       />
     </>);
   }

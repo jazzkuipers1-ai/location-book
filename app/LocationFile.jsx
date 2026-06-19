@@ -23,6 +23,19 @@ function EditableDayNumber({ value, onChange }) {
   );
 }
 
+/* ---- notes textarea with local draft state ------------------------------ */
+function NotesField({ value, onChange }) {
+  const [draft, setDraft] = useState(value);
+  useEffect(() => { setDraft(value); }, [value]);
+  return (
+    <textarea className="input" rows={6} placeholder="Add notes… press Enter for a new line"
+      value={draft}
+      onChange={e => setDraft(e.target.value)}
+      onBlur={() => onChange(draft)}
+      style={{ resize: 'vertical', lineHeight: 1.6 }} />
+  );
+}
+
 /* ---- bullet-point notes editor ------------------------------------------ */
 function parseBullets(str) {
   if (!str || !str.trim()) return [''];

@@ -198,21 +198,13 @@ function OverviewPage({ loc, edit, name, scheduleName }) {
 }
 
 function NotesPage({ name, scheduleName, notes }) {
-  const lines = notes.split(/[•\n]/).map(l => l.trim()).filter(Boolean);
   return (
     <div className="deck-page">
       <div className="dk-pad">
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, borderBottom: '1px solid var(--dk-line)', paddingBottom: 12, marginBottom: 28 }}>
           <span className="dk-kick">{name} · notes</span>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {lines.map((line, i) => (
-            <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-              <span style={{ color: 'var(--dk-accent)', fontSize: 18, lineHeight: 1, flexShrink: 0, marginTop: 2 }}>•</span>
-              <span style={{ fontSize: 15, lineHeight: 1.55, color: '#221d15' }}>{line}</span>
-            </div>
-          ))}
-        </div>
+        <div style={{ fontSize: 15, lineHeight: 2, color: '#221d15', whiteSpace: 'pre-wrap' }}>{notes}</div>
         <div className="dk-foot"><span>{scheduleName} — Notes</span><span>{name}</span></div>
       </div>
     </div>

@@ -95,6 +95,28 @@
     };
   }
 
+  /* ---- project password -------------------------------------------------- */
+  async function setProjectPassword(projectId, hash) {
+    const blob = new Blob([JSON.stringify({ hash })], { type: 'application/json' });
+    const path = 'passwords/' + projectId + '.json';
+    const { error } = await sb.storage.from('project-images').upload(path, blob, { upsert: true, contentType: 'application/json' });
+    if (error) throw error;
+  }
+
+  async function removeProjectPassword(projectId) {
+    await sb.storage.from('project-images').remove(['passwords/' + projectId + '.json']);
+  }
+
+  async function getProjectPassword(projectId) {
+    const url = SUPABASE_URL + '/storage/v1/object/public/project-images/passwords/' + projectId + '.json?t=' + Date.now();
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.hash || null;
+    } catch (e) { return null; }
+  }
+
   /* ---- storage: images --------------------------------------------------- */
   async function uploadImage(blob, imageId) {
     const contentType = blob.type || 'image/jpeg';
@@ -130,5 +152,5 @@
     return window.location.origin + window.location.pathname + '?share=' + shareId;
   }
 
-  window.LB_SYNC = { CLIENT_ID, loadState, saveState, subscribe, loadProjects, createProject, updateProject, deleteProject, getProjectByCode, uploadImage, publishShare, loadShare, getShareUrl };
+  window.LB_SYNC = { CLIENT_ID, loadState, saveState, subscribe, loadProjects, createProject, updateProject, deleteProject, getProjectByCode, uploadImage, publishShare, loadShare, getShareUrl, setProjectPassword, removeProjectPassword, getProjectPassword };
 })();

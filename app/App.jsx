@@ -314,15 +314,17 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
     return { model, edits, removed: [], activeId: active ? active.id : null, scheduleName: model.scheduleName };
   });
   const [view, setView] = useState('board');
-  // Lock gate — checked against state.passwordHash which syncs via Supabase
-  const [appLocked, setAppLocked] = useState(() => {
-    const hash = projectPasswordHash;
-    return !!hash && !isUnlocked(projectId, hash);
-  });
+  // Lock gate — fetched from Supabase Storage on mount so it works across all devices
+  const [appLocked, setAppLocked] = useState(false);
+  const [remoteHash, setRemoteHash] = useState(projectPasswordHash || null);
+
   useEffect(() => {
-    const hash = state.passwordHash || projectPasswordHash;
-    if (hash && !isUnlocked(projectId, hash)) setAppLocked(true);
-  }, [state.passwordHash]);
+    LB_SYNC.getProjectPassword(projectId).then(hash => {
+      if (!hash) return;
+      setRemoteHash(hash);
+      if (!isUnlocked(projectId, hash)) setAppLocked(true);
+    }).catch(() => {});
+  }, []);
 
   const [showImport, setShowImport] = useState(false);
   const [showUpdateSchedule, setShowUpdateSchedule] = useState(false);
@@ -552,10 +554,9 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
   const quickExport = () => { if (activeLoc) setDeck({ entries: [{ loc: activeLoc, edit, name: locName(activeLoc, state.edits) }], opts: { cover: t.deckCover, overview: true, scenes: false, photos: true, sketches: true, measurements: true, designs: true, moodboard: true } }); };
 
   if (appLocked) {
-    const hash = state.passwordHash || projectPasswordHash;
     return <UnlockModal projectName={state.model ? state.model.scheduleName : 'Project'} onClose={onGoHome} onUnlock={enteredHash => {
-      if (enteredHash !== hash) return false;
-      sessionStorage.setItem('lb_unlocked_' + projectId, hash);
+      if (enteredHash !== remoteHash) return false;
+      sessionStorage.setItem('lb_unlocked_' + projectId, remoteHash);
       setAppLocked(false);
       return true;
     }} />;
@@ -573,7 +574,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
       <Sidebar model={model} edits={state.edits} activeId={activeLoc ? activeLoc.id : null} navSort={t.navSort}
         view={view} onOverview={() => setView('board')} removed={removed} onRestore={restoreLoc}
         onSelect={openLoc} onImport={() => setShowImport(true)} onUpdateSchedule={() => setShowUpdateSchedule(true)} onExport={() => setShowExport(true)}
-        hasPassword={!!projectPasswordHash} onSetPassword={() => setShowSetPassword(true)}
+        hasPassword={!!remoteHash} onSetPassword={() => setShowSetPassword(true)}
         onRenameSchedule={name => setState(s => ({ ...s, model: { ...s.model, scheduleName: name }, scheduleName: name }))}
         onGoHome={onGoHome} />
       <main className="main">
@@ -618,16 +619,15 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
         onClose={() => setShowShare(false)}
         onShareIdSaved={sid => patchActive({ shareId: sid })} />}
       {showSetPassword && <SetPasswordModal
-        hasPassword={!!(state.passwordHash || projectPasswordHash)}
+        hasPassword={!!remoteHash}
         onClose={() => setShowSetPassword(false)}
         onSave={async action => {
-          const currentHash = state.passwordHash || projectPasswordHash;
           if (action.check) {
-            const matches = action.check === currentHash;
+            const matches = action.check === remoteHash;
             if (!matches) return false;
             if (action.remove) {
-              setState(s => { const {passwordHash, ...rest} = s; return rest; });
-              onProjectUpdated({ passwordHash: null });
+              await LB_SYNC.removeProjectPassword(projectId);
+              setRemoteHash(null);
               sessionStorage.removeItem('lb_unlocked_' + projectId);
               setShowSetPassword(false);
               return true;
@@ -635,8 +635,8 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
             return true;
           }
           if (action.newHash !== undefined) {
-            setState(s => ({ ...s, passwordHash: action.newHash }));
-            onProjectUpdated({ passwordHash: action.newHash });
+            await LB_SYNC.setProjectPassword(projectId, action.newHash);
+            setRemoteHash(action.newHash);
             sessionStorage.setItem('lb_unlocked_' + projectId, action.newHash);
             setShowSetPassword(false);
             return true;

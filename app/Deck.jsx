@@ -88,7 +88,10 @@ function OverviewPage({ loc, edit, name, scheduleName }) {
   const groupList = Object.entries(groups);
   const usedCats = CATS.filter(c => adj.some(a => a.cat === c.id));
   const gal = edit.galleries || {};
-  const visualCount = ['photos', 'sketches', 'measurements', 'designs', 'moodboard'].reduce((n, k) => n + (gal[k] || []).length, 0);
+  const galCats = edit.galCategories && edit.galCategories.length
+    ? edit.galCategories
+    : [{ id: 'photos', label: 'Photos', colorId: 'slate' }];
+  const visualCount = galCats.reduce((n, c) => n + (gal[c.id] || []).length, 0);
   const sz = name.length > 20 ? 34 : name.length > 14 ? 44 : 58;
   const scenesByDay = (() => {
     const g = {};
@@ -240,25 +243,27 @@ function ScenesPage({ loc, name, scheduleName, scenes, part, parts }) {
   );
 }
 
-function AppendixPage({ name, scheduleName, label, items, part, parts }) {
+function AppendixPage({ name, scheduleName, label, color, items, part, parts }) {
   const cols = items.length === 1 ? 1 : 2;
+  const accent = color || '#6b7a8d';
   return (
     <div className="deck-page">
       <div className="dk-pad">
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, borderBottom: '1px solid var(--dk-line)', paddingBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, borderBottom: '3px solid ' + accent, paddingBottom: 12 }}>
+          <div style={{ width: 14, height: 14, borderRadius: '50%', background: accent, flexShrink: 0 }} />
           <span className="dk-kick">{name} · appendix</span>
           <span style={{ flex: 1 }} />
           {parts > 1 && <span className="dk-mono" style={{ fontSize: 11, color: 'var(--dk-ink3)' }}>{part} / {parts}</span>}
-          <span className="dk-serif" style={{ fontSize: 24, fontWeight: 600 }}>{label}</span>
+          <span className="dk-serif" style={{ fontSize: 24, fontWeight: 600, color: accent }}>{label}</span>
         </div>
         <div style={{ flex: 1, minHeight: 0, marginTop: 18, display: 'grid', gridTemplateColumns: 'repeat(' + cols + ',1fr)', gridAutoRows: '1fr', gap: 16 }}>
           {items.map(it => (
-            <div key={it.id} style={{ border: '1px solid var(--dk-line)', borderRadius: 12, overflow: 'hidden', background: 'var(--dk-card)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            <div key={it.id} style={{ border: '2px solid ' + accent, borderRadius: 12, overflow: 'hidden', background: 'var(--dk-card)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
               <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 10, background: '#ece4d2' }}>
                 <Img imgId={shownId(it)} style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain', display: 'block', borderRadius: 4 }} />
               </div>
               {(it.cap || it.note) && (
-                <div style={{ flex: '0 0 auto', padding: '9px 13px', borderTop: '1px solid var(--dk-line)' }}>
+                <div style={{ flex: '0 0 auto', padding: '9px 13px', borderTop: '2px solid ' + accent }}>
                   {it.cap && <div style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 600, color: '#221d15' }}>{it.cap}</div>}
                   {it.note && <div style={{ fontSize: 11.5, lineHeight: 1.35, color: 'var(--dk-ink2)', marginTop: it.cap ? 2 : 0 }}>{it.note}</div>}
                 </div>
@@ -300,13 +305,19 @@ function Deck({ entries, scheduleName, opts, onClose }) {
       }
     }
     const gal = edit.galleries || {};
-    [['photos', 'Photos'], ['sketches', 'Sketches'], ['measurements', 'Measurements'], ['designs', 'Designs'], ['moodboard', 'Moodboard']]
-      .filter(([k]) => o[k] !== false && (gal[k] || []).length)
-      .forEach(([k, label]) => {
-        const imgs = gal[k];
+    const galCats = edit.galCategories && edit.galCategories.length
+      ? edit.galCategories
+      : [{ id: 'photos', label: 'Photos', colorId: 'slate' }];
+    const CAT_COLORS_MAP = { slate:'#6b7a8d', rust:'#9e3b2e', forest:'#3d6b4f', gold:'#a07020', ocean:'#2c5f8a', plum:'#6b3d7a', terra:'#8a5a35', steel:'#3d5a6b' };
+    galCats
+      .filter(cat => (gal[cat.id] || []).length > 0)
+      .forEach(cat => {
+        const imgs = gal[cat.id];
+        const color = CAT_COLORS_MAP[cat.colorId] || '#6b7a8d';
         const aParts = Math.ceil(imgs.length / PER_APPENDIX) || 1;
         for (let p = 0; p < aParts; p++) {
-          pages.push(<AppendixPage key={loc.id + '-' + k + p} name={name} scheduleName={scheduleName} label={label}
+          pages.push(<AppendixPage key={loc.id + '-' + cat.id + p} name={name} scheduleName={scheduleName}
+            label={cat.label} color={color}
             items={imgs.slice(p * PER_APPENDIX, (p + 1) * PER_APPENDIX)} part={p + 1} parts={aParts} />);
         }
       });

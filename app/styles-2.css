@@ -146,8 +146,9 @@
 
 /* ====================================================== STACKED GALLERIES */
 .vis-block { margin-bottom: 22px; }
-.vis-block-h { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
-.vis-block-h .vn { font-weight: 700; font-size: 14px; }
+.vis-block-h { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; border-radius: 4px; }
+.vis-block-h .vn { font-weight: 700; font-size: 14px; min-width: 20px; }
+.vis-block-h .vn:focus { outline: none; }
 .vis-block-h .vc { font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
 .vis-block-h .ln { flex: 1; height: 1px; background: var(--line); }
 
@@ -194,7 +195,7 @@
 .gal-item { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 11px; overflow: hidden; background: var(--card); cursor: grab; transition: opacity .15s, box-shadow .15s; }
 .gal-item:active { cursor: grabbing; }
 .gal-item[draggable="true"]:active { opacity: .5; }
-.gal-item.drag-over { box-shadow: 0 0 0 2px var(--accent); }
+.gal-item.drag-over { box-shadow: 0 0 0 2px var(--gal-accent, var(--accent)); }
 .gal-item .gal-cell { border: none; border-radius: 0; aspect-ratio: 4/3; }
 .gal-drag-handle { position: absolute; top: 7px; left: 7px; width: 26px; height: 26px; border-radius: 7px; background: rgba(20,16,8,.55); color: #fff; display: grid; place-items: center; opacity: 0; transition: opacity .12s; cursor: grab; backdrop-filter: blur(4px); z-index: 2; }
 .gal-cell:hover .gal-drag-handle { opacity: 1; }
@@ -206,3 +207,12 @@
 .gal-note { border: none; border-top: 1px solid var(--line); padding: 8px 10px; font-size: 12.5px; line-height: 1.35; background: var(--card); outline: none; resize: none; width: 100%; font-family: inherit; color: var(--ink); }
 .gal-note:focus { background: var(--card-2); }
 .gal-note::placeholder { color: var(--ink-3); }
+
+/* drop zone highlight when dragging from another category */
+.gal-grid.gal-drop-zone { outline: 2px dashed var(--gal-accent, var(--accent)); outline-offset: -4px; border-radius: 10px; background: var(--gal-soft, var(--accent-soft)); }
+
+/* ====================================================== CATEGORY HEADER === */
+.cat-colors { display: flex; gap: 5px; align-items: center; }
+.cat-color-dot { width: 13px; height: 13px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; flex-shrink: 0; transition: transform .1s; }
+.cat-color-dot:hover { transform: scale(1.25); }
+.cat-color-dot.on { border-color: var(--ink); transform: scale(1.15); }

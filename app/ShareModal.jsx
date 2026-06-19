@@ -15,7 +15,10 @@ function ShareModal({ loc, edit, name, scheduleName, onClose, onShareIdSaved }) 
     if (edit.cover) ids.add(edit.cover);
     if (edit.galleries) {
       Object.values(edit.galleries).forEach(arr => {
-        (arr || []).forEach(it => { if (it.id) ids.add(it.id); });
+        (arr || []).forEach(it => {
+          if (it.id) ids.add(it.id);
+          if (it.annotatedId) ids.add(it.annotatedId); // drawings overlay
+        });
       });
     }
     if (edit.adjustments) {
@@ -51,12 +54,17 @@ function ShareModal({ loc, edit, name, scheduleName, onClose, onShareIdSaved }) 
 
       const sid = existingShareId || ('s' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6));
 
-      // Build galleries with public URLs
+      // Build galleries with public URLs — prefer annotated (drawn-on) version over original
       const gals = {};
       if (edit && edit.galleries) {
         Object.entries(edit.galleries).forEach(([k, arr]) => {
           gals[k] = (arr || [])
-            .map(it => ({ cap: it.cap || '', note: it.note || '', url: urlMap[it.id] || null }))
+            .map(it => ({
+              cap: it.cap || '',
+              note: it.note || '',
+              url: (it.annotatedId && urlMap[it.annotatedId]) || urlMap[it.id] || null,
+              originalUrl: urlMap[it.id] || null,
+            }))
             .filter(it => it.url);
         });
       }
@@ -92,11 +100,14 @@ function ShareModal({ loc, edit, name, scheduleName, onClose, onShareIdSaved }) 
           thumbUrl: adj.thumb ? (urlMap[adj.thumb] || null) : null,
         })),
         galleries: gals,
+        galCategories: (edit && edit.galCategories) || null,
         coverUrl: edit && edit.cover ? (urlMap[edit.cover] || null) : null,
         notes: (edit && edit.notes) || '',
         regions: (loc && loc.regions) || [],
         sets: (loc && loc.sets) || [],
         sceneCount: (loc && loc.sceneCount) || 0,
+        prepDays: (edit && edit.prepDays) || 0,
+        wrapDays: (edit && edit.wrapDays) || 0,
         updatedAt: Date.now(),
       };
 

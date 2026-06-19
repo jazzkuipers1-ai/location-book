@@ -194,9 +194,10 @@ const GAL_KINDS = [
   { id: 'moodboard', label: 'Moodboard', icon: 'grid' },
 ];
 
-function GalleryCell({ item, onCap, onNote, onRemove, onDraw, onCrop, onDragStart, onDragEnter, onDragEnd, isDragOver }) {
+function GalleryCell({ item, onCap, onNote, onRemove, onDraw, onCrop, onDragStart, onDragEnter, onDragEnd, isDragOver, accentColor }) {
   return (
     <div className={'gal-item' + (isDragOver ? ' drag-over' : '')}
+      style={isDragOver && accentColor ? { boxShadow: '0 0 0 2px ' + accentColor } : undefined}
       draggable
       onDragStart={onDragStart}
       onDragEnter={onDragEnter}
@@ -238,30 +239,59 @@ function Dropzone({ onFiles }) {
   );
 }
 
-function Gallery({ items, onChange, onDraw }) {
+/* ---- palette for category colors ---- */
+const CAT_COLORS = [
+  { id: 'slate',   hex: '#6b7a8d', soft: '#e8ecf0' },
+  { id: 'rust',    hex: '#9e3b2e', soft: '#f0ddd6' },
+  { id: 'forest',  hex: '#3d6b4f', soft: '#d6ead9' },
+  { id: 'gold',    hex: '#a07020', soft: '#f0e4c0' },
+  { id: 'ocean',   hex: '#2c5f8a', soft: '#d4e5f5' },
+  { id: 'plum',    hex: '#6b3d7a', soft: '#eadaf0' },
+  { id: 'terra',   hex: '#8a5a35', soft: '#f0e0cc' },
+  { id: 'steel',   hex: '#3d5a6b', soft: '#d4e4ed' },
+];
+
+function makeCatId() { return 'cat_' + Math.random().toString(36).slice(2, 8); }
+
+/* shared drag state — lives outside components so cross-category drag works */
+const _drag = { catId: null, idx: null };
+
+function Gallery({ catId, catColor, items, onChange, onDraw, onDropFromOther }) {
   const [cropId, setCropId] = useState(null);
   const [dragOver, setDragOver] = useState(null);
-  const dragIdx = useRef(null);
+  const [dropZoneOver, setDropZoneOver] = useState(false);
 
   const add = async fl => { const ids = await filesToIds(fl); onChange([...items, ...ids.map(id => ({ id, cap: '', note: '', strokes: [] }))]); };
   const remove = async (it) => { if (it.annotatedId) await LB.db.delImage(it.annotatedId); await LB.db.delImage(it.id); onChange(items.filter(i => i.id !== it.id)); };
   const patch = (id, p) => onChange(items.map(i => i.id === id ? { ...i, ...p } : i));
 
-  const handleDragStart = idx => { dragIdx.current = idx; };
-  const handleDragEnter = idx => { setDragOver(idx); };
+  const handleDragStart = idx => { _drag.catId = catId; _drag.idx = idx; };
+  const handleDragEnter = idx => { if (_drag.catId === catId) setDragOver(idx); };
   const handleDragEnd = () => {
-    if (dragIdx.current !== null && dragOver !== null && dragIdx.current !== dragOver) {
+    if (_drag.catId === catId && _drag.idx !== null && dragOver !== null && _drag.idx !== dragOver) {
       const next = [...items];
-      const [moved] = next.splice(dragIdx.current, 1);
+      const [moved] = next.splice(_drag.idx, 1);
       next.splice(dragOver, 0, moved);
       onChange(next);
     }
-    dragIdx.current = null;
-    setDragOver(null);
+    _drag.catId = null; _drag.idx = null;
+    setDragOver(null); setDropZoneOver(false);
   };
 
+  /* drop area for items coming from another category */
+  const zoneProps = {
+    onDragOver: e => { if (_drag.catId && _drag.catId !== catId) { e.preventDefault(); setDropZoneOver(true); } },
+    onDragLeave: () => setDropZoneOver(false),
+    onDrop: e => { e.preventDefault(); if (_drag.catId && _drag.catId !== catId) { onDropFromOther(_drag.catId, _drag.idx); setDropZoneOver(false); } },
+  };
+
+  const accentColor = catColor ? catColor.hex : 'var(--accent)';
+  const softColor   = catColor ? catColor.soft : 'var(--accent-soft)';
+
   return (
-    <div className="gal-grid">
+    <div className={'gal-grid' + (dropZoneOver ? ' gal-drop-zone' : '')}
+      style={{ '--gal-accent': accentColor, '--gal-soft': softColor }}
+      {...zoneProps}>
       {items.map((it, idx) => <GalleryCell key={it.id} item={it}
         onCap={c => patch(it.id, { cap: c })} onNote={n => patch(it.id, { note: n })}
         onRemove={() => remove(it)} onDraw={() => onDraw(it)}
@@ -269,7 +299,8 @@ function Gallery({ items, onChange, onDraw }) {
         onDragStart={() => handleDragStart(idx)}
         onDragEnter={() => handleDragEnter(idx)}
         onDragEnd={handleDragEnd}
-        isDragOver={dragOver === idx && dragIdx.current !== idx} />)}
+        isDragOver={dragOver === idx && _drag.catId === catId && _drag.idx !== idx}
+        accentColor={accentColor} />)}
       <Dropzone onFiles={add} />
       {cropId && <CropModal imgId={cropId} onClose={() => setCropId(null)}
         onDone={newId => { patch(cropId, { id: newId }); setCropId(null); }} />}
@@ -278,24 +309,97 @@ function Gallery({ items, onChange, onDraw }) {
 }
 
 function VisualSection({ edit, onPatch, onDraw }) {
+  const cats = edit.galCategories && edit.galCategories.length
+    ? edit.galCategories
+    : [{ id: 'photos', label: 'Photos', colorId: 'slate' }];
   const gal = edit.galleries || {};
-  const setGal = (k, arr) => onPatch({ galleries: { ...gal, [k]: arr } });
-  const total = GAL_KINDS.reduce((n, g) => n + (gal[g.id] || []).length, 0);
+
+  const setCats = newCats => onPatch({ galCategories: newCats });
+  const setGal  = (k, arr) => onPatch({ galleries: { ...gal, [k]: arr } });
+
+  const total = cats.reduce((n, c) => n + (gal[c.id] || []).length, 0);
+
+  const addCat = () => {
+    const id = makeCatId();
+    const usedIds = cats.map(c => c.colorId);
+    const colorId = (CAT_COLORS.find(c => !usedIds.includes(c.id)) || CAT_COLORS[0]).id;
+    setCats([...cats, { id, label: 'New category', colorId }]);
+  };
+
+  const removeCat = catId => {
+    // move photos to first category before removing
+    const remaining = cats.filter(c => c.id !== catId);
+    if (remaining.length === 0) return;
+    const orphans = gal[catId] || [];
+    const firstId = remaining[0].id;
+    const merged = { ...gal, [firstId]: [...(gal[firstId] || []), ...orphans] };
+    delete merged[catId];
+    onPatch({ galCategories: remaining, galleries: merged });
+  };
+
+  const renameCat = (catId, label) => setCats(cats.map(c => c.id === catId ? { ...c, label } : c));
+  const recolorCat = (catId, colorId) => setCats(cats.map(c => c.id === catId ? { ...c, colorId } : c));
+
+  /* move photo from one category to another */
+  const movePhoto = (fromCatId, fromIdx, toCatId) => {
+    const fromArr = [...(gal[fromCatId] || [])];
+    const [photo] = fromArr.splice(fromIdx, 1);
+    const toArr = [...(gal[toCatId] || []), photo];
+    onPatch({ galleries: { ...gal, [fromCatId]: fromArr, [toCatId]: toArr } });
+  };
+
   return (
     <div className="sec">
-      <div className="sec-h"><span className="num">04</span><h2>Visual references</h2>
-        <span className="mono" style={{ fontSize: 11, color: 'var(--ink-2)' }}>{total} image{total !== 1 ? 's' : ''}</span><span className="ln" /></div>
-      {GAL_KINDS.map(g => (
-        <div className="vis-block" key={g.id}>
-          <div className="vis-block-h">
-            <Icon name={g.icon} size={15} style={{ color: 'var(--ink-2)' }} />
-            <span className="vn">{g.label}</span>
-            <span className="vc">{(gal[g.id] || []).length}</span>
-            <span className="ln" />
+      <div className="sec-h">
+        <span className="num">04</span><h2>Visual references</h2>
+        <span className="mono" style={{ fontSize: 11, color: 'var(--ink-2)' }}>{total} image{total !== 1 ? 's' : ''}</span>
+        <span className="ln" />
+        <button className="btn sm ghost" onClick={addCat} style={{ marginLeft: 8, flexShrink: 0 }}>
+          <Icon name="plus" size={13} />Category
+        </button>
+      </div>
+      {cats.map(cat => {
+        const color = CAT_COLORS.find(c => c.id === cat.colorId) || CAT_COLORS[0];
+        return (
+          <div className="vis-block" key={cat.id} style={{ '--cat-accent': color.hex, '--cat-soft': color.soft }}>
+            <div className="vis-block-h" style={{ borderLeft: '3px solid ' + color.hex, paddingLeft: 10 }}>
+              {/* color picker dots */}
+              <div className="cat-colors">
+                {CAT_COLORS.map(c => (
+                  <button key={c.id} className={'cat-color-dot' + (c.id === cat.colorId ? ' on' : '')}
+                    style={{ background: c.hex }}
+                    onClick={() => recolorCat(cat.id, c.id)} title={c.id} />
+                ))}
+              </div>
+              {/* editable label */}
+              <span className="vn" contentEditable suppressContentEditableWarning
+                onBlur={e => renameCat(cat.id, e.currentTarget.textContent.trim() || cat.label)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}
+                style={{ cursor: 'text', outline: 'none', borderBottom: '1px dashed transparent' }}
+                onFocus={e => e.currentTarget.style.borderBottomColor = color.hex}
+                suppressHydrationWarning>
+                {cat.label}
+              </span>
+              <span className="vc">{(gal[cat.id] || []).length}</span>
+              <span className="ln" />
+              {cats.length > 1 && (
+                <button className="btn sm ghost" style={{ padding: '3px 7px', color: 'var(--ink-3)' }}
+                  onClick={() => removeCat(cat.id)} title="Remove category (photos move to first)">
+                  <Icon name="trash" size={13} />
+                </button>
+              )}
+            </div>
+            <Gallery
+              catId={cat.id}
+              catColor={color}
+              items={gal[cat.id] || []}
+              onChange={arr => setGal(cat.id, arr)}
+              onDraw={it => onDraw(cat.id, it)}
+              onDropFromOther={(fromCatId, fromIdx) => movePhoto(fromCatId, fromIdx, cat.id)}
+            />
           </div>
-          <Gallery items={gal[g.id] || []} onChange={arr => setGal(g.id, arr)} onDraw={it => onDraw(g.id, it)} />
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

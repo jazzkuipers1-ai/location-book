@@ -295,7 +295,7 @@ function saveProjectState(projectId, state) {
   try { localStorage.setItem('lb_state_v2_' + projectId, JSON.stringify(state)); } catch (e) {}
 }
 
-function ProjectApp({ projectId, onGoHome, onProjectUpdated }) {
+function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash, onSetPassword }) {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const [state, setState] = useState(() => {
     const saved = loadProjectState(projectId);
@@ -312,6 +312,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated }) {
   const [view, setView] = useState('board');
   const [showImport, setShowImport] = useState(false);
   const [showUpdateSchedule, setShowUpdateSchedule] = useState(false);
+  const [showSetPassword, setShowSetPassword] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [combineBase, setCombineBase] = useState(null);
@@ -548,6 +549,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated }) {
       <Sidebar model={model} edits={state.edits} activeId={activeLoc ? activeLoc.id : null} navSort={t.navSort}
         view={view} onOverview={() => setView('board')} removed={removed} onRestore={restoreLoc}
         onSelect={openLoc} onImport={() => setShowImport(true)} onUpdateSchedule={() => setShowUpdateSchedule(true)} onExport={() => setShowExport(true)}
+        hasPassword={!!projectPasswordHash} onSetPassword={() => setShowSetPassword(true)}
         onRenameSchedule={name => setState(s => ({ ...s, model: { ...s.model, scheduleName: name }, scheduleName: name }))}
         onGoHome={onGoHome} />
       <main className="main">
@@ -591,6 +593,15 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated }) {
       {showShare && activeLoc && <ShareModal loc={activeLoc} edit={edit} name={locName(activeLoc, state.edits)} scheduleName={model.scheduleName}
         onClose={() => setShowShare(false)}
         onShareIdSaved={sid => patchActive({ shareId: sid })} />}
+      {showSetPassword && onSetPassword && <SetPasswordModal
+        hasPassword={!!projectPasswordHash}
+        onClose={() => setShowSetPassword(false)}
+        onSave={async action => {
+          const ok = await onSetPassword(action);
+          if (ok !== false && !action.check) setShowSetPassword(false);
+          return ok;
+        }}
+      />}
       {diffPending && <ScheduleDiffModal
         oldModel={state.model}
         newModel={diffPending.newModel}
@@ -651,6 +662,7 @@ function HomeRouter() {
     return list;
   });
   const [activeProjectId, setActiveProjectId] = useState(null);
+  const [pendingUnlock, setPendingUnlock] = useState(null); // { id, name, hash }
   const [importing, setImporting] = useState(false);
   const [importErr, setImportErr] = useState('');
 
@@ -720,28 +732,76 @@ function HomeRouter() {
     LB_SYNC.updateProject(id, patch).catch(() => {});
   };
 
+  const handleOpen = id => {
+    const proj = projects.find(p => p.id === id);
+    if (proj && proj.passwordHash) {
+      const cached = sessionStorage.getItem('lb_unlocked_' + id);
+      if (cached === proj.passwordHash) { setActiveProjectId(id); return; }
+      setPendingUnlock({ id, name: proj.name, hash: proj.passwordHash });
+    } else {
+      setActiveProjectId(id);
+    }
+  };
+
+  const handleUnlock = hash => {
+    if (!pendingUnlock) return false;
+    if (hash === pendingUnlock.hash) {
+      sessionStorage.setItem('lb_unlocked_' + pendingUnlock.id, hash);
+      setActiveProjectId(pendingUnlock.id);
+      setPendingUnlock(null);
+      return true;
+    }
+    return false;
+  };
+
+  const handleSetPassword = async (id, action) => {
+    const proj = projects.find(p => p.id === id);
+    if (action.check) {
+      const matches = action.check === (proj && proj.passwordHash);
+      if (!matches) return false;
+      if (action.remove) {
+        handleProjectUpdated(id, { passwordHash: null });
+        sessionStorage.removeItem('lb_unlocked_' + id);
+        return true;
+      }
+      return true;
+    }
+    if (action.newHash !== undefined) {
+      handleProjectUpdated(id, { passwordHash: action.newHash });
+      sessionStorage.setItem('lb_unlocked_' + id, action.newHash);
+      return true;
+    }
+  };
+
   if (activeProjectId) {
-    return (
+    return (<>
       <ProjectApp
         key={activeProjectId}
         projectId={activeProjectId}
         onGoHome={() => setActiveProjectId(null)}
         onProjectUpdated={patch => handleProjectUpdated(activeProjectId, patch)}
+        projectPasswordHash={(projects.find(p => p.id === activeProjectId) || {}).passwordHash}
+        onSetPassword={action => handleSetPassword(activeProjectId, action)}
       />
-    );
+    </>);
   }
 
-  return (
+  return (<>
     <LB_Home
       projects={projects}
       importing={importing}
       importErr={importErr}
-      onOpen={id => setActiveProjectId(id)}
+      onOpen={handleOpen}
       onNew={handleNewProject}
       onDelete={handleDeleteProject}
       onRename={(id, name) => { handleProjectUpdated(id, { name }); }}
     />
-  );
+    {pendingUnlock && <UnlockModal
+      projectName={pendingUnlock.name}
+      onClose={() => setPendingUnlock(null)}
+      onUnlock={handleUnlock}
+    />}
+  </>);
 }
 
 function App() {

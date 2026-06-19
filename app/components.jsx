@@ -41,6 +41,7 @@ const PATHS = {
   redo: 'M14 9a5 5 0 1 1-1.6-3.7M14 9V5.5M14 9h-3.5',
   sliders: 'M4 6h7M4 12h3M13 6h1M9 12h5M11 4.5v3M7 10.5v3',
   page: 'M4 2.5h7L14 6v9.5H4zM10.5 2.5V6H14',
+  lock: 'M5.5 8V6a3.5 3.5 0 0 1 7 0v2M3.5 8h11v7.5h-11zM9 11.5v1.5',
 };
 function Icon({ name, size = 16, sw = 1.6, style }) {
   return (

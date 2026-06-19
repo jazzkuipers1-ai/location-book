@@ -5,6 +5,7 @@ function fmtTs(ts) {
 }
 
 function ProjectCard({ project, onOpen, onDelete, onRename }) {
+  const locked = !!project.passwordHash;
   const [confirm, setConfirm] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(project.name);
@@ -19,8 +20,9 @@ function ProjectCard({ project, onOpen, onDelete, onRename }) {
       <div style={{ height: 5, background: 'var(--accent)', opacity: .7 }} />
       <div style={{ padding: '18px 20px 16px', cursor: 'pointer' }} onClick={!editing ? onOpen : undefined}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-          <div className="mono" style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>
+          <div className="mono" style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--ink-3)', display: 'flex', alignItems: 'center', gap: 6 }}>
             {fmtTs(project.updatedAt)}
+            {locked && <span title="Password protected" style={{ color: 'var(--ink-3)', display: 'flex', alignItems: 'center' }}><Icon name="lock" size={11} /></span>}
           </div>
         </div>
         <div className="serif" style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.15, marginBottom: 4, color: 'var(--ink)' }}>

@@ -27,7 +27,10 @@
     });
     // Background upload to Supabase so other devices can load this image
     if (window.LB_SYNC) {
-      window.LB_SYNC.uploadImage(blob, id).catch(() => {});
+      window.LB_SYNC.uploadImage(blob, id).catch(() => {
+        // Upload failed (offline?) — queue for retry on reconnect
+        if (window.LB_SYNC.queueUpload) window.LB_SYNC.queueUpload(id);
+      });
     }
     return id;
   }

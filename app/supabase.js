@@ -156,5 +156,39 @@
     return SUPABASE_URL + '/storage/v1/object/public/project-images/images/' + imageId;
   }
 
-  window.LB_SYNC = { CLIENT_ID, loadState, saveState, subscribe, loadProjects, createProject, updateProject, deleteProject, getProjectByCode, uploadImage, getImageUrl, publishShare, loadShare, getShareUrl, setProjectPassword, removeProjectPassword, getProjectPassword };
+  /* ---- offline upload queue ---------------------------------------------- */
+  const QUEUE_KEY = 'lb_upload_queue';
+
+  function queueUpload(id) {
+    try {
+      const q = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
+      if (!q.includes(id)) { q.push(id); localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); }
+    } catch (e) {}
+  }
+
+  async function flushUploadQueue() {
+    try {
+      const q = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
+      if (!q.length) return;
+      const remaining = [];
+      for (const id of q) {
+        try {
+          const blob = await LB.db.getBlob(id);
+          if (blob) await uploadImage(blob, id);
+        } catch (e) {
+          remaining.push(id); // still offline or error — keep in queue
+        }
+      }
+      if (remaining.length === 0) localStorage.removeItem(QUEUE_KEY);
+      else localStorage.setItem(QUEUE_KEY, JSON.stringify(remaining));
+    } catch (e) {}
+  }
+
+  // On reconnect: flush queued uploads and notify app to retry state save
+  window.addEventListener('online', () => {
+    flushUploadQueue();
+    window.dispatchEvent(new CustomEvent('lb_reconnect'));
+  });
+
+  window.LB_SYNC = { CLIENT_ID, loadState, saveState, subscribe, loadProjects, createProject, updateProject, deleteProject, getProjectByCode, uploadImage, getImageUrl, queueUpload, flushUploadQueue, publishShare, loadShare, getShareUrl, setProjectPassword, removeProjectPassword, getProjectPassword };
 })();

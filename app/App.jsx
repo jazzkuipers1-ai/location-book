@@ -381,6 +381,16 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
     return () => window.removeEventListener('keydown', h);
   }, [undo, redo]);
 
+  // ---- Offline status ------------------------------------------------------
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  useEffect(() => {
+    const up   = () => setIsOnline(true);
+    const down = () => setIsOnline(false);
+    window.addEventListener('online',  up);
+    window.addEventListener('offline', down);
+    return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down); };
+  }, []);
+
   // ---- Supabase sync -------------------------------------------------------
   const isFirstStateRender = useRef(true);
   const applyingRemote = useRef(false);
@@ -456,6 +466,20 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
         .catch(e => console.warn('[LB] Heartbeat save failed', e));
     }, 5000);
     return () => clearInterval(interval);
+  }, [projectId]);
+
+  // On reconnect: push current state to Supabase immediately
+  useEffect(() => {
+    const handle = () => {
+      const s = stateRef.current;
+      if (!s || isFirstStateRender.current) return;
+      const { activeId: _a, ...shared } = s;
+      const savedAt = Date.now();
+      lastSeenSavedAt.current = savedAt;
+      LB_SYNC.saveState(projectId, { ...shared, _clientId: LB_SYNC.CLIENT_ID, _savedAt: savedAt }).catch(() => {});
+    };
+    window.addEventListener('lb_reconnect', handle);
+    return () => window.removeEventListener('lb_reconnect', handle);
   }, [projectId]);
 
   // Realtime subscription + polling fallback
@@ -646,6 +670,12 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
               <span className="sp" />
               <button className="btn sm topbar-desktop-only" onClick={undo} style={{ opacity: history.current.length ? 1 : 0.35 }}><Icon name="undo" size={14} /></button>
               <button className="btn sm topbar-desktop-only" onClick={redo} style={{ opacity: future.current.length ? 1 : 0.35 }}><Icon name="redo" size={14} /></button>
+              {!isOnline && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'var(--mono)', fontSize: 10.5, color: '#c87040', background: 'color-mix(in srgb, #c87040 12%, var(--card))', border: '1px solid color-mix(in srgb, #c87040 30%, transparent)', borderRadius: 99, padding: '3px 10px', flexShrink: 0 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#c87040', flexShrink: 0 }} />
+                  Offline · opgeslagen lokaal
+                </span>
+              )}
               <button className="btn sm topbar-desktop-only" onClick={() => setShowShare(true)}><Icon name="arrow" size={14} />Share…</button>
               <button className="btn sm topbar-desktop-only" onClick={() => setShowExport(true)}><Icon name="layers" size={14} />Export…</button>
               <button className="btn sm primary topbar-desktop-only" onClick={quickExport}><Icon name="page" size={14} />Export this deck</button>

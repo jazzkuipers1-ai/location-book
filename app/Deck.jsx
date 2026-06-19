@@ -309,8 +309,9 @@ function Deck({ entries, scheduleName, opts, onClose }) {
       ? edit.galCategories
       : [{ id: 'photos', label: 'Photos', colorId: 'slate' }];
     const CAT_COLORS_MAP = { slate:'#6b7a8d', rust:'#9e3b2e', forest:'#3d6b4f', gold:'#a07020', ocean:'#2c5f8a', plum:'#6b3d7a', terra:'#8a5a35', steel:'#3d5a6b' };
+    // Custom photo categories
     galCats
-      .filter(cat => (gal[cat.id] || []).length > 0)
+      .filter(cat => o[cat.id] !== false && (gal[cat.id] || []).length > 0)
       .forEach(cat => {
         const imgs = gal[cat.id];
         const color = CAT_COLORS_MAP[cat.colorId] || '#6b7a8d';
@@ -318,6 +319,18 @@ function Deck({ entries, scheduleName, opts, onClose }) {
         for (let p = 0; p < aParts; p++) {
           pages.push(<AppendixPage key={loc.id + '-' + cat.id + p} name={name} scheduleName={scheduleName}
             label={cat.label} color={color}
+            items={imgs.slice(p * PER_APPENDIX, (p + 1) * PER_APPENDIX)} part={p + 1} parts={aParts} />);
+        }
+      });
+    // Fixed sections — only shown when non-empty and not turned off in export opts
+    [['sketches', 'Sketches'], ['measurements', 'Measurements'], ['designs', 'Designs'], ['moodboard', 'Moodboard']]
+      .filter(([k]) => o[k] !== false && (gal[k] || []).length > 0)
+      .forEach(([k, label]) => {
+        const imgs = gal[k];
+        const aParts = Math.ceil(imgs.length / PER_APPENDIX) || 1;
+        for (let p = 0; p < aParts; p++) {
+          pages.push(<AppendixPage key={loc.id + '-' + k + p} name={name} scheduleName={scheduleName}
+            label={label} color={null}
             items={imgs.slice(p * PER_APPENDIX, (p + 1) * PER_APPENDIX)} part={p + 1} parts={aParts} />);
         }
       });

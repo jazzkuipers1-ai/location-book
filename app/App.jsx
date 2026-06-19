@@ -481,7 +481,9 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
 
   const patchById = useCallback((id, p) => setStateWithHistory(s => {
     const cur = s.edits[id] || defaultEdit();
-    return { ...s, edits: { ...s.edits, [id]: { ...cur, ...p } } };
+    // p can be a plain object or a function (edit) => patch — use function form to avoid stale closures
+    const patch = typeof p === 'function' ? p(cur) : p;
+    return { ...s, edits: { ...s.edits, [id]: { ...cur, ...patch } } };
   }), [setStateWithHistory]);
   const patchActive = useCallback(p => { if (activeLoc) patchById(activeLoc.id, p); }, [activeLoc, patchById]);
 

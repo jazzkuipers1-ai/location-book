@@ -308,14 +308,15 @@ function Gallery({ catId, catColor, items, onChange, onDraw, onDropFromOther }) 
   );
 }
 
-function VisualSection({ edit, onPatch, onDraw }) {
+function VisualSection({ edit, onPatch, onDraw, onSketch }) {
   const cats = edit.galCategories && edit.galCategories.length
     ? edit.galCategories
     : [{ id: 'photos', label: 'Photos', colorId: 'slate' }];
   const gal = edit.galleries || {};
 
   const setCats = newCats => onPatch({ galCategories: newCats });
-  const setGal  = (k, arr) => onPatch({ galleries: { ...gal, [k]: arr } });
+  // Functional form: always read current galleries from state, never from stale closure
+  const setGal = (k, arr) => onPatch(cur => ({ galleries: { ...(cur.galleries || {}), [k]: arr } }));
 
   const total = cats.reduce((n, c) => n + (gal[c.id] || []).length, 0);
 
@@ -327,14 +328,16 @@ function VisualSection({ edit, onPatch, onDraw }) {
   };
 
   const removeCat = catId => {
-    // move photos to first category before removing
     const remaining = cats.filter(c => c.id !== catId);
     if (remaining.length === 0) return;
-    const orphans = gal[catId] || [];
     const firstId = remaining[0].id;
-    const merged = { ...gal, [firstId]: [...(gal[firstId] || []), ...orphans] };
-    delete merged[catId];
-    onPatch({ galCategories: remaining, galleries: merged });
+    onPatch(cur => {
+      const g = cur.galleries || {};
+      const orphans = g[catId] || [];
+      const merged = { ...g, [firstId]: [...(g[firstId] || []), ...orphans] };
+      delete merged[catId];
+      return { galCategories: remaining, galleries: merged };
+    });
   };
 
   const renameCat = (catId, label) => setCats(cats.map(c => c.id === catId ? { ...c, label } : c));
@@ -342,10 +345,13 @@ function VisualSection({ edit, onPatch, onDraw }) {
 
   /* move photo from one category to another */
   const movePhoto = (fromCatId, fromIdx, toCatId) => {
-    const fromArr = [...(gal[fromCatId] || [])];
-    const [photo] = fromArr.splice(fromIdx, 1);
-    const toArr = [...(gal[toCatId] || []), photo];
-    onPatch({ galleries: { ...gal, [fromCatId]: fromArr, [toCatId]: toArr } });
+    onPatch(cur => {
+      const g = cur.galleries || {};
+      const fromArr = [...(g[fromCatId] || [])];
+      const [photo] = fromArr.splice(fromIdx, 1);
+      const toArr = [...(g[toCatId] || []), photo];
+      return { galleries: { ...g, [fromCatId]: fromArr, [toCatId]: toArr } };
+    });
   };
 
   return (
@@ -400,6 +406,37 @@ function VisualSection({ edit, onPatch, onDraw }) {
           </div>
         );
       })}
+
+      {/* Fixed sections — always present below custom photo categories */}
+      {[
+        { id: 'sketches',     label: 'Sketches',     icon: 'edit',   canSketch: true  },
+        { id: 'measurements', label: 'Measurements', icon: 'ruler',  canSketch: true  },
+        { id: 'designs',      label: 'Designs',      icon: 'layers', canSketch: false },
+        { id: 'moodboard',    label: 'Moodboard',    icon: 'grid',   canSketch: false },
+      ].map(g => (
+        <div className="vis-block" key={g.id}>
+          <div className="vis-block-h">
+            <Icon name={g.icon} size={15} style={{ color: 'var(--ink-2)' }} />
+            <span className="vn">{g.label}</span>
+            <span className="vc">{(gal[g.id] || []).length}</span>
+            <span className="ln" />
+            {g.canSketch && onSketch && (
+              <button className="btn sm ghost" onClick={() => onSketch(g.id)}
+                style={{ marginLeft: 6, flexShrink: 0, gap: 4 }}>
+                <Icon name="edit" size={12} />Sketch
+              </button>
+            )}
+          </div>
+          <Gallery
+            catId={g.id}
+            catColor={null}
+            items={gal[g.id] || []}
+            onChange={arr => setGal(g.id, arr)}
+            onDraw={it => onDraw(g.id, it)}
+            onDropFromOther={() => {}}
+          />
+        </div>
+      ))}
     </div>
   );
 }
@@ -490,14 +527,17 @@ function AddDayButton({ onAdd }) {
 function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine, sceneView, onExport }) {
   const adj = edit.adjustments || [];
   const region = loc.regions.join(' · ');
-  const [annot, setAnnot] = useState(null); // {kind, item}
+  const [annot, setAnnot] = useState(null);    // {kind, item}
+  const [sketch, setSketch] = useState(null);  // galKindId to add sketch into
 
   const openDraw = (kind, item) => setAnnot({ kind, item });
   const saveAnnot = ({ strokes, note, annotatedId }) => {
     const kind = annot.kind, id = annot.item.id;
-    const gal = edit.galleries || {};
-    const arr = (gal[kind] || []).map(i => i.id === id ? { ...i, strokes, note, annotatedId } : i);
-    onPatch({ galleries: { ...gal, [kind]: arr } });
+    onPatch(cur => {
+      const g = cur.galleries || {};
+      const arr = (g[kind] || []).map(i => i.id === id ? { ...i, strokes, note, annotatedId } : i);
+      return { galleries: { ...g, [kind]: arr } };
+    });
     setAnnot(null);
   };
 
@@ -607,7 +647,7 @@ function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine,
       </div>
 
       {/* visuals */}
-      <VisualSection edit={edit} onPatch={onPatch} onDraw={openDraw} />
+      <VisualSection edit={edit} onPatch={onPatch} onDraw={openDraw} onSketch={kind => setSketch(kind)} />
 
       {/* notes */}
       <div className="sec">
@@ -617,6 +657,16 @@ function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine,
 
       {annot && <Annotator originalId={annot.item.id} init={{ strokes: annot.item.strokes, note: annot.item.note }}
         onSave={saveAnnot} onClose={() => setAnnot(null)} />}
+      {sketch && <SketchPad
+        onSave={item => {
+          const kind = sketch;
+          onPatch(cur => {
+            const g = cur.galleries || {};
+            return { galleries: { ...g, [kind]: [...(g[kind] || []), item] } };
+          });
+          setSketch(null);
+        }}
+        onClose={() => setSketch(null)} />}
     </div>
   );
 }

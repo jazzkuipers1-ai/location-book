@@ -134,8 +134,8 @@ function ShareView({ shareId }) {
             {[
               ['Scenes', data.sceneCount || 0],
               ['Shoot', (data.shootDates || []).length],
-              ...(data.prepDays ? [['Prep', data.prepDays]] : []),
-              ...(data.wrapDays ? [['Wrap', data.wrapDays]] : []),
+              ['Prep', data.prepDays || 0],
+              ['Wrap', data.wrapDays || 0],
             ].map(([k, v]) => (
               <div key={k} style={{ background: 'var(--card)', padding: '16px 24px', textAlign: 'center', flex: '1 1 100px', minWidth: 100 }}>
                 <div style={{ fontFamily: 'var(--serif)', fontSize: 34, fontWeight: 600, lineHeight: 1, color: 'var(--ink)' }}>{v}</div>

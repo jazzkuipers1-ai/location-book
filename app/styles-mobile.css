@@ -1,0 +1,141 @@
+/* ============================================================ MOBILE ===== */
+@media (max-width: 768px) {
+
+  /* ---- app shell ---- */
+  .app {
+    grid-template-columns: 1fr !important;
+    height: 100dvh;
+  }
+  .side { display: none !important; }
+  .main { height: calc(100dvh - 60px); }
+
+  /* ---- topbar ---- */
+  .topbar {
+    padding: 10px 14px;
+    gap: 8px;
+  }
+  .topbar .crumbs { font-size: 10px; gap: 4px; }
+  .topbar .crumbs span:nth-child(-n+3) { display: none; }
+
+  /* ---- canvas / location file ---- */
+  .canvas { padding: 16px 14px 100px; }
+
+  /* ---- location hero ---- */
+  .loc-hero { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .loc-hero h1 { font-size: 26px; }
+  .loc-hero .meta-line { gap: 6px; }
+
+  /* ---- metrics grid: 2 cols on mobile ---- */
+  .metrics { grid-template-columns: repeat(2, 1fr) !important; }
+  .metric .v { font-size: 22px; }
+
+  /* ---- scene rows: stack ---- */
+  .scene-row { grid-template-columns: 52px 1fr; grid-template-rows: auto auto; gap: 4px 10px; }
+  .scene-row .yr { grid-column: 2; text-align: left; }
+
+  /* ---- board ---- */
+  .board { padding: 16px 14px 80px; }
+  .board-top { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .board-top h1 { font-size: 24px; }
+  .board-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* ---- galleries ---- */
+  .gal-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+
+  /* ---- modals ---- */
+  .modal { border-radius: 20px 20px 0 0 !important; margin: 0 !important; width: 100vw !important; max-height: 90dvh; overflow-y: auto; position: fixed; bottom: 0; left: 0; }
+  .scrim { align-items: flex-end; padding: 0; }
+  .annot { width: 100vw; height: 100dvh; border-radius: 0; flex-direction: column; }
+  .annot-side { width: 100%; border-left: none; border-top: 1px solid var(--line); padding: 12px; flex-direction: row; flex-wrap: wrap; gap: 10px; }
+  .annot-img { max-height: 50dvh; }
+
+  /* ---- adjustments ---- */
+  .adj { grid-template-columns: 26px 1fr auto; }
+  .adj-cat { display: none; }
+  .adj-tools { flex-shrink: 0; }
+
+  /* ---- buttons ---- */
+  .btn.sm { padding: 7px 11px; }
+
+  /* ---- section header ---- */
+  .sec-h { flex-wrap: wrap; }
+
+  /* ---- home screen ---- */
+  .lb-home-pad { padding: 20px 16px 100px !important; }
+  .lb-home-grid { grid-template-columns: 1fr !important; }
+
+  /* ---- toast ---- */
+  .toast { bottom: 72px; width: calc(100% - 32px); justify-content: center; }
+}
+
+/* ============================================================ MOBILE NAV = */
+.mobile-nav {
+  display: none;
+}
+@media (max-width: 768px) {
+  .mobile-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    padding-bottom: env(safe-area-inset-bottom);
+    background: var(--card);
+    border-top: 1px solid var(--line);
+    z-index: 40;
+    align-items: stretch;
+  }
+  .mobile-nav-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--ink-3);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding: 0;
+    transition: color .12s;
+  }
+  .mobile-nav-btn.active {
+    color: var(--accent);
+  }
+  .mobile-nav-btn svg {
+    flex-shrink: 0;
+  }
+}
+
+/* ============================================================ MOBILE DRAWER */
+.mobile-drawer {
+  display: none;
+}
+@media (max-width: 768px) {
+  .mobile-drawer {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    inset: 0;
+    bottom: 60px;
+    background: var(--card);
+    z-index: 30;
+    overflow-y: auto;
+  }
+  .mobile-drawer .side-head { display: block; }
+  .mobile-drawer .nav-tabs { display: flex; }
+  .mobile-drawer .search { display: block; }
+  .mobile-drawer .loc-list { display: block; flex: none; overflow-y: auto; max-height: calc(100dvh - 220px); }
+  .mobile-drawer .side-foot { display: flex; }
+}
+
+/* hide topbar buttons that are in mobile nav */
+@media (max-width: 768px) {
+  .topbar-desktop-only { display: none !important; }
+  .topbar { position: sticky; top: 0; }
+}

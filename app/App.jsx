@@ -325,6 +325,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
   const [showImport, setShowImport] = useState(false);
   const [showUpdateSchedule, setShowUpdateSchedule] = useState(false);
   const [showSetPassword, setShowSetPassword] = useState(false);
+  const [mobileTab, setMobileTab] = useState('board'); // 'board' | 'list' | 'file'
   const [showExport, setShowExport] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [combineBase, setCombineBase] = useState(null);
@@ -483,7 +484,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
   }), [setStateWithHistory]);
   const patchActive = useCallback(p => { if (activeLoc) patchById(activeLoc.id, p); }, [activeLoc, patchById]);
 
-  const openLoc = id => { setState(s => ({ ...s, activeId: id })); setView('file'); };
+  const openLoc = id => { setState(s => ({ ...s, activeId: id })); setView('file'); setMobileTab('file'); };
   const renameLoc = (id, name) => setState(s => {
     const edits0 = { ...s.edits, [id]: { ...(s.edits[id] || defaultEdit()), name } };
     const target = s.model.locations.find(l => l.id !== id && !(s.removed || []).includes(l.id) && normName(locName(l, s.edits)) === normName(name));
@@ -556,45 +557,106 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
     </>);
   }
 
+  const mobileTabs = [
+    { id: 'board', icon: 'grid', label: 'Overview' },
+    { id: 'list', icon: 'list', label: 'Locations' },
+    { id: 'file', icon: 'page', label: activeLoc ? locName(activeLoc, state.edits).split(' ')[0] : 'File' },
+    { id: 'export', icon: 'download', label: 'Export' },
+  ];
+
+  const handleMobileTab = tab => {
+    if (tab === 'export') { setShowExport(true); return; }
+    setMobileTab(tab);
+    if (tab === 'board') setView('board');
+    if (tab === 'file' && activeLoc) setView('file');
+  };
+
   return (
     <div className="app">
+      {/* Desktop sidebar */}
       <Sidebar model={model} edits={state.edits} activeId={activeLoc ? activeLoc.id : null} navSort={t.navSort}
         view={view} onOverview={() => setView('board')} removed={removed} onRestore={restoreLoc}
         onSelect={openLoc} onImport={() => setShowImport(true)} onUpdateSchedule={() => setShowUpdateSchedule(true)} onExport={() => setShowExport(true)}
         hasPassword={!!remoteHash} onSetPassword={() => setShowSetPassword(true)}
         onRenameSchedule={name => setState(s => ({ ...s, model: { ...s.model, scheduleName: name }, scheduleName: name }))}
         onGoHome={onGoHome} />
+
+      {/* Mobile locations drawer */}
+      {mobileTab === 'list' && (
+        <div className="mobile-drawer">
+          <div className="side-head">
+            <div className="brand" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {onGoHome && <button type="button" onClick={onGoHome} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: 'var(--ink-3)', display: 'flex', alignItems: 'center', marginLeft: -4 }}><Icon name="arrow" size={14} style={{ transform: 'rotate(180deg)' }} /></button>}
+              <span className="dot" /><b style={{ fontFamily: 'var(--serif)', fontWeight: 600, fontSize: 19 }}>Locations</b>
+            </div>
+            <div className="sched-name" style={{ marginTop: 9, fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--ink-2)', display: 'flex', alignItems: 'center', gap: 7 }}>
+              <Icon name="film" size={13} />{model.scheduleName}
+            </div>
+          </div>
+          <div className="search" style={{ margin: '12px 14px 6px', position: 'relative' }}>
+            <Icon name="search" size={15} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-3)' }} />
+            <input placeholder="Search locations…" style={{ width: '100%', padding: '8px 10px 8px 30px', background: 'var(--card-2)', border: '1px solid var(--line)', borderRadius: 7, fontSize: 13, outline: 'none' }} />
+          </div>
+          <div style={{ overflowY: 'auto', flex: 1, padding: '6px 10px 12px' }}>
+            {model.locations.filter(l => !removed.includes(l.id)).map(l => (
+              <button key={l.id} className={'loc-item' + (activeLoc && l.id === activeLoc.id ? ' active' : '')}
+                onClick={() => { openLoc(l.id); }}
+                style={{ width: '100%', textAlign: 'left', background: 'none', border: '1px solid transparent', borderRadius: 9, padding: '10px 9px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 2 }}>
+                <div className={'loc-thumb' + (state.edits[l.id] && state.edits[l.id].cover ? '' : ' ph')} style={{ width: 42, height: 42, borderRadius: 8, flexShrink: 0, overflow: 'hidden', background: 'var(--card-2)', border: '1px solid var(--line)', display: 'grid', placeItems: 'center', color: 'var(--ink-3)' }}>
+                  {state.edits[l.id] && state.edits[l.id].cover ? <Img imgId={state.edits[l.id].cover} /> : <Icon name="image" size={14} />}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: activeLoc && l.id === activeLoc.id ? 'var(--accent)' : 'inherit' }}>{locName(l, state.edits)}</div>
+                  <div style={{ fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--ink-3)', marginTop: 2 }}>{l.sceneCount} scenes · {l.dayNums.length} days</div>
+                </div>
+                <Icon name="chevron" size={14} style={{ color: 'var(--ink-3)', flexShrink: 0 }} />
+              </button>
+            ))}
+          </div>
+          <div style={{ borderTop: '1px solid var(--line)', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <button className="btn block sm" onClick={() => setShowUpdateSchedule(true)}><Icon name="reset" size={14} />Update schedule…</button>
+            <button className="btn block sm ghost" onClick={() => setShowImport(true)}><Icon name="upload" size={14} />Import schedule</button>
+          </div>
+        </div>
+      )}
+
       <main className="main">
-        {view === 'board' ? (
+        {(view === 'board' && mobileTab !== 'list') ? (
           <Board model={model} edits={state.edits} removed={removed} onOpen={openLoc}
             onPatchLoc={patchById} onRename={renameLoc} onRemove={removeLoc} onCombine={openCombine}
             onCombineDrop={(src, tgt) => mergeLocations(tgt, [src])} onExport={() => setShowExport(true)} />
-        ) : activeLoc ? (
+        ) : (activeLoc && mobileTab !== 'list') ? (
           <>
             <div className="topbar">
               <div className="crumbs">
                 {onGoHome && <span style={{ cursor: 'pointer', color: 'var(--ink-3)', marginRight: 2 }} onClick={onGoHome} title="All projects"><Icon name="grid" size={13} /></span>}
                 {onGoHome && <Icon name="chevron" size={12} />}
-                <span style={{ cursor: 'pointer' }} onClick={() => setView('board')}><Icon name="grid" size={13} /></span>
                 <span style={{ cursor: 'pointer' }} onClick={() => setView('board')}>{model.scheduleName}</span>
                 <Icon name="chevron" size={12} /><span style={{ color: 'var(--ink)' }}>{locName(activeLoc, state.edits)}</span>
               </div>
               <span className="sp" />
-              <button className="btn sm" onClick={undo} title="Undo (⌘Z)" style={{ opacity: history.current.length ? 1 : 0.35 }}><Icon name="undo" size={14} /></button>
-              <button className="btn sm" onClick={redo} title="Redo (⌘⇧Z)" style={{ opacity: future.current.length ? 1 : 0.35 }}><Icon name="redo" size={14} /></button>
-              <button className="btn sm" onClick={() => setShowShare(true)} title="Share this location as a public link"><Icon name="arrow" size={14} />Share…</button>
-              <button className="btn sm" onClick={() => setShowExport(true)}><Icon name="layers" size={14} />Export…</button>
-              <button className="btn sm primary" onClick={quickExport}><Icon name="page" size={14} />Export this deck</button>
+              <button className="btn sm topbar-desktop-only" onClick={undo} style={{ opacity: history.current.length ? 1 : 0.35 }}><Icon name="undo" size={14} /></button>
+              <button className="btn sm topbar-desktop-only" onClick={redo} style={{ opacity: future.current.length ? 1 : 0.35 }}><Icon name="redo" size={14} /></button>
+              <button className="btn sm topbar-desktop-only" onClick={() => setShowShare(true)}><Icon name="arrow" size={14} />Share…</button>
+              <button className="btn sm topbar-desktop-only" onClick={() => setShowExport(true)}><Icon name="layers" size={14} />Export…</button>
+              <button className="btn sm primary topbar-desktop-only" onClick={quickExport}><Icon name="page" size={14} />Export this deck</button>
+              <button className="btn sm primary" style={{ display: 'none' }} onClick={quickExport}
+                ref={el => { if (el) el.style.display = window.innerWidth <= 768 ? 'inline-flex' : 'none'; }}>
+                <Icon name="page" size={14} />Deck
+              </button>
             </div>
             <LocationFile loc={activeLoc} edit={edit} name={locName(activeLoc, state.edits)} onPatch={patchActive}
               onRename={n => renameLoc(activeLoc.id, n)} onRemove={() => removeLoc(activeLoc.id)} onCombine={() => openCombine(activeLoc.id)}
               sceneView={t.sceneView} onExport={quickExport} />
           </>
-        ) : (
+        ) : mobileTab !== 'list' ? (
           <div className="empty"><div className="serif">No locations</div>
             <button className="btn primary" onClick={() => setShowImport(true)} style={{ marginTop: 12 }}>Import a Fuzzlecheck PDF</button></div>
-        )}
+        ) : null}
       </main>
+
+      {/* Mobile bottom nav */}
+      <MobileNav tabs={mobileTabs} active={mobileTab} onSelect={handleMobileTab} />
       {showImport && <ImportModal current={false} onClose={() => setShowImport(false)} onApply={applyImport} />}
       {showUpdateSchedule && <ImportModal current={true} title="Update shooting schedule" onClose={() => setShowUpdateSchedule(false)} onApply={applyUpdateSchedule} />}
       {showExport && <ExportModal model={model} edits={state.edits} removed={removed}

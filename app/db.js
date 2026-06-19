@@ -25,6 +25,10 @@
       tx.objectStore(STORE).put(blob, id);
       tx.oncomplete = res; tx.onerror = () => rej(tx.error);
     });
+    // Background upload to Supabase so other devices can load this image
+    if (window.LB_SYNC) {
+      window.LB_SYNC.uploadImage(blob, id).catch(() => {});
+    }
     return id;
   }
   async function getBlob(id) {
@@ -39,10 +43,18 @@
   async function getURL(id) {
     if (_urls.has(id)) return _urls.get(id);
     const blob = await getBlob(id);
-    if (!blob) return null;
-    const url = URL.createObjectURL(blob);
-    _urls.set(id, url);
-    return url;
+    if (blob) {
+      const url = URL.createObjectURL(blob);
+      _urls.set(id, url);
+      return url;
+    }
+    // No local blob — fall back to Supabase public URL (uploaded by another device)
+    if (window.LB_SYNC && window.LB_SYNC.getImageUrl) {
+      const url = window.LB_SYNC.getImageUrl(id);
+      _urls.set(id, url);
+      return url;
+    }
+    return null;
   }
   async function delImage(id) {
     if (_urls.has(id)) { URL.revokeObjectURL(_urls.get(id)); _urls.delete(id); }

@@ -152,5 +152,9 @@
     return window.location.origin + window.location.pathname + '?share=' + shareId;
   }
 
-  window.LB_SYNC = { CLIENT_ID, loadState, saveState, subscribe, loadProjects, createProject, updateProject, deleteProject, getProjectByCode, uploadImage, publishShare, loadShare, getShareUrl, setProjectPassword, removeProjectPassword, getProjectPassword };
+  function getImageUrl(imageId) {
+    return SUPABASE_URL + '/storage/v1/object/public/project-images/images/' + imageId;
+  }
+
+  window.LB_SYNC = { CLIENT_ID, loadState, saveState, subscribe, loadProjects, createProject, updateProject, deleteProject, getProjectByCode, uploadImage, getImageUrl, publishShare, loadShare, getShareUrl, setProjectPassword, removeProjectPassword, getProjectPassword };
 })();

@@ -322,6 +322,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
     }).catch(() => {});
   }, []);
 
+  const [sideCollapsed, setSideCollapsed] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [showUpdateSchedule, setShowUpdateSchedule] = useState(false);
   const [showSetPassword, setShowSetPassword] = useState(false);
@@ -572,12 +573,18 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
   };
 
   return (
-    <div className="app">
+    <div className={'app' + (sideCollapsed ? ' side-collapsed' : '')}>
+      {/* Floating toggle shown when sidebar is collapsed */}
+      <button className="side-toggle" onClick={() => setSideCollapsed(false)} title="Show sidebar">
+        <Icon name="list" size={16} />
+      </button>
+
       {/* Desktop sidebar */}
       <Sidebar model={model} edits={state.edits} activeId={activeLoc ? activeLoc.id : null} navSort={t.navSort}
         view={view} onOverview={() => setView('board')} removed={removed} onRestore={restoreLoc}
         onSelect={openLoc} onImport={() => setShowImport(true)} onUpdateSchedule={() => setShowUpdateSchedule(true)} onExport={() => setShowExport(true)}
         hasPassword={!!remoteHash} onSetPassword={() => setShowSetPassword(true)}
+        onCollapse={() => setSideCollapsed(true)}
         onRenameSchedule={name => setState(s => ({ ...s, model: { ...s.model, scheduleName: name }, scheduleName: name }))}
         onGoHome={onGoHome} />
 

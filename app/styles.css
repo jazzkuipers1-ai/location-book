@@ -47,6 +47,32 @@ input, textarea, select { font-family: inherit; color: inherit; }
 #root { height: 100vh; }
 .app { display: grid; grid-template-columns: var(--side-w, 312px) 1fr; height: 100vh; overflow: hidden; }
 .app.nav-board { grid-template-columns: 1fr; }
+.app.side-collapsed { grid-template-columns: 0 1fr; }
+.app.side-collapsed .side { overflow: hidden; border-right: none; }
+.side { transition: width .2s ease; }
+
+/* sidebar toggle button */
+.side-toggle {
+  position: fixed; top: 16px; left: 16px; z-index: 50;
+  width: 30px; height: 30px; border-radius: 8px;
+  background: var(--card); border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  display: none; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--ink-2);
+  transition: color .12s, background .12s;
+}
+.side-toggle:hover { color: var(--ink); background: var(--card-2); }
+.app.side-collapsed .side-toggle { display: flex; left: 12px; }
+
+/* toggle button inside sidebar head */
+.side-collapse-btn {
+  margin-left: auto; flex-shrink: 0;
+  background: none; border: none; cursor: pointer;
+  color: var(--ink-3); padding: 3px 4px; border-radius: 5px;
+  display: flex; align-items: center;
+  transition: color .12s, background .12s;
+}
+.side-collapse-btn:hover { color: var(--ink-2); background: var(--card-2); }
 
 /* labels & micro type */
 .kicker { font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); }

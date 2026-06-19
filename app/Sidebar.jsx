@@ -50,7 +50,7 @@ function LocItem({ loc, edit, name, active, onClick }) {
   );
 }
 
-function Sidebar({ model, edits, activeId, onSelect, onImport, onUpdateSchedule, onExport, navSort, view, onOverview, removed, onRestore, onRenameSchedule, onGoHome, hasPassword, onSetPassword }) {
+function Sidebar({ model, edits, activeId, onSelect, onImport, onUpdateSchedule, onExport, navSort, view, onOverview, removed, onRestore, onRenameSchedule, onGoHome, hasPassword, onSetPassword, onCollapse }) {
   const [q, setQ] = useState('');
   const [showHidden, setShowHidden] = useState(false);
   const ql = q.trim().toLowerCase();
@@ -83,6 +83,7 @@ function Sidebar({ model, edits, activeId, onSelect, onImport, onUpdateSchedule,
         <div className="brand" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {onGoHome && <button type="button" onClick={onGoHome} title="All projects" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: 'var(--ink-3)', display: 'flex', alignItems: 'center', marginLeft: -4 }}><Icon name="arrow" size={14} style={{ transform: 'rotate(180deg)' }} /></button>}
           <span className="dot" /><b>Locations</b>
+          {onCollapse && <button className="side-collapse-btn" onClick={onCollapse} title="Hide sidebar"><Icon name="chevron" size={14} style={{ transform: 'rotate(180deg)' }} /></button>}
         </div>
         <div className="sched-name">
           <Icon name="film" size={13} />

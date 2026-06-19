@@ -314,15 +314,11 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
     return { model, edits, removed: [], activeId: active ? active.id : null, scheduleName: model.scheduleName };
   });
   const [view, setView] = useState('board');
-  // Lock gate — fetched from Supabase Storage on mount so it works across all devices
-  const [appLocked, setAppLocked] = useState(false);
   const [remoteHash, setRemoteHash] = useState(projectPasswordHash || null);
 
   useEffect(() => {
     LB_SYNC.getProjectPassword(projectId).then(hash => {
-      if (!hash) return;
-      setRemoteHash(hash);
-      if (!isUnlocked(projectId, hash)) setAppLocked(true);
+      if (hash) setRemoteHash(hash);
     }).catch(() => {});
   }, []);
 
@@ -553,15 +549,6 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
 
   const quickExport = () => { if (activeLoc) setDeck({ entries: [{ loc: activeLoc, edit, name: locName(activeLoc, state.edits) }], opts: { cover: t.deckCover, overview: true, scenes: false, photos: true, sketches: true, measurements: true, designs: true, moodboard: true } }); };
 
-  if (appLocked) {
-    return <UnlockModal projectName={state.model ? state.model.scheduleName : 'Project'} onClose={onGoHome} onUnlock={enteredHash => {
-      if (enteredHash !== remoteHash) return false;
-      sessionStorage.setItem('lb_unlocked_' + projectId, remoteHash);
-      setAppLocked(false);
-      return true;
-    }} />;
-  }
-
   if (deck) {
     return (<>
       <Deck entries={deck.entries} scheduleName={model.scheduleName} opts={deck.opts} onClose={() => setDeck(null)} />
@@ -773,12 +760,13 @@ function HomeRouter() {
     LB_SYNC.updateProject(id, patch).catch(() => {});
   };
 
-  const handleOpen = id => {
+  const handleOpen = async id => {
     const proj = projects.find(p => p.id === id);
-    if (proj && proj.passwordHash) {
+    const hash = await LB_SYNC.getProjectPassword(id).catch(() => null);
+    if (hash) {
       const cached = sessionStorage.getItem('lb_unlocked_' + id);
-      if (cached === proj.passwordHash) { setActiveProjectId(id); return; }
-      setPendingUnlock({ id, name: proj.name, hash: proj.passwordHash });
+      if (cached === hash) { setActiveProjectId(id); return; }
+      setPendingUnlock({ id, name: proj ? proj.name : 'Project', hash });
     } else {
       setActiveProjectId(id);
     }

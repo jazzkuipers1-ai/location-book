@@ -90,11 +90,37 @@ function Img({ imgId, alt, className, style }) {
 }
 
 /* ---- file -> IndexedDB ids ---------------------------------------------- */
+const IMG_MAX_PX = 2400;   // longest side — covers A4 at ~290 dpi
+const IMG_QUALITY = 0.88;  // JPEG quality — excellent visual quality, ~50% smaller than raw
+
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const blobUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(blobUrl);
+      let w = img.naturalWidth, h = img.naturalHeight;
+      // Only downscale, never upscale
+      if (w > IMG_MAX_PX || h > IMG_MAX_PX) {
+        if (w >= h) { h = Math.round(h * IMG_MAX_PX / w); w = IMG_MAX_PX; }
+        else         { w = Math.round(w * IMG_MAX_PX / h); h = IMG_MAX_PX; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('compress failed')), 'image/jpeg', IMG_QUALITY);
+    };
+    img.onerror = () => { URL.revokeObjectURL(blobUrl); reject(new Error('decode failed')); };
+    img.src = blobUrl;
+  });
+}
+
 async function filesToIds(fileList) {
   const ids = [];
   for (const f of fileList) {
     if (!f.type.startsWith('image/')) continue;
-    const id = await LB.db.putImage(f);
+    const blob = await compressImage(f).catch(() => f); // fall back to original if compress fails
+    const id = await LB.db.putImage(blob);
     ids.push(id);
   }
   return ids;

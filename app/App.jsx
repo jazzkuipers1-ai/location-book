@@ -333,6 +333,18 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
   const [diffPending, setDiffPending] = useState(null); // { newModel }
   const [deck, setDeck] = useState(null); // { entries, opts }
   const [toast, setToast] = useState(null);
+  const [compressProgress, setCompressProgress] = useState(null); // null | { done, total }
+
+  const handleCompressPhotos = useCallback(async () => {
+    if (compressProgress) return; // already running
+    setCompressProgress({ done: 0, total: 1 });
+    await compressExistingPhotos(stateRef.current, (done, total) => {
+      setCompressProgress({ done, total });
+    });
+    setCompressProgress(null);
+    setToast('Foto\'s gecomprimeerd ✓');
+    setTimeout(() => setToast(null), 3000);
+  }, [compressProgress]);
 
   useEffect(() => { document.documentElement.dataset.theme = t.theme; }, [t.theme]);
   useEffect(() => {
@@ -611,6 +623,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
         onSelect={openLoc} onImport={() => setShowImport(true)} onUpdateSchedule={() => setShowUpdateSchedule(true)} onExport={() => setShowExport(true)}
         hasPassword={!!remoteHash} onSetPassword={() => setShowSetPassword(true)}
         onCollapse={() => setSideCollapsed(true)}
+        onCompressPhotos={handleCompressPhotos}
         onRenameSchedule={name => setState(s => ({ ...s, model: { ...s.model, scheduleName: name }, scheduleName: name }))}
         onGoHome={onGoHome} />
 
@@ -670,6 +683,12 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
               <span className="sp" />
               <button className="btn sm topbar-desktop-only" onClick={undo} style={{ opacity: history.current.length ? 1 : 0.35 }}><Icon name="undo" size={14} /></button>
               <button className="btn sm topbar-desktop-only" onClick={redo} style={{ opacity: future.current.length ? 1 : 0.35 }}><Icon name="redo" size={14} /></button>
+              {compressProgress && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--ink-2)', background: 'var(--card-2)', border: '1px solid var(--line)', borderRadius: 99, padding: '3px 12px', flexShrink: 0 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0, animation: 'pulse 1s infinite' }} />
+                  Comprimeren {compressProgress.done}/{compressProgress.total}
+                </span>
+              )}
               {!isOnline && (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'var(--mono)', fontSize: 10.5, color: '#c87040', background: 'color-mix(in srgb, #c87040 12%, var(--card))', border: '1px solid color-mix(in srgb, #c87040 30%, transparent)', borderRadius: 99, padding: '3px 10px', flexShrink: 0 }}>
                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#c87040', flexShrink: 0 }} />

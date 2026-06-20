@@ -50,7 +50,7 @@ function LocItem({ loc, edit, name, active, onClick }) {
   );
 }
 
-function Sidebar({ model, edits, activeId, onSelect, onImport, onUpdateSchedule, onExport, navSort, view, onOverview, removed, onRestore, onRenameSchedule, onGoHome, hasPassword, onSetPassword, onCollapse }) {
+function Sidebar({ model, edits, activeId, onSelect, onImport, onUpdateSchedule, onExport, navSort, view, onOverview, removed, onRestore, onRenameSchedule, onGoHome, hasPassword, onSetPassword, onCollapse, onCompressPhotos }) {
   const [q, setQ] = useState('');
   const [showHidden, setShowHidden] = useState(false);
   const ql = q.trim().toLowerCase();
@@ -138,6 +138,7 @@ function Sidebar({ model, edits, activeId, onSelect, onImport, onUpdateSchedule,
         <button className="btn block sm primary" onClick={onExport}><Icon name="download" size={14} />Export decks…</button>
         {onUpdateSchedule && <button className="btn block sm" onClick={onUpdateSchedule}><Icon name="reset" size={14} />Update schedule…</button>}
         <button className="btn block sm ghost" onClick={onSetPassword}><Icon name="lock" size={14} />{hasPassword ? 'Change password…' : 'Set password…'}</button>
+        {onCompressPhotos && <button className="btn block sm ghost" onClick={onCompressPhotos}><Icon name="image" size={14} />Compress existing photos</button>}
         <button className="btn block sm ghost" onClick={onImport}><Icon name="upload" size={14} />Import schedule</button>
       </div>
     </aside>

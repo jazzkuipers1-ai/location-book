@@ -59,6 +59,17 @@
     }
     return null;
   }
+  async function replaceBlob(id, blob) {
+    // Overwrite an existing image with a new blob, keeping the same ID
+    if (_urls.has(id)) { URL.revokeObjectURL(_urls.get(id)); _urls.delete(id); }
+    const db = await open();
+    await new Promise((res, rej) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).put(blob, id);
+      tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+    });
+  }
+
   async function delImage(id) {
     if (_urls.has(id)) { URL.revokeObjectURL(_urls.get(id)); _urls.delete(id); }
     const db = await open();
@@ -68,7 +79,7 @@
       tx.oncomplete = res; tx.onerror = res;
     });
   }
-  LB.db = { putImage, getBlob, getURL, delImage };
+  LB.db = { putImage, replaceBlob, getBlob, getURL, delImage };
 
   // ------------------------------ structured state (localStorage) --------
   const KEY = 'lb_state_v2';

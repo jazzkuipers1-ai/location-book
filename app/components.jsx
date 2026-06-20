@@ -115,6 +115,70 @@ function compressImage(file) {
   });
 }
 
+function compressBlob(blob) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const blobUrl = URL.createObjectURL(blob);
+    img.onload = () => {
+      URL.revokeObjectURL(blobUrl);
+      let w = img.naturalWidth, h = img.naturalHeight;
+      if (w > IMG_MAX_PX || h > IMG_MAX_PX) {
+        if (w >= h) { h = Math.round(h * IMG_MAX_PX / w); w = IMG_MAX_PX; }
+        else         { w = Math.round(w * IMG_MAX_PX / h); h = IMG_MAX_PX; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(out => out ? resolve(out) : reject(new Error('compress failed')), 'image/jpeg', IMG_QUALITY);
+    };
+    img.onerror = () => { URL.revokeObjectURL(blobUrl); reject(new Error('decode failed')); };
+    img.src = blobUrl;
+  });
+}
+
+// Collect all image IDs referenced in the project state
+function collectAllImageIds(state) {
+  const ids = new Set();
+  Object.values(state.edits || {}).forEach(edit => {
+    if (!edit) return;
+    if (edit.cover) ids.add(edit.cover);
+    if (edit.galleries) {
+      Object.values(edit.galleries).forEach(arr => {
+        (arr || []).forEach(it => {
+          if (it.id) ids.add(it.id);
+          if (it.annotatedId) ids.add(it.annotatedId);
+        });
+      });
+    }
+    (edit.adjustments || []).forEach(adj => { if (adj.thumb) ids.add(adj.thumb); });
+  });
+  return [...ids];
+}
+
+// Compress all existing photos in IndexedDB that are larger than 300 KB.
+// Calls onProgress(done, total) after each image.
+async function compressExistingPhotos(state, onProgress) {
+  const ids = collectAllImageIds(state);
+  let done = 0;
+  for (const id of ids) {
+    try {
+      const blob = await LB.db.getBlob(id);
+      // Only process blobs we actually have locally and that are large enough
+      if (!blob || blob.size < 300 * 1024) { onProgress(++done, ids.length); continue; }
+      const compressed = await compressBlob(blob);
+      // Only replace if we meaningfully reduced the size (>15%)
+      if (compressed.size < blob.size * 0.85) {
+        await LB.db.replaceBlob(id, compressed);
+        // Also re-upload to Supabase with the smaller version
+        if (window.LB_SYNC) LB_SYNC.uploadImage(compressed, id).catch(() => { if (LB_SYNC.queueUpload) LB_SYNC.queueUpload(id); });
+      }
+    } catch (e) { /* skip broken/unsupported image */ }
+    onProgress(++done, ids.length);
+  }
+}
+
+window.compressExistingPhotos = compressExistingPhotos;
+
 async function filesToIds(fileList) {
   const ids = [];
   for (const f of fileList) {

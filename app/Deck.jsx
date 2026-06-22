@@ -113,10 +113,16 @@ function OverviewPage({ loc, edit, name, scheduleName }) {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 1, background: 'var(--dk-line)', border: '1px solid var(--dk-line)', borderRadius: 10, overflow: 'hidden', flex: '0 0 auto' }}>
-            {[['Scenes', loc.sceneCount], ['Shoot', loc.dayNums.length], ['Prep', edit.prepDays || 0], ['Wrap', edit.wrapDays || 0]].map(([k, v]) => (
+            {[
+              ['Scenes', loc.sceneCount, null],
+              ['Shoot', loc.dayNums.length, null],
+              ['Prep', edit.prepDays || 0, edit.prepTiming === 'before_shooting' ? 'before shooting' : edit.prepTiming === 'after_wrap' ? 'after wrap' : null],
+              ['Wrap', edit.wrapDays || 0, edit.wrapTiming === 'after_wrap' ? 'after wrap' : edit.wrapTiming === 'before_shooting' ? 'before shooting' : null],
+            ].map(([k, v, sub]) => (
               <div key={k} style={{ background: 'var(--dk-card)', padding: '12px 18px', textAlign: 'center', minWidth: 78 }}>
                 <div className="dk-serif" style={{ fontSize: 30, fontWeight: 600, lineHeight: 1, color: k === 'Prep' || k === 'Wrap' ? 'var(--dk-accent)' : '#221d15' }}>{v}</div>
                 <div className="dk-mono" style={{ fontSize: 9.5, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--dk-ink2)', marginTop: 6 }}>{k}</div>
+                {sub && <div style={{ fontSize: 8.5, color: 'var(--dk-ink2)', marginTop: 3, lineHeight: 1.2 }}>{sub}</div>}
               </div>
             ))}
           </div>

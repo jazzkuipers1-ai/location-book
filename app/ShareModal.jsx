@@ -107,9 +107,9 @@ function ShareModal({ loc, edit, name, scheduleName, onClose, onShareIdSaved }) 
         sets: (loc && loc.sets) || [],
         sceneCount: (loc && loc.sceneCount) || 0,
         prepDays: (edit && edit.prepDays) || 0,
-        prepTiming: (edit && edit.prepTiming) || 'before_shooting',
+        prepTiming: (edit && edit.prepTiming) || null,
         wrapDays: (edit && edit.wrapDays) || 0,
-        wrapTiming: (edit && edit.wrapTiming) || 'after_wrap',
+        wrapTiming: (edit && edit.wrapTiming) || null,
         updatedAt: Date.now(),
       };
 

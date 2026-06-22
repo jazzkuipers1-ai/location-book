@@ -8,10 +8,8 @@ const PEN_SIZES  = [{ k: 'XS', w: 2 }, { k: 'S', w: 5 }, { k: 'M', w: 10 }, { k:
 function drawStroke(ctx, s, w, h) {
   ctx.beginPath();
   if (s.shape === 'ellipse') {
-    const cx = (s.x1 + s.x2) / 2 * w, cy = (s.y1 + s.y2) / 2 * h;
-    const rx = Math.max(1, Math.abs(s.x2 - s.x1) / 2 * w);
-    const ry = Math.max(1, Math.abs(s.y2 - s.y1) / 2 * h);
-    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    // cx/cy/rx/ry stored normalised
+    ctx.ellipse(s.cx * w, s.cy * h, Math.max(1, s.rx * w), Math.max(1, s.ry * h), 0, 0, Math.PI * 2);
   } else if (s.shape === 'rect') {
     ctx.rect(s.x1 * w, s.y1 * h, (s.x2 - s.x1) * w, (s.y2 - s.y1) * h);
   } else {
@@ -120,7 +118,10 @@ function Annotator({ originalId, init, onSave, onClose }) {
     const y1 = Math.min(...ys), y2 = Math.max(...ys);
     const shape = snapShapeRef.current;
     if (shape === 'ellipse') {
-      cur.current = { ...cur.current, shape: 'ellipse', x1, y1, x2, y2 };
+      // Centroid as center, half-extents as radii — matches the drawn shape better
+      const cx = xs.reduce((a, b) => a + b, 0) / xs.length;
+      const cy = ys.reduce((a, b) => a + b, 0) / ys.length;
+      cur.current = { ...cur.current, shape: 'ellipse', cx, cy, rx: (x2 - x1) / 2, ry: (y2 - y1) / 2 };
     } else if (shape === 'rect') {
       cur.current = { ...cur.current, shape: 'rect', x1, y1, x2, y2 };
     } else {
@@ -176,7 +177,10 @@ function Annotator({ originalId, init, onSave, onClose }) {
 
     if (isSnapped.current) {
       const newPt = pt(e);
-      if (cur.current.shape === 'ellipse' || cur.current.shape === 'rect') {
+      if (cur.current.shape === 'ellipse') {
+        // Drag sets the radius from the fixed center
+        cur.current = { ...cur.current, rx: Math.abs(newPt[0] - cur.current.cx), ry: Math.abs(newPt[1] - cur.current.cy) };
+      } else if (cur.current.shape === 'rect') {
         cur.current = { ...cur.current, x2: newPt[0], y2: newPt[1] };
       } else {
         cur.current = { ...cur.current, pts: [cur.current.pts[0], newPt] };

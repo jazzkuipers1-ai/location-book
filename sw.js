@@ -2,7 +2,7 @@
    Caches the full app shell (local + CDN) so it loads offline.
    Supabase API calls are never intercepted — they go to network only.        */
 
-const CACHE = 'lb-v4';
+const CACHE = 'lb-v5';
 
 const LOCAL = [
   '/',

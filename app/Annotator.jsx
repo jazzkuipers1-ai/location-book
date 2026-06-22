@@ -57,9 +57,10 @@ function Annotator({ originalId, init, onSave, onClose }) {
   useEffect(() => { zoomRef.current = zoom; }, [zoom]);
 
   // Drawing state
-  const cur        = useRef(null);
-  const holdTimer  = useRef(null);
-  const isSnapped  = useRef(false);
+  const cur               = useRef(null);
+  const holdTimer         = useRef(null);
+  const isSnapped         = useRef(false);
+  const lastSignificantPt = useRef(null); // for Apple Pencil jitter dead-zone
 
   // Multi-touch tracking for pinch-to-zoom
   const activePointers = useRef(new Map()); // pointerId → {x,y}
@@ -141,7 +142,9 @@ function Annotator({ originalId, init, onSave, onClose }) {
     // Eraser is 4× wider than selected pen size
     const strokeW = t === 'eraser' ? sizeRef.current * 4 : sizeRef.current;
     isSnapped.current = false;
-    cur.current = { type: t, color: colorRef.current, w: strokeW / w, pts: [pt(e)] };
+    const startPt = pt(e);
+    lastSignificantPt.current = startPt;
+    cur.current = { type: t, color: colorRef.current, w: strokeW / w, pts: [startPt] };
 
     // Quick shape: if pointer stays still for 800 ms, snap to straight line
     clearTimeout(holdTimer.current);
@@ -173,10 +176,21 @@ function Annotator({ originalId, init, onSave, onClose }) {
       // Snapped: only update the endpoint — allows repositioning the line
       cur.current = { ...cur.current, pts: [cur.current.pts[0], pt(e)] };
     } else {
-      cur.current.pts.push(pt(e));
-      // Reset hold timer: snap fires 800 ms after last movement
-      clearTimeout(holdTimer.current);
-      holdTimer.current = setTimeout(snapToLine, 800);
+      const newPt = pt(e);
+      cur.current.pts.push(newPt);
+      // Only reset the hold timer if the pointer moved more than 8px from the
+      // last significant position — Apple Pencil sends jitter at 120 Hz even
+      // when "still", which would otherwise prevent the snap from ever firing.
+      const lsp = lastSignificantPt.current;
+      const canW = canRef.current.clientWidth || 1;
+      const canH = canRef.current.clientHeight || 1;
+      const dx = (newPt[0] - lsp[0]) * canW;
+      const dy = (newPt[1] - lsp[1]) * canH;
+      if (Math.sqrt(dx * dx + dy * dy) > 8) {
+        lastSignificantPt.current = newPt;
+        clearTimeout(holdTimer.current);
+        holdTimer.current = setTimeout(snapToLine, 800);
+      }
     }
     redraw();
   };

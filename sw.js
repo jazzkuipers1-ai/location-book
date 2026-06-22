@@ -28,6 +28,7 @@ const LOCAL = [
   '/app/Adjustments.jsx',
   '/app/Sidebar.jsx',
   '/app/LocationFile.jsx',
+  '/app/AddLocationModal.jsx',
   '/app/Board.jsx',
   '/app/Deck.jsx',
   '/app/App.jsx',

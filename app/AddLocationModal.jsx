@@ -109,16 +109,14 @@ function AddLocationModal({ onClose, onAdd }) {
         r.readAsDataURL(imgFile);
       });
 
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      const resp = await fetch('/api/claude', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-api-key': key,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
         },
         body: JSON.stringify({
-          model: 'claude-opus-4-8',
+          model: 'claude-haiku-4-5-20251001',
           max_tokens: 2048,
           messages: [{
             role: 'user',

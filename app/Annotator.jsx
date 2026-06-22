@@ -235,7 +235,7 @@ function Annotator({ originalId, init, onSave, onClose }) {
 
   return (
     <div className="scrim" style={{ alignItems: 'stretch' }} onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="annot">
+      <div className="annot" style={{ userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}>
         <div className="annot-stage" style={{ overflow: 'hidden' }}>
           <div className="annot-imgwrap"
             style={{ transformOrigin: 'center', transform: wrapTransform, touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}>

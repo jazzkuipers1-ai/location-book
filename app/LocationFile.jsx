@@ -1,5 +1,32 @@
 /* Location file editor — cover, meta, scenes, adjustments, annotated galleries. */
 
+/* Stepper that accepts decimals (0.25 / 0.5 steps) for prep & wrap days. */
+function DayStepper({ value, onChange }) {
+  const v = value || 0;
+  const [draft, setDraft] = useState(String(v));
+  useEffect(() => { setDraft(String(value || 0)); }, [value]);
+  const step = delta => {
+    const next = Math.max(0, Math.round((v + delta) * 4) / 4);
+    onChange(next);
+  };
+  const commit = () => {
+    const n = parseFloat(draft.replace(',', '.'));
+    if (!isNaN(n) && n >= 0) onChange(Math.round(n * 4) / 4);
+    else setDraft(String(v));
+  };
+  return (
+    <span className="stepper">
+      <button type="button" onClick={() => step(-0.5)}>–</button>
+      <input value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={e => e.key === 'Enter' && commit()}
+        style={{ width: 40 }} />
+      <button type="button" onClick={() => step(0.5)}>+</button>
+    </span>
+  );
+}
+
 function EditableDayNumber({ value, onChange }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(value));
@@ -690,9 +717,9 @@ function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine,
         </div>
         <div className="metrics" style={{ gridTemplateColumns: '1fr 1fr' }}>
           <div className="metric"><div className="k">Prep</div>
-            <div className="v"><Stepper value={edit.prepDays} onChange={v => onPatch({ prepDays: v })} /><small>days</small></div></div>
+            <div className="v"><DayStepper value={edit.prepDays} onChange={v => onPatch({ prepDays: v })} /><small>days</small></div></div>
           <div className="metric"><div className="k">Wrap</div>
-            <div className="v"><Stepper value={edit.wrapDays} onChange={v => onPatch({ wrapDays: v })} /><small>days</small></div></div>
+            <div className="v"><DayStepper value={edit.wrapDays} onChange={v => onPatch({ wrapDays: v })} /><small>days</small></div></div>
         </div>
       </div>
 

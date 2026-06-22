@@ -208,6 +208,10 @@ function Annotator({ originalId, init, onSave, onClose }) {
     if (activePointers.current.size < 2) pinchState.current = null;
     if (!cur.current) return;
     const s = cur.current; cur.current = null;
+    // After finishing a stroke, clear any stale pointer tracking so the next
+    // stroke always starts fresh (iOS sometimes drops pointer capture silently)
+    activePointers.current.clear();
+    pinchState.current = null;
     if (s.pts && s.pts.length || s.shape) { setStrokes(p => [...p, s]); setFuture([]); }
     redraw();
   };
@@ -247,6 +251,7 @@ function Annotator({ originalId, init, onSave, onClose }) {
             <canvas ref={canRef} className="annot-canvas"
               style={{ touchAction: 'none', cursor: 'crosshair', userSelect: 'none', WebkitUserSelect: 'none' }}
               onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
+              onLostPointerCapture={up}
               onDoubleClick={e => e.preventDefault()}
               onMouseDown={e => e.preventDefault()}
               onContextMenu={e => e.preventDefault()} />

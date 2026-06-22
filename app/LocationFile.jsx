@@ -231,15 +231,19 @@ function Lightbox({ imgId, onClose }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
-  return (
-    <div className="scrim" onClick={onClose}
-      style={{ background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+  return ReactDOM.createPortal(
+    <div onClick={onClose}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
       <button onClick={onClose} style={{ position: 'fixed', top: 16, right: 20, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 36, height: 36, cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Icon name="x" size={16} />
       </button>
-      {url && <img src={url} onClick={e => e.stopPropagation()}
-        style={{ maxWidth: '92vw', maxHeight: '90vh', borderRadius: 8, objectFit: 'contain', boxShadow: '0 8px 40px rgba(0,0,0,0.5)' }} />}
-    </div>
+      {url
+        ? <img src={url} onClick={e => e.stopPropagation()}
+            style={{ maxWidth: '92vw', maxHeight: '90vh', borderRadius: 8, objectFit: 'contain', boxShadow: '0 8px 40px rgba(0,0,0,0.5)' }} />
+        : <div style={{ color: 'rgba(255,255,255,0.4)', fontFamily: 'var(--mono)', fontSize: 12 }}>Loading…</div>
+      }
+    </div>,
+    document.body
   );
 }
 
@@ -255,7 +259,7 @@ function GalleryCell({ item, onCap, onNote, onRemove, onDraw, onCrop, onDragStar
       onDragOver={e => e.preventDefault()}>
       <div className="gal-cell">
         <div className="gal-drag-handle" title="Drag to reorder"><Icon name="grip" size={14} /></div>
-        <div onClick={() => setLightbox(true)} onTouchStart={e => e.stopPropagation()} style={{ cursor: 'zoom-in' }}>
+        <div onClick={e => { e.stopPropagation(); setLightbox(true); }} onTouchStart={e => e.stopPropagation()} style={{ cursor: 'zoom-in' }}>
           <Img imgId={shownId(item)} />
         </div>
         {(item.strokes && item.strokes.length || item.annotatedId) ? <span className="annot-badge"><Icon name="edit" size={12} /></span> : null}

@@ -623,10 +623,19 @@ function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine,
             style={{ outline: 'none' }} title="Click to rename"
             onBlur={e => { const v = e.currentTarget.textContent.trim(); if (v && v !== name) onRename(v); else e.currentTarget.textContent = name; }}>{name}</h1>
           <div className="meta-line">
-            <span className="tag">{loc.sceneCount} scenes</span>
-            <span className="tag">{loc.dayNums.length} shoot day{loc.dayNums.length !== 1 ? 's' : ''}</span>
-            {loc.sets.length > 0 && <span className="tag">{loc.sets.length} set{loc.sets.length !== 1 ? 's' : ''}</span>}
-            {adj.length > 0 && <span className="tag accent">{adj.length} adjustment{adj.length !== 1 ? 's' : ''}</span>}
+            {(() => {
+              const removedSceneKeys = new Set((edit.removedSceneKeys) || []);
+              const sceneKey = s => s.number + '|' + (s.idx ?? '');
+              const sceneCount = loc.scenes.filter(s => !removedSceneKeys.has(sceneKey(s))).length + ((edit.extraScenes || []).length);
+              const removedDays = new Set((edit.removedShootDays) || []);
+              const dayCount = loc.shootDates.filter(d => !removedDays.has(String(d.dayNumber))).length + ((edit.extraShootDays || []).length);
+              return <>
+                <span className="tag">{sceneCount} scene{sceneCount !== 1 ? 's' : ''}</span>
+                <span className="tag">{dayCount} shoot day{dayCount !== 1 ? 's' : ''}</span>
+                {loc.sets.length > 0 && <span className="tag">{loc.sets.length} set{loc.sets.length !== 1 ? 's' : ''}</span>}
+                {adj.length > 0 && <span className="tag accent">{adj.length} adjustment{adj.length !== 1 ? 's' : ''}</span>}
+              </>;
+            })()}
           </div>
         </div>
         <Menu align="right" button={<button className="btn"><Icon name="dots" size={16} /></button>} items={[

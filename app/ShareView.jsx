@@ -134,12 +134,13 @@ function ShareView({ shareId }) {
             {[
               ['Scenes', data.sceneCount || 0],
               ['Shoot', (data.shootDates || []).length],
-              ['Prep', data.prepDays || 0],
-              ['Wrap', data.wrapDays || 0],
-            ].map(([k, v]) => (
+              ['Prep', data.prepDays || 0, data.prepTiming === 'after_wrap' ? 'after wrap' : 'before shooting'],
+              ['Wrap', data.wrapDays || 0, data.wrapTiming === 'before_shooting' ? 'before shooting' : 'after wrap'],
+            ].map(([k, v, sub]) => (
               <div key={k} style={{ background: 'var(--card)', padding: '16px 24px', textAlign: 'center', flex: '1 1 100px', minWidth: 100 }}>
                 <div style={{ fontFamily: 'var(--serif)', fontSize: 34, fontWeight: 600, lineHeight: 1, color: 'var(--ink)' }}>{v}</div>
                 <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--ink-2)', marginTop: 6 }}>{k}</div>
+                {sub && <div style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 3 }}>{sub}</div>}
               </div>
             ))}
             {data.address && (

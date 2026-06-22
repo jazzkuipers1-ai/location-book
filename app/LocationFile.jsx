@@ -717,9 +717,31 @@ function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine,
         </div>
         <div className="metrics" style={{ gridTemplateColumns: '1fr 1fr' }}>
           <div className="metric"><div className="k">Prep</div>
-            <div className="v"><DayStepper value={edit.prepDays} onChange={v => onPatch({ prepDays: v })} /><small>days</small></div></div>
+            <div className="v" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <DayStepper value={edit.prepDays} onChange={v => onPatch({ prepDays: v })} /><small>days</small>
+              </div>
+              <select className="input" style={{ fontSize: 12, padding: '3px 6px', width: '100%' }}
+                value={edit.prepTiming || 'before_shooting'}
+                onChange={e => onPatch({ prepTiming: e.target.value })}>
+                <option value="before_shooting">Before shooting</option>
+                <option value="after_wrap">After wrap</option>
+              </select>
+            </div>
+          </div>
           <div className="metric"><div className="k">Wrap</div>
-            <div className="v"><DayStepper value={edit.wrapDays} onChange={v => onPatch({ wrapDays: v })} /><small>days</small></div></div>
+            <div className="v" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <DayStepper value={edit.wrapDays} onChange={v => onPatch({ wrapDays: v })} /><small>days</small>
+              </div>
+              <select className="input" style={{ fontSize: 12, padding: '3px 6px', width: '100%' }}
+                value={edit.wrapTiming || 'after_wrap'}
+                onChange={e => onPatch({ wrapTiming: e.target.value })}>
+                <option value="after_wrap">After wrap</option>
+                <option value="before_shooting">Before shooting</option>
+              </select>
+            </div>
+          </div>
         </div>
       </div>
 

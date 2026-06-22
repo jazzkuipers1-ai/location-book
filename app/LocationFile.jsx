@@ -255,7 +255,7 @@ function GalleryCell({ item, onCap, onNote, onRemove, onDraw, onCrop, onDragStar
       onDragOver={e => e.preventDefault()}>
       <div className="gal-cell">
         <div className="gal-drag-handle" title="Drag to reorder"><Icon name="grip" size={14} /></div>
-        <div onClick={() => setLightbox(true)} style={{ cursor: 'zoom-in' }}>
+        <div onClick={() => setLightbox(true)} onTouchStart={e => e.stopPropagation()} style={{ cursor: 'zoom-in' }}>
           <Img imgId={shownId(item)} />
         </div>
         {(item.strokes && item.strokes.length || item.annotatedId) ? <span className="annot-badge"><Icon name="edit" size={12} /></span> : null}

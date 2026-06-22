@@ -1,14 +1,28 @@
 /* Image annotator — draw on photos (finger / Apple Pencil) + per-picture note.
-   Features: pen, marker, eraser, undo/redo, pinch-to-zoom, quick-shape snap.  */
+   Strokes stored normalised (0..1); baked PNG for display & PDF export.        */
 
 const PEN_COLORS = ['#e5484d', '#f5a623', '#facc15', '#2f7d4f', '#2f6df0', '#a855f7', '#ffffff', '#1a1a1a'];
-const PEN_SIZES = [{ k: 'XS', w: 2 }, { k: 'S', w: 5 }, { k: 'M', w: 10 }, { k: 'L', w: 18 }];
+const PEN_SIZES  = [{ k: 'XS', w: 2 }, { k: 'S', w: 5 }, { k: 'M', w: 10 }, { k: 'L', w: 18 }];
+
+/* Draw one stroke on a canvas context (w/h = canvas display size in px). */
+function drawStroke(ctx, s, w, h) {
+  ctx.beginPath();
+  if (s.shape === 'ellipse') {
+    const cx = (s.x1 + s.x2) / 2 * w, cy = (s.y1 + s.y2) / 2 * h;
+    const rx = Math.max(1, Math.abs(s.x2 - s.x1) / 2 * w);
+    const ry = Math.max(1, Math.abs(s.y2 - s.y1) / 2 * h);
+    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+  } else if (s.shape === 'rect') {
+    ctx.rect(s.x1 * w, s.y1 * h, (s.x2 - s.x1) * w, (s.y2 - s.y1) * h);
+  } else {
+    s.pts.forEach((p, i) => { const x = p[0] * w, y = p[1] * h; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+  }
+  ctx.stroke();
+}
 
 async function bakeAnnotation(imgEl, strokes) {
   const W = imgEl.naturalWidth, H = imgEl.naturalHeight;
-  // Ink layer: draw all pen/marker strokes, use destination-out for eraser
-  const ink = document.createElement('canvas');
-  ink.width = W; ink.height = H;
+  const ink = document.createElement('canvas'); ink.width = W; ink.height = H;
   const ictx = ink.getContext('2d');
   ictx.lineCap = 'round'; ictx.lineJoin = 'round';
   for (const s of strokes) {
@@ -16,14 +30,10 @@ async function bakeAnnotation(imgEl, strokes) {
     ictx.globalCompositeOperation = s.type === 'eraser' ? 'destination-out' : 'source-over';
     ictx.strokeStyle = s.color;
     ictx.lineWidth = Math.max(1, s.w * W);
-    ictx.beginPath();
-    s.pts.forEach((p, i) => { const x = p[0]*W, y = p[1]*H; i ? ictx.lineTo(x,y) : ictx.moveTo(x,y); });
-    ictx.stroke();
+    drawStroke(ictx, s, W, H);
   }
   ictx.globalAlpha = 1; ictx.globalCompositeOperation = 'source-over';
-  // Composite: photo + ink layer
-  const out = document.createElement('canvas');
-  out.width = W; out.height = H;
+  const out = document.createElement('canvas'); out.width = W; out.height = H;
   const ctx = out.getContext('2d');
   ctx.drawImage(imgEl, 0, 0, W, H);
   ctx.drawImage(ink, 0, 0);
@@ -32,50 +42,46 @@ async function bakeAnnotation(imgEl, strokes) {
 }
 
 function Annotator({ originalId, init, onSave, onClose }) {
-  const [strokes, setStrokes] = useState((init && init.strokes) || []);
-  const [future,  setFuture]  = useState([]);
-  const [note,    setNote]    = useState((init && init.note) || '');
-  const [color,   setColor]   = useState('#e5484d');
-  const [size,    setSize]    = useState(5);
-  const [tool,    setTool]    = useState('pen'); // 'pen' | 'marker' | 'eraser'
-  const [url,     setUrl]     = useState(null);
-  const [saving,  setSaving]  = useState(false);
-  const [zoom,    setZoom]    = useState(1);
-  const [pan,     setPan]     = useState({ x: 0, y: 0 });
+  const [strokes,   setStrokes]   = useState((init && init.strokes) || []);
+  const [future,    setFuture]    = useState([]);
+  const [note,      setNote]      = useState((init && init.note) || '');
+  const [color,     setColor]     = useState('#e5484d');
+  const [size,      setSize]      = useState(5);
+  const [tool,      setTool]      = useState('pen');     // 'pen' | 'marker' | 'eraser'
+  const [snapShape, setSnapShape] = useState('line');    // 'line' | 'rect' | 'ellipse'
+  const [url,       setUrl]       = useState(null);
+  const [saving,    setSaving]    = useState(false);
+  const [zoom,      setZoom]      = useState(1);
+  const [pan,       setPan]       = useState({ x: 0, y: 0 });
 
-  const imgRef = useRef();
-  const canRef = useRef();
+  const imgRef = useRef(); const canRef = useRef();
 
-  // Refs mirror state for use inside event handlers (avoid stale closures)
-  const strokesRef = useRef(strokes);
-  const toolRef    = useRef(tool);
-  const colorRef   = useRef(color);
-  const sizeRef    = useRef(size);
-  const zoomRef    = useRef(zoom);
+  // Refs for use inside event handlers (stable, no stale closures)
+  const strokesRef   = useRef(strokes);
+  const toolRef      = useRef(tool);
+  const colorRef     = useRef(color);
+  const sizeRef      = useRef(size);
+  const snapShapeRef = useRef(snapShape);
   useEffect(() => { strokesRef.current = strokes; }, [strokes]);
   useEffect(() => { toolRef.current = tool; colorRef.current = color; sizeRef.current = size; }, [tool, color, size]);
-  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+  useEffect(() => { snapShapeRef.current = snapShape; }, [snapShape]);
 
-  // Drawing state
   const cur               = useRef(null);
   const holdTimer         = useRef(null);
   const isSnapped         = useRef(false);
-  const lastSignificantPt = useRef(null); // for Apple Pencil jitter dead-zone
-
-  // Multi-touch tracking for pinch-to-zoom
-  const activePointers = useRef(new Map()); // pointerId → {x,y}
-  const pinchState     = useRef(null);       // { prevDist, prevCx, prevCy }
+  const lastSignificantPt = useRef(null);
+  const activePointers    = useRef(new Map());
+  const pinchState        = useRef(null);
 
   useEffect(() => { LB.db.getURL(originalId).then(setUrl); }, [originalId]);
 
-  // Stable redraw — reads from refs so it never goes stale
   const redraw = useCallback(() => {
     const can = canRef.current, img = imgRef.current;
     if (!can || !img || !img.clientWidth) return;
     const dpr = window.devicePixelRatio || 1;
     const w = img.clientWidth, h = img.clientHeight;
-    if (can.width !== w*dpr || can.height !== h*dpr) { can.width = w*dpr; can.height = h*dpr; }
-    can.style.width = w+'px'; can.style.height = h+'px';
+    if (can.width !== w * dpr || can.height !== h * dpr) { can.width = w * dpr; can.height = h * dpr; }
+    can.style.width = w + 'px'; can.style.height = h + 'px';
     const ctx = can.getContext('2d');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
@@ -86,14 +92,11 @@ function Annotator({ originalId, init, onSave, onClose }) {
       ctx.globalCompositeOperation = s.type === 'eraser' ? 'destination-out' : 'source-over';
       ctx.strokeStyle = s.color;
       ctx.lineWidth = Math.max(1, s.w * w);
-      ctx.beginPath();
-      s.pts.forEach((p, i) => { const x = p[0]*w, y = p[1]*h; i ? ctx.lineTo(x,y) : ctx.moveTo(x,y); });
-      ctx.stroke();
+      drawStroke(ctx, s, w, h);
     }
     ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
-  }, []); // empty deps — reads from refs
+  }, []); // reads from refs — stable identity
 
-  // Re-draw whenever strokes change or image loads
   useEffect(() => { strokesRef.current = strokes; redraw(); }, [strokes, redraw]);
   useEffect(() => { redraw(); }, [url, redraw]);
   useEffect(() => {
@@ -101,7 +104,6 @@ function Annotator({ originalId, init, onSave, onClose }) {
     return () => window.removeEventListener('resize', on);
   }, [redraw]);
 
-  // Normalise pointer position to [0,1] image space — works through CSS zoom transform
   const pt = e => {
     const r = canRef.current.getBoundingClientRect();
     return [
@@ -110,56 +112,58 @@ function Annotator({ originalId, init, onSave, onClose }) {
     ];
   };
 
-  // Quick shape: snap current stroke to straight line (fires if pointer holds still)
-  const snapToLine = () => {
+  const snapToCurrent = () => {
     if (!cur.current || cur.current.pts.length < 2) return;
     const pts = cur.current.pts;
-    cur.current = { ...cur.current, pts: [pts[0], pts[pts.length - 1]] };
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    const x1 = Math.min(...xs), x2 = Math.max(...xs);
+    const y1 = Math.min(...ys), y2 = Math.max(...ys);
+    const shape = snapShapeRef.current;
+    if (shape === 'ellipse') {
+      cur.current = { ...cur.current, shape: 'ellipse', x1, y1, x2, y2 };
+    } else if (shape === 'rect') {
+      cur.current = { ...cur.current, shape: 'rect', x1, y1, x2, y2 };
+    } else {
+      cur.current = { ...cur.current, pts: [pts[0], pts[pts.length - 1]] };
+    }
     isSnapped.current = true;
     redraw();
   };
 
   const down = e => {
-    e.preventDefault(); // always prevent default — blocks selection/zoom on rapid Pencil taps
+    e.preventDefault();
     activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     canRef.current.setPointerCapture(e.pointerId);
 
     if (activePointers.current.size === 2) {
-      // Second finger — enter pinch-to-zoom, cancel any drawing stroke
       clearTimeout(holdTimer.current);
       cur.current = null; isSnapped.current = false;
       const pts = [...activePointers.current.values()];
       const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
-      pinchState.current = { prevDist: dist, prevCx: (pts[0].x+pts[1].x)/2, prevCy: (pts[0].y+pts[1].y)/2 };
-      redraw();
-      return;
+      pinchState.current = { prevDist: dist, prevCx: (pts[0].x + pts[1].x) / 2, prevCy: (pts[0].y + pts[1].y) / 2 };
+      redraw(); return;
     }
 
     const w = imgRef.current ? imgRef.current.clientWidth || 1 : 1;
     const t = toolRef.current;
-    // Eraser is 4× wider than selected pen size
     const strokeW = t === 'eraser' ? sizeRef.current * 4 : sizeRef.current;
     isSnapped.current = false;
     const startPt = pt(e);
     lastSignificantPt.current = startPt;
     cur.current = { type: t, color: colorRef.current, w: strokeW / w, pts: [startPt] };
-
-    // Quick shape: if pointer stays still for 800 ms, snap to straight line
     clearTimeout(holdTimer.current);
-    holdTimer.current = setTimeout(snapToLine, 800);
+    holdTimer.current = setTimeout(snapToCurrent, 800);
     redraw();
   };
 
   const move = e => {
     activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-    // Two-finger pinch — update zoom + pan
     if (activePointers.current.size === 2 && pinchState.current) {
       e.preventDefault();
       const pts = [...activePointers.current.values()];
       const newDist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
-      const newCx = (pts[0].x + pts[1].x) / 2;
-      const newCy = (pts[0].y + pts[1].y) / 2;
+      const newCx = (pts[0].x + pts[1].x) / 2, newCy = (pts[0].y + pts[1].y) / 2;
       const { prevDist, prevCx, prevCy } = pinchState.current;
       setZoom(z => Math.max(1, Math.min(5, z * (newDist / prevDist))));
       setPan(p => ({ x: p.x + (newCx - prevCx), y: p.y + (newCy - prevCy) }));
@@ -171,23 +175,23 @@ function Annotator({ originalId, init, onSave, onClose }) {
     e.preventDefault();
 
     if (isSnapped.current) {
-      // Snapped: only update the endpoint — allows repositioning the line
-      cur.current = { ...cur.current, pts: [cur.current.pts[0], pt(e)] };
+      const newPt = pt(e);
+      if (cur.current.shape === 'ellipse' || cur.current.shape === 'rect') {
+        cur.current = { ...cur.current, x2: newPt[0], y2: newPt[1] };
+      } else {
+        cur.current = { ...cur.current, pts: [cur.current.pts[0], newPt] };
+      }
     } else {
       const newPt = pt(e);
       cur.current.pts.push(newPt);
-      // Only reset the hold timer if the pointer moved more than 8px from the
-      // last significant position — Apple Pencil sends jitter at 120 Hz even
-      // when "still", which would otherwise prevent the snap from ever firing.
+      // 8 px dead-zone — ignores Apple Pencil jitter so hold timer fires reliably
       const lsp = lastSignificantPt.current;
-      const canW = canRef.current.clientWidth || 1;
-      const canH = canRef.current.clientHeight || 1;
-      const dx = (newPt[0] - lsp[0]) * canW;
-      const dy = (newPt[1] - lsp[1]) * canH;
+      const canW = canRef.current.clientWidth || 1, canH = canRef.current.clientHeight || 1;
+      const dx = (newPt[0] - lsp[0]) * canW, dy = (newPt[1] - lsp[1]) * canH;
       if (Math.sqrt(dx * dx + dy * dy) > 8) {
         lastSignificantPt.current = newPt;
         clearTimeout(holdTimer.current);
-        holdTimer.current = setTimeout(snapToLine, 800);
+        holdTimer.current = setTimeout(snapToCurrent, 800);
       }
     }
     redraw();
@@ -198,14 +202,12 @@ function Annotator({ originalId, init, onSave, onClose }) {
     clearTimeout(holdTimer.current);
     isSnapped.current = false;
     if (activePointers.current.size < 2) pinchState.current = null;
-
     if (!cur.current) return;
     const s = cur.current; cur.current = null;
-    if (s.pts.length) { setStrokes(p => [...p, s]); setFuture([]); }
+    if (s.pts && s.pts.length || s.shape) { setStrokes(p => [...p, s]); setFuture([]); }
     redraw();
   };
 
-  // Reset pan when fully zoomed out
   useEffect(() => { if (zoom <= 1) setPan({ x: 0, y: 0 }); }, [zoom]);
 
   const undo = () => {
@@ -229,8 +231,7 @@ function Annotator({ originalId, init, onSave, onClose }) {
   }
 
   const wrapTransform = (zoom !== 1 || pan.x || pan.y)
-    ? `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`
-    : undefined;
+    ? `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` : undefined;
 
   return (
     <div className="scrim" style={{ alignItems: 'stretch' }} onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
@@ -238,7 +239,7 @@ function Annotator({ originalId, init, onSave, onClose }) {
         <div className="annot-stage" style={{ overflow: 'hidden' }}>
           <div className="annot-imgwrap"
             style={{ transformOrigin: 'center', transform: wrapTransform, touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}>
-            {url && <img ref={imgRef} src={url} alt="" className="annot-img" onLoad={redraw} draggable="false" />}
+            {url && <img ref={imgRef} src={url} alt="" className="annot-img" onLoad={redraw} draggable="false" crossOrigin="anonymous" />}
             <canvas ref={canRef} className="annot-canvas"
               style={{ touchAction: 'none', cursor: 'crosshair', userSelect: 'none', WebkitUserSelect: 'none' }}
               onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
@@ -255,53 +256,51 @@ function Annotator({ originalId, init, onSave, onClose }) {
           </div>
 
           <div className="annot-tools">
-            {/* Tool selector */}
-            <div style={{ display: 'flex', gap: 5, marginBottom: 12 }}>
+            {/* Tool */}
+            <div style={{ display: 'flex', gap: 5, marginBottom: 10 }}>
               {[['pen','Pen'],['marker','Marker'],['eraser','Eraser']].map(([id, label]) => (
-                <button key={id}
-                  className={'btn sm' + (tool === id ? ' primary' : ' ghost')}
-                  style={{ flex: 1 }}
+                <button key={id} className={'btn sm' + (tool === id ? ' primary' : ' ghost')} style={{ flex: 1 }}
                   onClick={() => setTool(id)}>{label}</button>
               ))}
             </div>
 
-            {/* Color swatches — hidden for eraser */}
+            {/* Quick shape — not for eraser */}
+            {tool !== 'eraser' && (
+              <div style={{ display: 'flex', gap: 5, marginBottom: 10 }}>
+                {[['line','╱ Lijn'],['rect','▭ Rect'],['ellipse','◯ Cirkel']].map(([id, label]) => (
+                  <button key={id} className={'btn sm' + (snapShape === id ? ' primary' : ' ghost')} style={{ flex: 1 }}
+                    onClick={() => setSnapShape(id)}>{label}</button>
+                ))}
+              </div>
+            )}
+
+            {/* Color — not for eraser */}
             {tool !== 'eraser' && (
               <div className="swatches" style={{ marginBottom: 10 }}>
                 {PEN_COLORS.map(c => (
                   <button key={c} className={'swatch' + (color === c ? ' on' : '')}
-                    style={{ background: c, opacity: tool === 'marker' ? 0.55 : 1 }}
+                    style={{ background: c, opacity: tool === 'marker' ? 0.6 : 1 }}
                     onClick={() => setColor(c)} />
                 ))}
               </div>
             )}
 
-            {/* Size picker */}
+            {/* Size */}
             <div className="sizes" style={{ marginBottom: 12 }}>
               {PEN_SIZES.map(s => (
                 <button key={s.k} className={'sizebtn' + (size === s.w ? ' on' : '')} onClick={() => setSize(s.w)}>
-                  <span style={{
-                    width: Math.min(s.w + 2, 18), height: Math.min(s.w + 2, 18),
-                    borderRadius: '50%', background: 'currentColor', display: 'block'
-                  }} />
+                  <span style={{ width: Math.min(s.w + 2, 18), height: Math.min(s.w + 2, 18), borderRadius: '50%', background: 'currentColor', display: 'block' }} />
                 </button>
               ))}
             </div>
 
             {/* History */}
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              <button className="btn sm" onClick={undo} disabled={!strokes.length}>
-                <Icon name="undo" size={13} />Undo
-              </button>
-              <button className="btn sm" onClick={redo} disabled={!future.length}>
-                <Icon name="redo" size={13} />Redo
-              </button>
-              <button className="btn sm" onClick={clear} disabled={!strokes.length}>
-                <Icon name="trash" size={13} />Clear
-              </button>
+              <button className="btn sm" onClick={undo} disabled={!strokes.length}><Icon name="undo" size={13} />Undo</button>
+              <button className="btn sm" onClick={redo} disabled={!future.length}><Icon name="redo" size={13} />Redo</button>
+              <button className="btn sm" onClick={clear} disabled={!strokes.length}><Icon name="trash" size={13} />Clear</button>
             </div>
 
-            {/* Zoom indicator */}
             {zoom > 1 && (
               <button className="btn sm ghost" style={{ marginTop: 8, width: '100%' }}
                 onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}>
@@ -309,9 +308,8 @@ function Annotator({ originalId, init, onSave, onClose }) {
               </button>
             )}
 
-            {/* Hint for quick shape */}
             <div style={{ marginTop: 10, fontSize: 11, color: 'var(--ink-3)', lineHeight: 1.4 }}>
-              Hold pen still at end of stroke → straight line
+              Hou pen stil → snapt naar {snapShape === 'ellipse' ? 'cirkel' : snapShape === 'rect' ? 'rechthoek' : 'lijn'}
             </div>
           </div>
 

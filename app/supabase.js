@@ -166,29 +166,42 @@
     } catch (e) {}
   }
 
-  async function flushUploadQueue() {
+  // Sequential upload processor — one upload at a time, no connection flooding
+  let _queueRunning = false;
+  async function startQueue() {
+    if (_queueRunning || !navigator.onLine) return;
+    _queueRunning = true;
     try {
-      const q = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
-      if (!q.length) return;
-      const remaining = [];
-      for (const id of q) {
+      while (true) {
+        const q = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
+        if (!q.length) break;
+        const id = q[0];
         try {
           const blob = await LB.db.getBlob(id);
           if (blob) await uploadImage(blob, id);
+          // Success — remove from front of queue
+          const curr = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
+          const updated = curr.filter(i => i !== id);
+          if (updated.length === 0) localStorage.removeItem(QUEUE_KEY);
+          else localStorage.setItem(QUEUE_KEY, JSON.stringify(updated));
         } catch (e) {
-          remaining.push(id); // still offline or error — keep in queue
+          break; // offline or upload error — stop and retry on reconnect
         }
       }
-      if (remaining.length === 0) localStorage.removeItem(QUEUE_KEY);
-      else localStorage.setItem(QUEUE_KEY, JSON.stringify(remaining));
-    } catch (e) {}
+    } finally {
+      _queueRunning = false;
+    }
+  }
+
+  async function flushUploadQueue() {
+    startQueue();
   }
 
   // On reconnect: flush queued uploads and notify app to retry state save
   window.addEventListener('online', () => {
-    flushUploadQueue();
+    startQueue();
     window.dispatchEvent(new CustomEvent('lb_reconnect'));
   });
 
-  window.LB_SYNC = { CLIENT_ID, loadState, saveState, subscribe, loadProjects, createProject, updateProject, deleteProject, getProjectByCode, uploadImage, getImageUrl, queueUpload, flushUploadQueue, publishShare, loadShare, getShareUrl, setProjectPassword, removeProjectPassword, getProjectPassword };
+  window.LB_SYNC = { CLIENT_ID, loadState, saveState, subscribe, loadProjects, createProject, updateProject, deleteProject, getProjectByCode, uploadImage, getImageUrl, queueUpload, startQueue, flushUploadQueue, publishShare, loadShare, getShareUrl, setProjectPassword, removeProjectPassword, getProjectPassword };
 })();

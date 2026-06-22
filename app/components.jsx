@@ -181,12 +181,26 @@ window.compressExistingPhotos = compressExistingPhotos;
 
 async function filesToIds(fileList) {
   const ids = [];
+  const toCompress = [];
   for (const f of fileList) {
     if (!f.type.startsWith('image/')) continue;
-    const blob = await compressImage(f).catch(() => f); // fall back to original if compress fails
-    const id = await LB.db.putImage(blob);
+    // Store original immediately — instant UI feedback, no blocking
+    const id = await LB.db.putImage(f);
     ids.push(id);
+    toCompress.push({ id, file: f });
   }
+  // Compress + queue uploads in background, one at a time
+  setTimeout(async () => {
+    for (const { id, file } of toCompress) {
+      try {
+        const compressed = await compressImage(file);
+        if (compressed.size < file.size * 0.85) {
+          await LB.db.replaceBlob(id, compressed);
+        }
+      } catch (e) { /* skip if compress fails, original stays */ }
+      if (window.LB_SYNC) LB_SYNC.startQueue();
+    }
+  }, 0);
   return ids;
 }
 

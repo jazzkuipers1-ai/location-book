@@ -29,7 +29,9 @@ function LocItem({ loc, edit, name, active, onClick }) {
   const days = loc.dayNums.length;
   const cover = edit && edit.cover;
   return (
-    <button className={'loc-item' + (active ? ' active' : '')} onClick={onClick}>
+    <button className={'loc-item' + (active ? ' active' : '')} onClick={onClick}
+      draggable
+      onDragStart={e => { e.dataTransfer.setData('text/loc-id', loc.id); e.dataTransfer.effectAllowed = 'move'; }}>
       <div className={'loc-thumb' + (cover ? '' : ' ph')}>
         {cover ? <Img imgId={cover} /> : <Icon name="image" size={14} />}
       </div>
@@ -50,9 +52,18 @@ function LocItem({ loc, edit, name, active, onClick }) {
   );
 }
 
-function Sidebar({ model, edits, activeId, onSelect, onImport, onUpdateSchedule, onExport, navSort, view, onOverview, removed, onRestore, onRenameSchedule, onGoHome, hasPassword, onSetPassword, onCollapse, onCompressPhotos }) {
+const SIDEBAR_SEASON_ORDER = ['winter', 'spring', 'summer', 'autumn'];
+const SIDEBAR_SEASON_LABEL = { winter: 'Winter', spring: 'Spring', summer: 'Summer', autumn: 'Autumn' };
+function sidebarDominantSeason(scenes) {
+  const counts = {};
+  (scenes || []).forEach(s => { if (s.season) counts[s.season] = (counts[s.season] || 0) + 1; });
+  return Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0] || null;
+}
+
+function Sidebar({ model, edits, activeId, onSelect, onImport, onUpdateSchedule, onExport, navSort, view, onOverview, removed, onRestore, onRenameSchedule, onGoHome, hasPassword, onSetPassword, onCollapse, onCompressPhotos, onPatchLoc }) {
   const [q, setQ] = useState('');
   const [showHidden, setShowHidden] = useState(false);
+  const [seasonOver, setSeasonOver] = useState(null);
   const ql = q.trim().toLowerCase();
 
   const visible = model.locations.filter(l => !removed.includes(l.id));
@@ -60,20 +71,32 @@ function Sidebar({ model, edits, activeId, onSelect, onImport, onUpdateSchedule,
     !ql || locName(l, edits).toLowerCase().includes(ql) ||
     l.scenes.some(s => (s.synopsis || '').toLowerCase().includes(ql)));
 
+  const hasSeasons = visible.some(l => sidebarDominantSeason(l.scenes) !== null);
+
   const regionOrder = model.regions || [];
   const groups = useMemo(() => {
     if (navSort === 'count')
       return [['All locations · most scenes', [...filtered].sort((a, b) => b.sceneCount - a.sceneCount)]];
     if (navSort === 'a–z')
       return [['All locations · A–Z', [...filtered].sort((a, b) => locName(a, edits).localeCompare(locName(b, edits)))]];
+    if (hasSeasons) {
+      const g = {};
+      filtered.forEach(l => {
+        const s = (edits[l.id] || {}).seasonOverride || sidebarDominantSeason(l.scenes) || 'other';
+        (g[s] = g[s] || []).push(l);
+      });
+      return SIDEBAR_SEASON_ORDER.filter(s => g[s]).map(s => [SIDEBAR_SEASON_LABEL[s] || s, g[s], s]);
+    }
     const g = {};
     filtered.forEach(l => { const r = l.regions[0] || 'Other'; (g[r] = g[r] || []).push(l); });
     const keys = Object.keys(g).sort((a, b) => {
       const ia = regionOrder.indexOf(a), ib = regionOrder.indexOf(b);
       return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
     });
-    return keys.map(k => [k, g[k]]);
-  }, [filtered, navSort, edits]);
+    return keys.map(k => [k, g[k], null]);
+  }, [filtered, navSort, edits, hasSeasons]);
+
+  const hasLocId = e => { const t = e.dataTransfer.types; return t && (t.includes ? t.includes('text/loc-id') : Array.prototype.indexOf.call(t, 'text/loc-id') >= 0); };
 
   const hiddenLocs = model.locations.filter(l => removed.includes(l.id));
 
@@ -102,10 +125,19 @@ function Sidebar({ model, edits, activeId, onSelect, onImport, onUpdateSchedule,
       </div>
 
       <div className="loc-list">
-        {groups.map(([region, locs]) => (
-          <div key={region}>
+        {groups.map(([label, locs, seasonKey]) => (
+          <div key={label}
+            onDragOver={seasonKey ? e => { if (hasLocId(e)) { e.preventDefault(); setSeasonOver(seasonKey); } } : undefined}
+            onDragLeave={seasonKey ? e => { if (!e.currentTarget.contains(e.relatedTarget)) setSeasonOver(null); } : undefined}
+            onDrop={seasonKey ? e => {
+              if (!hasLocId(e)) return;
+              e.preventDefault(); setSeasonOver(null);
+              const id = e.dataTransfer.getData('text/loc-id');
+              if (id && onPatchLoc) onPatchLoc(id, { seasonOverride: seasonKey });
+            } : undefined}
+            style={seasonKey && seasonOver === seasonKey ? { outline: '2px solid var(--accent)', borderRadius: 8 } : undefined}>
             <div className="loc-group-h">
-              <span className="kicker">{region}</span>
+              <span className="kicker">{label}</span>
               <span className="ln" />
               <span className="kicker">{locs.length}</span>
             </div>

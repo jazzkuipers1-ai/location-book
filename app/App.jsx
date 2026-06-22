@@ -628,7 +628,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
       {/* Desktop sidebar */}
       <Sidebar model={model} edits={state.edits} activeId={activeLoc ? activeLoc.id : null} navSort={t.navSort}
         view={view} onOverview={() => setView('board')} removed={removed} onRestore={restoreLoc}
-        onSelect={openLoc} onImport={() => setShowImport(true)} onUpdateSchedule={() => setShowUpdateSchedule(true)} onExport={() => setShowExport(true)}
+        onSelect={openLoc} onImport={() => setShowImport(true)} onUpdateSchedule={() => setShowUpdateSchedule(true)} onExport={() => setShowExport(true)} onPatchLoc={patchById}
         hasPassword={!!remoteHash} onSetPassword={() => setShowSetPassword(true)}
         onCollapse={() => setSideCollapsed(true)}
         onCompressPhotos={handleCompressPhotos}

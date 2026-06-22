@@ -180,27 +180,23 @@ async function compressExistingPhotos(state, onProgress) {
 window.compressExistingPhotos = compressExistingPhotos;
 
 async function filesToIds(fileList) {
-  const ids = [];
-  const toCompress = [];
-  for (const f of fileList) {
-    if (!f.type.startsWith('image/')) continue;
-    // Store original immediately — instant UI feedback, no blocking
-    const id = await LB.db.putImage(f);
-    ids.push(id);
-    toCompress.push({ id, file: f });
-  }
-  // Compress + queue uploads in background, one at a time
-  setTimeout(async () => {
-    for (const { id, file } of toCompress) {
+  const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+  if (!files.length) return [];
+  // Write all originals to IndexedDB in parallel — instant UI feedback
+  const ids = await Promise.all(files.map(f => LB.db.putImage(f)));
+  // Compress in background, yielding to the browser between each photo
+  (async () => {
+    for (let i = 0; i < files.length; i++) {
+      await new Promise(r => setTimeout(r, 50)); // let browser breathe
       try {
-        const compressed = await compressImage(file);
-        if (compressed.size < file.size * 0.85) {
-          await LB.db.replaceBlob(id, compressed);
+        const compressed = await compressImage(files[i]);
+        if (compressed.size < files[i].size * 0.85) {
+          await LB.db.replaceBlob(ids[i], compressed);
+          if (window.LB_SYNC) { LB_SYNC.queueUpload(ids[i]); LB_SYNC.startQueue(); }
         }
-      } catch (e) { /* skip if compress fails, original stays */ }
-      if (window.LB_SYNC) LB_SYNC.startQueue();
+      } catch (e) { /* skip — original stays */ }
     }
-  }, 0);
+  })();
   return ids;
 }
 

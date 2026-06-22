@@ -120,7 +120,9 @@ function Annotator({ originalId, init, onSave, onClose }) {
   };
 
   const down = e => {
+    e.preventDefault(); // always prevent default — blocks selection/zoom on rapid Pencil taps
     activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    canRef.current.setPointerCapture(e.pointerId);
 
     if (activePointers.current.size === 2) {
       // Second finger — enter pinch-to-zoom, cancel any drawing stroke
@@ -129,13 +131,9 @@ function Annotator({ originalId, init, onSave, onClose }) {
       const pts = [...activePointers.current.values()];
       const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
       pinchState.current = { prevDist: dist, prevCx: (pts[0].x+pts[1].x)/2, prevCy: (pts[0].y+pts[1].y)/2 };
-      canRef.current.setPointerCapture(e.pointerId);
       redraw();
       return;
     }
-
-    e.preventDefault();
-    canRef.current.setPointerCapture(e.pointerId);
 
     const w = imgRef.current ? imgRef.current.clientWidth || 1 : 1;
     const t = toolRef.current;
@@ -239,11 +237,14 @@ function Annotator({ originalId, init, onSave, onClose }) {
       <div className="annot">
         <div className="annot-stage" style={{ overflow: 'hidden' }}>
           <div className="annot-imgwrap"
-            style={{ transformOrigin: 'center', transform: wrapTransform, touchAction: 'none', userSelect: 'none' }}>
+            style={{ transformOrigin: 'center', transform: wrapTransform, touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}>
             {url && <img ref={imgRef} src={url} alt="" className="annot-img" onLoad={redraw} draggable="false" />}
             <canvas ref={canRef} className="annot-canvas"
-              style={{ touchAction: 'none', cursor: 'crosshair' }}
-              onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} />
+              style={{ touchAction: 'none', cursor: 'crosshair', userSelect: 'none', WebkitUserSelect: 'none' }}
+              onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
+              onDoubleClick={e => e.preventDefault()}
+              onMouseDown={e => e.preventDefault()}
+              onContextMenu={e => e.preventDefault()} />
           </div>
         </div>
 

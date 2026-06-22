@@ -67,17 +67,83 @@ function LocCard({ loc, edit, name, onOpen, onPatch, onRename, onRemove, onCombi
   );
 }
 
+const SEASON_ORDER = ['winter', 'spring', 'summer', 'autumn'];
+const SEASON_LABEL = { winter: 'Winter', spring: 'Spring', summer: 'Summer', autumn: 'Autumn' };
+
+function dominantSeason(scenes) {
+  const counts = {};
+  (scenes || []).forEach(s => { if (s.season) counts[s.season] = (counts[s.season] || 0) + 1; });
+  return Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0] || null;
+}
+
+function SeasonGroup({ season, locs, edits, onOpen, onPatchLoc, onRename, onRemove, onCombine, onCombineDrop, onDropSeason }) {
+  const [over, setOver] = useState(false);
+  const hasLocId = e => { const t = e.dataTransfer.types; return t && (t.includes ? t.includes('text/loc-id') : Array.prototype.indexOf.call(t, 'text/loc-id') >= 0); };
+  return (
+    <div
+      onDragOver={e => { if (hasLocId(e)) { e.preventDefault(); setOver(true); } }}
+      onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setOver(false); }}
+      onDrop={e => {
+        if (!hasLocId(e)) return;
+        e.preventDefault(); setOver(false);
+        const id = e.dataTransfer.getData('text/loc-id');
+        if (id) onDropSeason(id, season);
+      }}
+      style={{ outline: over ? '2px solid var(--accent)' : '2px solid transparent', borderRadius: 12, transition: 'outline .12s' }}>
+      <div className="board-region">
+        <span className="rn">{SEASON_LABEL[season] || season}</span>
+        <span className="rc">{locs.length}</span>
+        <span className="ln" />
+      </div>
+      <div className="board-grid">
+        {locs.map(l => (
+          <LocCard key={l.id} loc={l} edit={edits[l.id] || {}} name={locName(l, edits)}
+            onOpen={() => onOpen(l.id)} onPatch={p => onPatchLoc(l.id, p)}
+            onRename={n => onRename(l.id, n)} onRemove={() => onRemove(l.id)} onCombine={() => onCombine(l.id)} onCombineDrop={onCombineDrop} />
+        ))}
+        {locs.length === 0 && (
+          <div style={{ gridColumn: '1/-1', padding: '20px 0', color: 'var(--ink-3)', fontFamily: 'var(--mono)', fontSize: 11 }}>
+            Sleep een locatie hierheen
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function Board({ model, edits, removed, onOpen, onPatchLoc, onRename, onRemove, onCombine, onCombineDrop, onExport, onAddLocation }) {
   const visible = model.locations.filter(l => !removed.includes(l.id));
+
+  // Only use season grouping when the schedule actually has seasonal data
+  const hasSeasons = visible.some(l => dominantSeason(l.scenes) !== null);
+
+  const withCover = visible.filter(l => (edits[l.id] || {}).cover).length;
+
+  const handleDropSeason = (locId, season) => {
+    onPatchLoc(locId, { seasonOverride: season });
+  };
+
+  // Season grouping
+  const seasonGroups = {};
+  if (hasSeasons) {
+    const usedSeasons = new Set();
+    visible.forEach(l => {
+      const s = (edits[l.id] || {}).seasonOverride || dominantSeason(l.scenes) || 'other';
+      usedSeasons.add(s);
+      (seasonGroups[s] = seasonGroups[s] || []).push(l);
+    });
+    // Ensure all detected seasons appear (even if empty after drag)
+    SEASON_ORDER.forEach(s => { if (usedSeasons.has(s) && !seasonGroups[s]) seasonGroups[s] = []; });
+  }
+
+  // Region grouping (fallback when no seasons)
   const regionOrder = model.regions || [];
-  const groups = {};
-  visible.forEach(l => { const r = l.regions[0] || 'Other'; (groups[r] = groups[r] || []).push(l); });
-  const keys = Object.keys(groups).sort((a, b) => {
+  const regionGroups = {};
+  visible.forEach(l => { const r = l.regions[0] || 'Other'; (regionGroups[r] = regionGroups[r] || []).push(l); });
+  const regionKeys = Object.keys(regionGroups).sort((a, b) => {
     const ia = regionOrder.indexOf(a), ib = regionOrder.indexOf(b);
     return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
   });
-
-  const withCover = visible.filter(l => (edits[l.id] || {}).cover).length;
 
   return (
     <div className="board">
@@ -93,22 +159,30 @@ function Board({ model, edits, removed, onOpen, onPatchLoc, onRename, onRemove, 
         </div>
       </div>
 
-      {keys.map(region => (
-        <div key={region}>
-          <div className="board-region">
-            <span className="rn">{region}</span>
-            <span className="rc">{groups[region].length}</span>
-            <span className="ln" />
-          </div>
-          <div className="board-grid">
-            {groups[region].map(l => (
-              <LocCard key={l.id} loc={l} edit={edits[l.id] || {}} name={locName(l, edits)}
-                onOpen={() => onOpen(l.id)} onPatch={p => onPatchLoc(l.id, p)}
-                onRename={n => onRename(l.id, n)} onRemove={() => onRemove(l.id)} onCombine={() => onCombine(l.id)} onCombineDrop={onCombineDrop} />
-            ))}
-          </div>
-        </div>
-      ))}
+      {hasSeasons
+        ? SEASON_ORDER.filter(s => seasonGroups[s]).map(season => (
+            <SeasonGroup key={season} season={season} locs={seasonGroups[season] || []}
+              edits={edits} onOpen={onOpen} onPatchLoc={onPatchLoc} onRename={onRename}
+              onRemove={onRemove} onCombine={onCombine} onCombineDrop={onCombineDrop}
+              onDropSeason={handleDropSeason} />
+          ))
+        : regionKeys.map(region => (
+            <div key={region}>
+              <div className="board-region">
+                <span className="rn">{region}</span>
+                <span className="rc">{regionGroups[region].length}</span>
+                <span className="ln" />
+              </div>
+              <div className="board-grid">
+                {regionGroups[region].map(l => (
+                  <LocCard key={l.id} loc={l} edit={edits[l.id] || {}} name={locName(l, edits)}
+                    onOpen={() => onOpen(l.id)} onPatch={p => onPatchLoc(l.id, p)}
+                    onRename={n => onRename(l.id, n)} onRemove={() => onRemove(l.id)} onCombine={() => onCombine(l.id)} onCombineDrop={onCombineDrop} />
+                ))}
+              </div>
+            </div>
+          ))
+      }
     </div>
   );
 }

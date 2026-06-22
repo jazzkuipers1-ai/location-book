@@ -64,6 +64,24 @@ function Sidebar({ model, edits, activeId, onSelect, onImport, onUpdateSchedule,
   const [q, setQ] = useState('');
   const [showHidden, setShowHidden] = useState(false);
   const [seasonOver, setSeasonOver] = useState(null);
+  const listRef = useRef(null);
+  const scrollRaf = useRef(null);
+
+  const handleDragOverList = e => {
+    const el = listRef.current;
+    if (!el) return;
+    const { top, bottom } = el.getBoundingClientRect();
+    const ZONE = 60, SPEED = 8;
+    cancelAnimationFrame(scrollRaf.current);
+    if (e.clientY < top + ZONE) {
+      const scroll = () => { el.scrollTop -= SPEED; scrollRaf.current = requestAnimationFrame(scroll); };
+      scrollRaf.current = requestAnimationFrame(scroll);
+    } else if (e.clientY > bottom - ZONE) {
+      const scroll = () => { el.scrollTop += SPEED; scrollRaf.current = requestAnimationFrame(scroll); };
+      scrollRaf.current = requestAnimationFrame(scroll);
+    }
+  };
+  const stopScroll = () => cancelAnimationFrame(scrollRaf.current);
   const ql = q.trim().toLowerCase();
 
   const visible = model.locations.filter(l => !removed.includes(l.id));
@@ -124,7 +142,7 @@ function Sidebar({ model, edits, activeId, onSelect, onImport, onUpdateSchedule,
         <input placeholder="Search locations & scenes…" value={q} onChange={e => setQ(e.target.value)} />
       </div>
 
-      <div className="loc-list">
+      <div className="loc-list" ref={listRef} onDragOver={handleDragOverList} onDragEnd={stopScroll} onDrop={stopScroll}>
         {groups.map(([label, locs, seasonKey]) => (
           <div key={label}
             onDragOver={seasonKey ? e => { if (hasLocId(e)) { e.preventDefault(); setSeasonOver(seasonKey); } } : undefined}

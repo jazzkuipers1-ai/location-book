@@ -1,5 +1,7 @@
 /* Location file editor — cover, meta, scenes, adjustments, annotated galleries. */
 
+const shownId = item => (item.annotatedId || item.id);
+
 /* Stepper that accepts decimals (0.25 / 0.5 steps) for prep & wrap days. */
 function DayStepper({ value, onChange }) {
   const v = value || 0;

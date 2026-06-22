@@ -325,6 +325,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
   const [sideCollapsed, setSideCollapsed] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [showUpdateSchedule, setShowUpdateSchedule] = useState(false);
+  const [showAddLocation, setShowAddLocation] = useState(false);
   const [showSetPassword, setShowSetPassword] = useState(false);
   const [mobileTab, setMobileTab] = useState('board'); // 'board' | 'list' | 'file'
   const [showExport, setShowExport] = useState(false);
@@ -549,6 +550,13 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
     if (state.activeId === id) setView('board');
   };
   const restoreLoc = id => setState(s => ({ ...s, removed: (s.removed || []).filter(x => x !== id) }));
+  const addManualLoc = loc => {
+    setState(s => {
+      const locations = [...s.model.locations, loc].sort((a, b) => b.sceneCount - a.sceneCount);
+      return { ...s, model: { ...s.model, locations }, activeId: loc.id };
+    });
+    setView('file');
+  };
 
   const mergeLocations = (baseId, otherIds) => {
     const others = (otherIds || []).filter(x => x !== baseId);
@@ -670,7 +678,8 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
         {(view === 'board' && mobileTab !== 'list') ? (
           <Board model={model} edits={state.edits} removed={removed} onOpen={openLoc}
             onPatchLoc={patchById} onRename={renameLoc} onRemove={removeLoc} onCombine={openCombine}
-            onCombineDrop={(src, tgt) => mergeLocations(tgt, [src])} onExport={() => setShowExport(true)} />
+            onCombineDrop={(src, tgt) => mergeLocations(tgt, [src])} onExport={() => setShowExport(true)}
+            onAddLocation={() => setShowAddLocation(true)} />
         ) : (activeLoc && mobileTab !== 'list') ? (
           <>
             <div className="topbar">
@@ -715,6 +724,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
 
       {/* Mobile bottom nav */}
       <MobileNav tabs={mobileTabs} active={mobileTab} onSelect={handleMobileTab} />
+      {showAddLocation && <AddLocationModal onClose={() => setShowAddLocation(false)} onAdd={addManualLoc} />}
       {showImport && <ImportModal current={false} onClose={() => setShowImport(false)} onApply={applyImport} />}
       {showUpdateSchedule && <ImportModal current={true} title="Update shooting schedule" onClose={() => setShowUpdateSchedule(false)} onApply={applyUpdateSchedule} />}
       {showExport && <ExportModal model={model} edits={state.edits} removed={removed}

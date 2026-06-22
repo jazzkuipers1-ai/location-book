@@ -67,7 +67,7 @@ function LocCard({ loc, edit, name, onOpen, onPatch, onRename, onRemove, onCombi
   );
 }
 
-function Board({ model, edits, removed, onOpen, onPatchLoc, onRename, onRemove, onCombine, onCombineDrop, onExport }) {
+function Board({ model, edits, removed, onOpen, onPatchLoc, onRename, onRemove, onCombine, onCombineDrop, onExport, onAddLocation }) {
   const visible = model.locations.filter(l => !removed.includes(l.id));
   const regionOrder = model.regions || [];
   const groups = {};
@@ -87,7 +87,10 @@ function Board({ model, edits, removed, onOpen, onPatchLoc, onRename, onRemove, 
           <h1>All locations</h1>
           <div className="muted mono" style={{ fontSize: 11, marginTop: 8 }}>{visible.length} locations · {withCover} with a cover photo</div>
         </div>
-        <button className="btn primary" onClick={onExport}><Icon name="download" size={15} />Export…</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn" onClick={onAddLocation}><Icon name="plus" size={15} />Add location</button>
+          <button className="btn primary" onClick={onExport}><Icon name="download" size={15} />Export…</button>
+        </div>
       </div>
 
       {keys.map(region => (

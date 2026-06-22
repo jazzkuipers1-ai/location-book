@@ -667,20 +667,20 @@ function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine,
       <div className="sec">
         <div className="sec-h"><span className="num">01</span><h2>Shoot days</h2><span className="ln" /></div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'flex-start' }}>
-          {loc.shootDates.map(d => {
+          {loc.shootDates.filter(d => !(edit.removedShootDays||[]).includes(String(d.dayNumber))).map(d => {
             const ov = (edit.dayOverrides||{})[String(d.dayNumber)] || {};
             const displayDay = ov.dayNumber != null ? ov.dayNumber : d.dayNumber;
             const patchOv = patch => { const o = edit.dayOverrides||{}; onPatch({ dayOverrides: { ...o, [String(d.dayNumber)]: { ...(o[String(d.dayNumber)]||{}), ...patch } } }); };
+            const removeDay = () => onPatch({ removedShootDays: [...new Set([...(edit.removedShootDays||[]), String(d.dayNumber)])] });
             return (
               <div key={d.dayNumber} className="card" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 12, position: 'relative' }}>
                 <EditableDayNumber value={displayDay} onChange={v => patchOv({ dayNumber: v })} />
                 <span>
                   <div className="mono" style={{ fontSize: 10, color: 'var(--ink-2)', letterSpacing: '.1em' }}>DAY</div>
-                  <DateButton
-                    date={ov.date ? ov.date : d.date}
-                    onSave={v => patchOv({ date: v })}
-                  />
+                  <DateButton date={ov.date ? ov.date : d.date} onSave={v => patchOv({ date: v })} />
                 </span>
+                <button type="button" title="Remove" onClick={removeDay}
+                  style={{ position: 'absolute', top: 4, right: 4, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-3)', padding: 2, lineHeight: 1, fontSize: 14 }}>×</button>
               </div>
             );
           })}

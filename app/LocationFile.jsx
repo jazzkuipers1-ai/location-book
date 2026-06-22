@@ -194,7 +194,28 @@ const GAL_KINDS = [
   { id: 'moodboard', label: 'Moodboard', icon: 'grid' },
 ];
 
+function Lightbox({ imgId, onClose }) {
+  const [url, setUrl] = useState(null);
+  useEffect(() => { LB.db.getURL(imgId).then(setUrl); }, [imgId]);
+  useEffect(() => {
+    const onKey = e => { if (e.key === 'Backspace' || e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return (
+    <div className="scrim" onClick={onClose}
+      style={{ background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+      <button onClick={onClose} style={{ position: 'fixed', top: 16, right: 20, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 36, height: 36, cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name="x" size={16} />
+      </button>
+      {url && <img src={url} onClick={e => e.stopPropagation()}
+        style={{ maxWidth: '92vw', maxHeight: '90vh', borderRadius: 8, objectFit: 'contain', boxShadow: '0 8px 40px rgba(0,0,0,0.5)' }} />}
+    </div>
+  );
+}
+
 function GalleryCell({ item, onCap, onNote, onRemove, onDraw, onCrop, onDragStart, onDragEnter, onDragEnd, isDragOver, accentColor }) {
+  const [lightbox, setLightbox] = useState(false);
   return (
     <div className={'gal-item' + (isDragOver ? ' drag-over' : '')}
       style={isDragOver && accentColor ? { boxShadow: '0 0 0 2px ' + accentColor } : undefined}
@@ -205,7 +226,9 @@ function GalleryCell({ item, onCap, onNote, onRemove, onDraw, onCrop, onDragStar
       onDragOver={e => e.preventDefault()}>
       <div className="gal-cell">
         <div className="gal-drag-handle" title="Drag to reorder"><Icon name="grip" size={14} /></div>
-        <Img imgId={shownId(item)} />
+        <div onClick={() => setLightbox(true)} style={{ cursor: 'zoom-in' }}>
+          <Img imgId={shownId(item)} />
+        </div>
         {(item.strokes && item.strokes.length || item.annotatedId) ? <span className="annot-badge"><Icon name="edit" size={12} /></span> : null}
         <div className="tools">
           <button className="tbtn" title="Crop" onClick={onCrop}><Icon name="ruler" size={15} /></button>
@@ -218,6 +241,7 @@ function GalleryCell({ item, onCap, onNote, onRemove, onDraw, onCrop, onDragStar
       <textarea className="gal-note" rows={1} placeholder="Add a note…" defaultValue={item.note || ''}
         onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
         onBlur={e => onNote(e.target.value)} />
+      {lightbox && <Lightbox imgId={shownId(item)} onClose={() => setLightbox(false)} />}
     </div>
   );
 }

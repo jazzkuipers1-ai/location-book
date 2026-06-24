@@ -106,6 +106,7 @@ function ShareModal({ loc, edit, name, scheduleName, onClose, onShareIdSaved }) 
         regions: (loc && loc.regions) || [],
         sets: (loc && loc.sets) || [],
         sceneCount: (loc && loc.sceneCount) || 0,
+        scenes: (loc && loc.scenes) || [],
         prepDays: (edit && edit.prepDays) || 0,
         prepTiming: (edit && edit.prepTiming) || null,
         wrapDays: (edit && edit.wrapDays) || 0,

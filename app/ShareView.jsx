@@ -159,6 +159,26 @@ function ShareView({ shareId }) {
           </div>
         )}
 
+        {/* Scenes */}
+        {(data.scenes || []).length > 0 && (
+          <SV_Section title="Scenes" count={data.scenes.length}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {data.scenes.map((sc, i) => (
+                <div key={i} style={{ display: 'grid', gridTemplateColumns: '56px 56px 1fr auto', gap: 12, alignItems: 'center', padding: '10px 14px', background: 'var(--card)', borderRadius: 9, border: '1px solid var(--line)', fontSize: 13 }}>
+                  <div style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 12, color: 'var(--ink-2)' }}>
+                    {sc.sceneNumber != null ? 'Sc ' + sc.sceneNumber : '—'}
+                  </div>
+                  <div style={{ fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--ink-3)' }}>
+                    {[sc.intExt, sc.dayNight].filter(Boolean).join(' · ')}
+                  </div>
+                  <div style={{ color: 'var(--ink)', lineHeight: 1.4 }}>{sc.synopsis || ''}</div>
+                  {sc.pages != null && <div style={{ fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--ink-3)', whiteSpace: 'nowrap' }}>{sc.pages}p</div>}
+                </div>
+              ))}
+            </div>
+          </SV_Section>
+        )}
+
         {/* Shoot days */}
         {(data.shootDates || []).length > 0 && (
           <SV_Section title="Shoot days" count={(data.shootDates || []).length + ' days'}>

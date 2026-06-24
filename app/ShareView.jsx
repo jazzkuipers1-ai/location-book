@@ -160,56 +160,45 @@ function ShareView({ shareId }) {
         )}
 
         {/* Scenes */}
-        {(data.scenes || []).length > 0 && (() => {
-          // Build a dayNumber→shootDate lookup
+        {(data.scenes || []).length > 0 && React.createElement(React.Fragment, null, (() => {
           const dayMap = {};
           (data.shootDates || []).forEach(d => { if (d.dayNumber != null) dayMap[String(d.dayNumber)] = d; });
-          // Group scenes by dayNumber
-          const groups = [];
-          const seen = {};
-          (data.scenes || []).forEach(sc => {
-            const k = sc.dayNumber != null ? String(sc.dayNumber) : '—';
-            if (!seen[k]) { seen[k] = true; groups.push({ key: k, day: dayMap[k] || null, scenes: [] }); }
-            groups[groups.length - 1].scenes.push(sc);
-          });
-          // Fix: scenes might not be in order per day, rebuild properly
           const groupMap = {};
+          const groupOrder = [];
           (data.scenes || []).forEach(sc => {
             const k = sc.dayNumber != null ? String(sc.dayNumber) : '—';
-            if (!groupMap[k]) groupMap[k] = { key: k, day: dayMap[k] || null, scenes: [] };
+            if (!groupMap[k]) { groupMap[k] = { key: k, day: dayMap[k] || null, scenes: [] }; groupOrder.push(k); }
             groupMap[k].scenes.push(sc);
           });
-          const orderedGroups = Object.values(groupMap).sort((a, b) => {
-            const na = parseFloat(a.key), nb = parseFloat(b.key);
-            return (isNaN(na) ? 999 : na) - (isNaN(nb) ? 999 : nb);
-          });
+          groupOrder.sort((a, b) => (parseFloat(a) || 999) - (parseFloat(b) || 999));
           return (
             <SV_Section title="Scenes" count={data.scenes.length}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                {orderedGroups.map(g => (
-                  <div key={g.key}>
-                    {g.day && (
-                      <div style={{ fontFamily: 'var(--mono)', fontSize: 10.5, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 8 }}>
-                        Day {g.day.dayNumber}{g.day.date ? ' · ' + fmtD(g.day.date).toUpperCase() : ''}
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      {g.scenes.map((sc, i) => (
-                        <div key={i} style={{ display: 'grid', gridTemplateColumns: '72px 56px 1fr', gap: 12, alignItems: 'baseline', padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
-                          <div style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 13, color: 'var(--ink)' }}>{sc.number || '—'}</div>
-                          <div style={{ fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--ink-3)', whiteSpace: 'nowrap' }}>
-                            {sc.type || 'INT'}/{sc.tod || 'D'}
-                          </div>
-                          <div style={{ fontSize: 13, color: 'var(--ink)', lineHeight: 1.45 }}>{sc.synopsis || ''}</div>
+                {groupOrder.map(k => {
+                  const g = groupMap[k];
+                  return (
+                    <div key={k}>
+                      {g.day && (
+                        <div style={{ fontFamily: 'var(--mono)', fontSize: 10.5, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 8 }}>
+                          Day {g.day.dayNumber}{g.day.date ? ' · ' + fmtD(g.day.date).toUpperCase() : ''}
                         </div>
-                      ))}
+                      )}
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        {g.scenes.map((sc, i) => (
+                          <div key={i} style={{ display: 'grid', gridTemplateColumns: '72px 56px 1fr', gap: 12, alignItems: 'baseline', padding: '8px 0', borderBottom: '1px solid var(--line)' }}>
+                            <div style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 13, color: 'var(--ink)' }}>{sc.number || '—'}</div>
+                            <div style={{ fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--ink-3)', whiteSpace: 'nowrap' }}>{sc.type || 'INT'}/{sc.tod || 'D'}</div>
+                            <div style={{ fontSize: 13, color: 'var(--ink)', lineHeight: 1.45 }}>{sc.synopsis || ''}</div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </SV_Section>
           );
-        })()}
+        })())}
 
         {/* Shoot days */}
         {(data.shootDates || []).length > 0 && (

@@ -247,11 +247,11 @@ function Lightbox({ imgId, onClose }) {
   );
 }
 
-function GalleryCell({ item, onCap, onNote, onRemove, onDraw, onCrop, onDragStart, onDragEnter, onDragEnd, isDragOver, accentColor }) {
+function GalleryCell({ item, onCap, onNote, onRemove, onDraw, onCrop, onDragStart, onDragEnter, onDragEnd, isDragOver, accentColor, isSelected, onToggleSelect }) {
   const [lightbox, setLightbox] = useState(false);
   return (
-    <div className={'gal-item' + (isDragOver ? ' drag-over' : '')}
-      style={isDragOver && accentColor ? { boxShadow: '0 0 0 2px ' + accentColor } : undefined}
+    <div className={'gal-item' + (isDragOver ? ' drag-over' : '') + (isSelected ? ' gal-selected' : '')}
+      style={{ ...(isDragOver && accentColor ? { boxShadow: '0 0 0 2px ' + accentColor } : {}), ...(isSelected ? { outline: '2px solid var(--accent)', outlineOffset: 1 } : {}) }}
       draggable
       onDragStart={onDragStart}
       onDragEnter={onDragEnter}
@@ -259,6 +259,12 @@ function GalleryCell({ item, onCap, onNote, onRemove, onDraw, onCrop, onDragStar
       onDragOver={e => e.preventDefault()}>
       <div className="gal-cell">
         <div className="gal-drag-handle" title="Drag to reorder"><Icon name="grip" size={14} /></div>
+        {/* selection checkbox */}
+        <div onClick={e => { e.stopPropagation(); onToggleSelect(); }}
+          style={{ position: 'absolute', top: 7, left: 38, width: 20, height: 20, borderRadius: 5, border: '2px solid ' + (isSelected ? 'var(--accent)' : 'rgba(255,255,255,0.7)'), background: isSelected ? 'var(--accent)' : 'rgba(20,16,8,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 3, opacity: isSelected ? 1 : 0, transition: 'opacity .12s' }}
+          className="gal-checkbox">
+          {isSelected && <svg width="11" height="9" viewBox="0 0 11 9" fill="none"><path d="M1 4L4 7.5L10 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+        </div>
         <div onClick={e => { e.stopPropagation(); setLightbox(true); }} onTouchStart={e => e.stopPropagation()} style={{ cursor: 'zoom-in' }}>
           <Img imgId={shownId(item)} />
         </div>
@@ -311,27 +317,53 @@ const CAT_COLORS = [
 function makeCatId() { return 'cat_' + Math.random().toString(36).slice(2, 8); }
 
 /* shared drag state — lives outside components so cross-category drag works */
-const _drag = { catId: null, idx: null };
+const _drag = { catId: null, idx: null, selectedIds: [] };
 
 function Gallery({ catId, catColor, items, onChange, onDraw, onDropFromOther }) {
   const [cropId, setCropId] = useState(null);
   const [dragOver, setDragOver] = useState(null);
   const [dropZoneOver, setDropZoneOver] = useState(false);
+  const [selected, setSelected] = useState(new Set());
 
   const add = async fl => { const ids = await filesToIds(fl); onChange([...items, ...ids.map(id => ({ id, cap: '', note: '', strokes: [] }))]); };
   const remove = async (it) => { if (it.annotatedId) await LB.db.delImage(it.annotatedId); await LB.db.delImage(it.id); onChange(items.filter(i => i.id !== it.id)); };
   const patch = (id, p) => onChange(items.map(i => i.id === id ? { ...i, ...p } : i));
 
-  const handleDragStart = idx => { _drag.catId = catId; _drag.idx = idx; };
+  const toggleSelect = id => setSelected(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+
+  const handleDragStart = (idx) => {
+    const id = items[idx].id;
+    // If dragging an unselected item, clear selection and select just this one
+    const sel = selected.has(id) ? selected : new Set([id]);
+    if (!selected.has(id)) setSelected(sel);
+    _drag.catId = catId;
+    _drag.idx = idx;
+    _drag.selectedIds = items.map(it => it.id).filter(i => sel.has(i));
+  };
+
   const handleDragEnter = idx => { if (_drag.catId === catId) setDragOver(idx); };
+
   const handleDragEnd = () => {
     if (_drag.catId === catId && _drag.idx !== null && dragOver !== null && _drag.idx !== dragOver) {
-      const next = [...items];
-      const [moved] = next.splice(_drag.idx, 1);
-      next.splice(dragOver, 0, moved);
-      onChange(next);
+      const selSet = new Set(_drag.selectedIds);
+      const staying = items.filter(it => !selSet.has(it.id));
+      const moving = _drag.selectedIds.map(id => items.find(it => it.id === id)).filter(Boolean);
+      // insert position: index among staying items
+      const refItem = items[dragOver];
+      let insertAt = refItem && !selSet.has(refItem.id)
+        ? staying.findIndex(it => it.id === refItem.id)
+        : staying.length;
+      if (insertAt < 0) insertAt = staying.length;
+      // if dragging forward, insert after the target
+      if (_drag.idx < dragOver) insertAt = Math.min(insertAt + 1, staying.length);
+      staying.splice(insertAt, 0, ...moving);
+      onChange(staying);
     }
-    _drag.catId = null; _drag.idx = null;
+    _drag.catId = null; _drag.idx = null; _drag.selectedIds = [];
     setDragOver(null); setDropZoneOver(false);
   };
 
@@ -344,23 +376,39 @@ function Gallery({ catId, catColor, items, onChange, onDraw, onDropFromOther }) 
 
   const accentColor = catColor ? catColor.hex : 'var(--accent)';
   const softColor   = catColor ? catColor.soft : 'var(--accent-soft)';
+  const selCount = selected.size;
 
   return (
-    <div className={'gal-grid' + (dropZoneOver ? ' gal-drop-zone' : '')}
-      style={{ '--gal-accent': accentColor, '--gal-soft': softColor }}
-      {...zoneProps}>
-      {items.map((it, idx) => <GalleryCell key={it.id} item={it}
-        onCap={c => patch(it.id, { cap: c })} onNote={n => patch(it.id, { note: n })}
-        onRemove={() => remove(it)} onDraw={() => onDraw(it)}
-        onCrop={() => setCropId(it.id)}
-        onDragStart={() => handleDragStart(idx)}
-        onDragEnter={() => handleDragEnter(idx)}
-        onDragEnd={handleDragEnd}
-        isDragOver={dragOver === idx && _drag.catId === catId && _drag.idx !== idx}
-        accentColor={accentColor} />)}
-      <Dropzone onFiles={add} />
-      {cropId && <CropModal imgId={cropId} onClose={() => setCropId(null)}
-        onDone={newId => { patch(cropId, { id: newId }); setCropId(null); }} />}
+    <div style={{ display: 'contents' }}>
+      {selCount > 0 && (
+        <div style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', gap: 10, padding: '6px 2px', marginBottom: -4 }}>
+          <span className="mono" style={{ fontSize: 11, color: 'var(--accent)' }}>{selCount} foto{selCount !== 1 ? "'s" : ''} geselecteerd</span>
+          <button className="btn sm ghost" style={{ fontSize: 11 }} onClick={() => setSelected(new Set())}>Deselecteer</button>
+          <button className="btn sm ghost" style={{ fontSize: 11, color: 'var(--accent)' }} onClick={() => {
+            selected.forEach(async id => { const it = items.find(i => i.id === id); if (it) { if (it.annotatedId) await LB.db.delImage(it.annotatedId); await LB.db.delImage(it.id); } });
+            onChange(items.filter(it => !selected.has(it.id)));
+            setSelected(new Set());
+          }}>Verwijder selectie</button>
+        </div>
+      )}
+      <div className={'gal-grid' + (dropZoneOver ? ' gal-drop-zone' : '')}
+        style={{ '--gal-accent': accentColor, '--gal-soft': softColor }}
+        {...zoneProps}>
+        {items.map((it, idx) => <GalleryCell key={it.id} item={it}
+          onCap={c => patch(it.id, { cap: c })} onNote={n => patch(it.id, { note: n })}
+          onRemove={() => remove(it)} onDraw={() => onDraw(it)}
+          onCrop={() => setCropId(it.id)}
+          onDragStart={() => handleDragStart(idx)}
+          onDragEnter={() => handleDragEnter(idx)}
+          onDragEnd={handleDragEnd}
+          isDragOver={dragOver === idx && _drag.catId === catId && _drag.idx !== idx}
+          accentColor={accentColor}
+          isSelected={selected.has(it.id)}
+          onToggleSelect={() => toggleSelect(it.id)} />)}
+        <Dropzone onFiles={add} />
+        {cropId && <CropModal imgId={cropId} onClose={() => setCropId(null)}
+          onDone={newId => { patch(cropId, { id: newId }); setCropId(null); }} />}
+      </div>
     </div>
   );
 }

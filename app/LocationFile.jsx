@@ -247,7 +247,7 @@ function Lightbox({ imgId, onClose }) {
   );
 }
 
-function GalleryCell({ item, onCap, onNote, onRemove, onDraw, onCrop, onDragStart, onDragEnter, onDragEnd, isDragOver, accentColor, isSelected, onShiftClick }) {
+function GalleryCell({ item, onCap, onNote, onRemove, onDraw, onCrop, onDragStart, onDragEnter, onDragEnd, isDragOver, accentColor, isSelected, onToggleSelect }) {
   const [lightbox, setLightbox] = useState(false);
   return (
     <div className={'gal-item' + (isDragOver ? ' drag-over' : '') + (isSelected ? ' gal-selected' : '')}
@@ -259,7 +259,13 @@ function GalleryCell({ item, onCap, onNote, onRemove, onDraw, onCrop, onDragStar
       onDragOver={e => e.preventDefault()}>
       <div className="gal-cell">
         <div className="gal-drag-handle" title="Drag to reorder"><Icon name="grip" size={14} /></div>
-        <div onClick={e => { e.stopPropagation(); if (e.shiftKey) { onShiftClick(); } else { setLightbox(true); } }} onTouchStart={e => e.stopPropagation()} style={{ cursor: 'zoom-in' }}>
+        {/* selection checkbox */}
+        <div onClick={e => { e.stopPropagation(); onToggleSelect(); }}
+          style={{ position: 'absolute', top: 7, left: 38, width: 20, height: 20, borderRadius: 5, border: '2px solid ' + (isSelected ? 'var(--accent)' : 'rgba(255,255,255,0.7)'), background: isSelected ? 'var(--accent)' : 'rgba(20,16,8,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 3, opacity: isSelected ? 1 : 0, transition: 'opacity .12s' }}
+          className="gal-checkbox">
+          {isSelected && <svg width="11" height="9" viewBox="0 0 11 9" fill="none"><path d="M1 4L4 7.5L10 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+        </div>
+        <div onClick={e => { e.stopPropagation(); setLightbox(true); }} onTouchStart={e => e.stopPropagation()} style={{ cursor: 'zoom-in' }}>
           <Img imgId={shownId(item)} />
         </div>
         {(item.strokes && item.strokes.length || item.annotatedId) ? <span className="annot-badge"><Icon name="edit" size={12} /></span> : null}
@@ -398,7 +404,7 @@ function Gallery({ catId, catColor, items, onChange, onDraw, onDropFromOther }) 
           isDragOver={dragOver === idx && _drag.catId === catId && _drag.idx !== idx}
           accentColor={accentColor}
           isSelected={selected.has(it.id)}
-          onShiftClick={() => toggleSelect(it.id)} />)}
+          onToggleSelect={() => toggleSelect(it.id)} />)}
         <Dropzone onFiles={add} />
         {cropId && <CropModal imgId={cropId} onClose={() => setCropId(null)}
           onDone={newId => { patch(cropId, { id: newId }); setCropId(null); }} />}

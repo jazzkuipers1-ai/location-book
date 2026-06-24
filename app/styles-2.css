@@ -199,7 +199,6 @@
 .gal-item .gal-cell { border: none; border-radius: 0; aspect-ratio: 4/3; }
 .gal-drag-handle { position: absolute; top: 7px; left: 7px; width: 26px; height: 26px; border-radius: 7px; background: rgba(20,16,8,.55); color: #fff; display: grid; place-items: center; opacity: 0; transition: opacity .12s; cursor: grab; backdrop-filter: blur(4px); z-index: 2; }
 .gal-cell:hover .gal-drag-handle { opacity: 1; }
-.gal-cell:hover .gal-checkbox { opacity: 1 !important; }
 .gal-cell .tools { position: absolute; top: 7px; right: 7px; display: flex; gap: 6px; opacity: 0; transition: opacity .12s; }
 .gal-cell:hover .tools { opacity: 1; }
 .gal-cell .tbtn { width: 30px; height: 30px; border-radius: 8px; background: rgba(20,16,8,.6); color: #fff; border: none; cursor: pointer; display: grid; place-items: center; backdrop-filter: blur(4px); }

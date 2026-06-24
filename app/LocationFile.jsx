@@ -223,11 +223,19 @@ const GAL_KINDS = [
   { id: 'moodboard', label: 'Moodboard', icon: 'grid' },
 ];
 
-function Lightbox({ imgId, onClose }) {
+function Lightbox({ imgIds, startIdx, onClose }) {
+  const [idx, setIdx] = useState(startIdx || 0);
   const [url, setUrl] = useState(null);
-  useEffect(() => { LB.db.getURL(imgId).then(setUrl); }, [imgId]);
+  const imgId = imgIds[idx];
+  useEffect(() => { setUrl(null); LB.db.getURL(imgId).then(setUrl); }, [imgId]);
+  const prev = () => setIdx(i => Math.max(0, i - 1));
+  const next = () => setIdx(i => Math.min(imgIds.length - 1, i + 1));
   useEffect(() => {
-    const onKey = e => { if (e.key === 'Backspace' || e.key === 'Escape') onClose(); };
+    const onKey = e => {
+      if (e.key === 'Escape' || e.key === 'Backspace') onClose();
+      if (e.key === 'ArrowRight') next();
+      if (e.key === 'ArrowLeft') prev();
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
@@ -237,17 +245,30 @@ function Lightbox({ imgId, onClose }) {
       <button onClick={onClose} style={{ position: 'fixed', top: 16, right: 20, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 36, height: 36, cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Icon name="x" size={16} />
       </button>
+      {imgIds.length > 1 && idx > 0 && (
+        <button onClick={e => { e.stopPropagation(); prev(); }}
+          style={{ position: 'fixed', left: 16, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 44, height: 44, cursor: 'pointer', color: '#fff', fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+      )}
+      {imgIds.length > 1 && idx < imgIds.length - 1 && (
+        <button onClick={e => { e.stopPropagation(); next(); }}
+          style={{ position: 'fixed', right: 16, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 44, height: 44, cursor: 'pointer', color: '#fff', fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+      )}
       {url
         ? <img src={url} onClick={e => e.stopPropagation()}
             style={{ maxWidth: '92vw', maxHeight: '90vh', borderRadius: 8, objectFit: 'contain', boxShadow: '0 8px 40px rgba(0,0,0,0.5)' }} />
         : <div style={{ color: 'rgba(255,255,255,0.4)', fontFamily: 'var(--mono)', fontSize: 12 }}>Loading…</div>
       }
+      {imgIds.length > 1 && (
+        <div style={{ position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)', fontFamily: 'var(--mono)', fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>
+          {idx + 1} / {imgIds.length}
+        </div>
+      )}
     </div>,
     document.body
   );
 }
 
-function GalleryCell({ item, onCap, onNote, onRemove, onDraw, onCrop, onDragStart, onDragEnter, onDragEnd, isDragOver, accentColor, isSelected, onToggleSelect }) {
+function GalleryCell({ item, allImgIds, itemIdx, onCap, onNote, onRemove, onDraw, onCrop, onDragStart, onDragEnter, onDragEnd, isDragOver, accentColor, isSelected, onToggleSelect }) {
   const [lightbox, setLightbox] = useState(false);
   return (
     <div className={'gal-item' + (isDragOver ? ' drag-over' : '') + (isSelected ? ' gal-selected' : '')}
@@ -280,7 +301,7 @@ function GalleryCell({ item, onCap, onNote, onRemove, onDraw, onCrop, onDragStar
       <textarea className="gal-note" rows={1} placeholder="Add a note…" defaultValue={item.note || ''}
         onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
         onBlur={e => onNote(e.target.value)} />
-      {lightbox && <Lightbox imgId={shownId(item)} onClose={() => setLightbox(false)} />}
+      {lightbox && <Lightbox imgIds={allImgIds || [shownId(item)]} startIdx={itemIdx || 0} onClose={() => setLightbox(false)} />}
     </div>
   );
 }
@@ -395,6 +416,7 @@ function Gallery({ catId, catColor, items, onChange, onDraw, onDropFromOther }) 
         style={{ '--gal-accent': accentColor, '--gal-soft': softColor }}
         {...zoneProps}>
         {items.map((it, idx) => <GalleryCell key={it.id} item={it}
+          allImgIds={items.map(i => shownId(i))} itemIdx={idx}
           onCap={c => patch(it.id, { cap: c })} onNote={n => patch(it.id, { note: n })}
           onRemove={() => remove(it)} onDraw={() => onDraw(it)}
           onCrop={() => setCropId(it.id)}

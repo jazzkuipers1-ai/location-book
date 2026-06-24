@@ -106,7 +106,13 @@ function ShareModal({ loc, edit, name, scheduleName, onClose, onShareIdSaved }) 
         regions: (loc && loc.regions) || [],
         sets: (loc && loc.sets) || [],
         sceneCount: (loc && loc.sceneCount) || 0,
-        scenes: (loc && loc.scenes) || [],
+        scenes: (() => {
+          const sceneKey = s => s.manual ? ('m|' + s.id) : (s.number + '|' + (s.idx ?? ''));
+          const removed = new Set((edit && edit.removedSceneKeys) || []);
+          const base = (loc && loc.scenes || []).filter(s => !removed.has(sceneKey(s)));
+          const extra = (edit && edit.extraScenes) || [];
+          return [...base, ...extra].sort((a, b) => parseFloat(a.number) - parseFloat(b.number));
+        })(),
         prepDays: (edit && edit.prepDays) || 0,
         prepTiming: (edit && edit.prepTiming) || null,
         wrapDays: (edit && edit.wrapDays) || 0,

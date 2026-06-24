@@ -68,7 +68,7 @@ function LocCard({ loc, edit, name, onOpen, onPatch, onRename, onRemove, onCombi
 }
 
 const SEASON_ORDER = ['winter', 'spring', 'summer', 'autumn'];
-const SEASON_LABEL = { winter: 'Winter', spring: 'Spring', summer: 'Summer', autumn: 'Autumn' };
+const SEASON_LABEL = { winter: 'Winter', spring: 'Spring', summer: 'Summer', autumn: 'Autumn', other: 'Other' };
 
 function dominantSeason(scenes) {
   const counts = {};
@@ -160,7 +160,7 @@ function Board({ model, edits, removed, onOpen, onPatchLoc, onRename, onRemove, 
       </div>
 
       {hasSeasons
-        ? SEASON_ORDER.filter(s => seasonGroups[s]).map(season => (
+        ? [...SEASON_ORDER, 'other'].filter(s => seasonGroups[s] && seasonGroups[s].length > 0).map(season => (
             <SeasonGroup key={season} season={season} locs={seasonGroups[season] || []}
               edits={edits} onOpen={onOpen} onPatchLoc={onPatchLoc} onRename={onRename}
               onRemove={onRemove} onCombine={onCombine} onCombineDrop={onCombineDrop}

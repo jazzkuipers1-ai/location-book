@@ -70,10 +70,16 @@ function ShareView({ shareId }) {
     </div>
   );
 
-  // Resolve gallery categories — use saved custom cats or fallback to 'photos'
-  const galCats = data.galCategories && data.galCategories.length
+  // Resolve gallery categories — custom cats + any extra keys with photos not already listed
+  const FIXED_IDS = new Set(['sketches', 'measurements', 'designs', 'moodboard']);
+  const baseCats = data.galCategories && data.galCategories.length
     ? data.galCategories
     : [{ id: 'photos', label: 'Photos', colorId: 'slate' }];
+  const knownIds = new Set(baseCats.map(c => c.id));
+  const extraCats = Object.keys(data.galleries || {})
+    .filter(k => !knownIds.has(k) && !FIXED_IDS.has(k) && (data.galleries[k] || []).length > 0)
+    .map(k => ({ id: k, label: 'Photos', colorId: 'slate' }));
+  const galCats = [...baseCats, ...extraCats];
 
   // Collect all images across all categories for lightbox
   const allImgs = [];

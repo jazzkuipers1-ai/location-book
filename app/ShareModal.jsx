@@ -34,6 +34,8 @@ function ShareModal({ loc, edit, name, scheduleName, onClose, onShareIdSaved }) 
       const imageIds = collectImageIds();
       const urlMap = {};
 
+      console.log('[Share] collecting images from edit.galleries:', JSON.stringify(Object.fromEntries(Object.entries(edit.galleries || {}).map(([k,v]) => [k, (v||[]).length]))));
+      console.log('[Share] total imageIds to upload:', imageIds.length, imageIds);
       let uploaded = 0, missing = 0;
       for (let i = 0; i < imageIds.length; i++) {
         const id = imageIds[i];
@@ -43,8 +45,10 @@ function ShareModal({ loc, edit, name, scheduleName, onClose, onShareIdSaved }) 
         const url = await LB_SYNC.uploadImage(blob, id);
         urlMap[id] = url;
         uploaded++;
+        console.log('[Share] uploaded', id, '→', url);
       }
-      if (missing > 0) console.warn('[Share] ' + missing + ' images had no local blob and were skipped');
+      console.log('[Share] done. uploaded:', uploaded, 'missing blobs:', missing);
+      console.log('[Share] gals summary:', JSON.stringify(Object.fromEntries(Object.entries(gals).map(([k,v]) => [k, v.length]))));
 
       setProgress('Publishing share…');
 

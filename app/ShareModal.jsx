@@ -34,21 +34,14 @@ function ShareModal({ loc, edit, name, scheduleName, onClose, onShareIdSaved }) 
       const imageIds = collectImageIds();
       const urlMap = {};
 
-      // Per-device cache of uploaded image IDs → public URLs
-      let cached = {};
-      try { cached = JSON.parse(localStorage.getItem('lb_img_urls') || '{}'); } catch (e) {}
-
       for (let i = 0; i < imageIds.length; i++) {
         const id = imageIds[i];
         setProgress('Uploading image ' + (i + 1) + ' of ' + imageIds.length + '…');
-        if (cached[id]) { urlMap[id] = cached[id]; continue; }
         const blob = await LB.db.getBlob(id);
         if (!blob) continue;
         const url = await LB_SYNC.uploadImage(blob, id);
-        cached[id] = url;
         urlMap[id] = url;
       }
-      try { localStorage.setItem('lb_img_urls', JSON.stringify(cached)); } catch (e) {}
 
       setProgress('Publishing share…');
 

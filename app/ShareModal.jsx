@@ -34,14 +34,17 @@ function ShareModal({ loc, edit, name, scheduleName, onClose, onShareIdSaved }) 
       const imageIds = collectImageIds();
       const urlMap = {};
 
+      let uploaded = 0, missing = 0;
       for (let i = 0; i < imageIds.length; i++) {
         const id = imageIds[i];
         setProgress('Uploading image ' + (i + 1) + ' of ' + imageIds.length + '…');
         const blob = await LB.db.getBlob(id);
-        if (!blob) continue;
+        if (!blob) { missing++; console.warn('[Share] no blob for', id); continue; }
         const url = await LB_SYNC.uploadImage(blob, id);
         urlMap[id] = url;
+        uploaded++;
       }
+      if (missing > 0) console.warn('[Share] ' + missing + ' images had no local blob and were skipped');
 
       setProgress('Publishing share…');
 

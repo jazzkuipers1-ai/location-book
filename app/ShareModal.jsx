@@ -34,21 +34,18 @@ function ShareModal({ loc, edit, name, scheduleName, onClose, onShareIdSaved }) 
       const imageIds = collectImageIds();
       const urlMap = {};
 
-      console.log('[Share] collecting images from edit.galleries:', JSON.stringify(Object.fromEntries(Object.entries(edit.galleries || {}).map(([k,v]) => [k, (v||[]).length]))));
-      console.log('[Share] total imageIds to upload:', imageIds.length, imageIds);
-      let uploaded = 0, missing = 0;
       for (let i = 0; i < imageIds.length; i++) {
         const id = imageIds[i];
         setProgress('Uploading image ' + (i + 1) + ' of ' + imageIds.length + '…');
         const blob = await LB.db.getBlob(id);
-        if (!blob) { missing++; console.warn('[Share] no blob for', id); continue; }
+        if (!blob) {
+          // No local blob — fall back to already-uploaded Supabase URL
+          urlMap[id] = LB_SYNC.getImageUrl(id);
+          continue;
+        }
         const url = await LB_SYNC.uploadImage(blob, id);
         urlMap[id] = url;
-        uploaded++;
-        console.log('[Share] uploaded', id, '→', url);
       }
-      console.log('[Share] done. uploaded:', uploaded, 'missing blobs:', missing);
-      console.log('[Share] gals summary:', JSON.stringify(Object.fromEntries(Object.entries(gals).map(([k,v]) => [k, v.length]))));
 
       setProgress('Publishing share…');
 
@@ -56,18 +53,16 @@ function ShareModal({ loc, edit, name, scheduleName, onClose, onShareIdSaved }) 
 
       // Build galleries with public URLs — prefer annotated (drawn-on) version over original
       const gals = {};
-      if (edit && edit.galleries) {
-        Object.entries(edit.galleries).forEach(([k, arr]) => {
-          gals[k] = (arr || [])
-            .map(it => ({
-              cap: it.cap || '',
-              note: it.note || '',
-              url: (it.annotatedId && urlMap[it.annotatedId]) || urlMap[it.id] || null,
-              originalUrl: urlMap[it.id] || null,
-            }))
-            .filter(it => it.url);
-        });
-      }
+      Object.entries(edit.galleries || {}).forEach(([k, arr]) => {
+        gals[k] = (arr || [])
+          .map(it => ({
+            cap: it.cap || '',
+            note: it.note || '',
+            url: (it.annotatedId && urlMap[it.annotatedId]) || urlMap[it.id] || null,
+            originalUrl: urlMap[it.id] || null,
+          }))
+          .filter(it => it.url);
+      });
 
       // Build shoot days with overrides applied
       const shootDates = (loc && loc.shootDates || []).map(d => {

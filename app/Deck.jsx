@@ -94,8 +94,12 @@ function OverviewPage({ loc, edit, name, scheduleName }) {
   const visualCount = galCats.reduce((n, c) => n + (gal[c.id] || []).length, 0);
   const sz = name.length > 20 ? 34 : name.length > 14 ? 44 : 58;
   const scenesByDay = (() => {
+    const removedKeys = new Set((edit.removedSceneKeys) || []);
+    const sceneKey = s => s.manual ? ('m|' + s.id) : (s.number + '|' + (s.idx ?? ''));
+    const extraScenes = edit.extraScenes || [];
     const g = {};
-    [...loc.scenes].forEach(s => { const k = s.dayNumber || '—'; (g[k] = g[k] || []).push(s); });
+    loc.scenes.filter(s => !removedKeys.has(sceneKey(s))).forEach(s => { const k = s.dayNumber || '—'; (g[k] = g[k] || []).push(s); });
+    extraScenes.forEach(s => { const k = s.dayNumber || '—'; (g[k] = g[k] || []).push(s); });
     return Object.entries(g).sort((a, b) => (a[0] === '—' ? 999 : +a[0]) - (b[0] === '—' ? 999 : +b[0]));
   })();
 

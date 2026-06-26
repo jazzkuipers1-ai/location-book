@@ -65,13 +65,16 @@ function ShareModal({ loc, edit, name, scheduleName, onClose, onShareIdSaved }) 
       });
 
       // Build shoot days with overrides applied
-      const shootDates = (loc && loc.shootDates || []).map(d => {
-        const ov = (edit && edit.dayOverrides || {})[String(d.dayNumber)] || {};
-        return {
-          dayNumber: ov.dayNumber != null ? ov.dayNumber : d.dayNumber,
-          date: ov.date || d.date || '',
-        };
-      });
+      const removedShootDays = new Set((edit && edit.removedShootDays || []).map(String));
+      const shootDates = (loc && loc.shootDates || [])
+        .filter(d => !removedShootDays.has(String(d.dayNumber)))
+        .map(d => {
+          const ov = (edit && edit.dayOverrides || {})[String(d.dayNumber)] || {};
+          return {
+            dayNumber: ov.dayNumber != null ? ov.dayNumber : d.dayNumber,
+            date: ov.date || d.date || '',
+          };
+        });
       // Also include extra shoot days
       (edit && edit.extraShootDays || []).forEach(d => {
         shootDates.push({ dayNumber: null, date: d.date });

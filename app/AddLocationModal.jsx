@@ -4,15 +4,14 @@
 const ANTHROPIC_KEY_STORE = 'lb_anthropic_key';
 
 function buildManualLocation(name, scenes) {
-  const dayNums = [...new Set(scenes.map(s => s.dayNumber).filter(Boolean))].sort((a, b) => a - b);
   const id = 'manual_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
   return {
     id,
     name: name.trim(),
     regions: [],
     sets: [],
-    dayNums,
-    shootDates: dayNums.map(n => ({ dayNumber: n, date: '', weekday: '' })),
+    dayNums: [],
+    shootDates: [],
     sceneCount: scenes.length,
     scenes: scenes.map((s, i) => ({
       number: s.number || '',

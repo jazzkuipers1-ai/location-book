@@ -118,8 +118,8 @@ function OverviewPage({ loc, edit, name, scheduleName }) {
           </div>
           <div style={{ display: 'flex', gap: 1, background: 'var(--dk-line)', border: '1px solid var(--dk-line)', borderRadius: 10, overflow: 'hidden', flex: '0 0 auto' }}>
             {[
-              ['Scenes', loc.sceneCount, null],
-              ['Shoot', loc.dayNums.length, null],
+              ['Scenes', scenesByDay.reduce((n, [, s]) => n + s.length, 0), null],
+              ['Shoot', (() => { const rem = new Set((edit.removedShootDays || []).map(String)); return (loc.shootDates || []).filter(d => !rem.has(String(d.dayNumber))).length + (edit.extraShootDays || []).length; })(), null],
               ['Prep', edit.prepDays || 0, edit.prepTiming === 'before_shooting' ? 'before shooting' : edit.prepTiming === 'after_wrap' ? 'after wrap' : null],
               ['Wrap', edit.wrapDays || 0, edit.wrapTiming === 'after_wrap' ? 'after wrap' : edit.wrapTiming === 'before_shooting' ? 'before shooting' : null],
             ].map(([k, v, sub]) => (

@@ -568,14 +568,15 @@ function VisualSection({ edit, onPatch, onDraw, onSketch }) {
   );
 }
 
-function AddSceneForm({ onAdd, onCancel }) {
+function AddSceneForm({ onAdd, onCancel, dayNums }) {
   const [num,  setNum]  = useState('');
   const [type, setType] = useState('INT');
   const [tod,  setTod]  = useState('D');
   const [syn,  setSyn]  = useState('');
+  const [day,  setDay]  = useState(dayNums && dayNums.length === 1 ? dayNums[0] : (dayNums && dayNums[0]) || null);
   const submit = () => {
     if (!num.trim()) return;
-    onAdd({ id: 'ms_' + Date.now(), number: num.trim(), type, tod, synopsis: syn.trim(), segments: [], manual: true });
+    onAdd({ id: 'ms_' + Date.now(), number: num.trim(), type, tod, synopsis: syn.trim(), segments: [], manual: true, dayNumber: day || null });
   };
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--line-2)' }}>
@@ -587,6 +588,12 @@ function AddSceneForm({ onAdd, onCancel }) {
       <select className="input" value={tod} onChange={e => setTod(e.target.value)} style={{ width: 60 }}>
         <option value="D">D</option><option value="N">N</option><option value="DN">D/N</option>
       </select>
+      {dayNums && dayNums.length > 1 && (
+        <select className="input" value={day || ''} onChange={e => setDay(e.target.value ? +e.target.value : null)} style={{ width: 80 }}>
+          <option value="">Dag...</option>
+          {dayNums.map(d => <option key={d} value={d}>Dag {d}</option>)}
+        </select>
+      )}
       <input className="input" placeholder="Synopsis" value={syn} onChange={e => setSyn(e.target.value)}
         style={{ flex: 1, minWidth: 120 }} onKeyDown={e => e.key === 'Enter' && submit()} />
       <button className="btn sm primary" onClick={submit}><Icon name="check" size={13} />Add</button>
@@ -597,9 +604,15 @@ function AddSceneForm({ onAdd, onCancel }) {
 
 function ScenesTable({ loc, view, edit, onPatch }) {
   const [adding, setAdding] = useState(false);
+  const [dragId, setDragId] = useState(null);
+  const [dropDay, setDropDay] = useState(null);
 
   const removedKeys = useMemo(() => new Set((edit && edit.removedSceneKeys) || []), [edit]);
   const extraScenes = useMemo(() => (edit && edit.extraScenes) || [], [edit]);
+  const removedShootDays = useMemo(() => new Set((edit && edit.removedShootDays || []).map(String)), [edit]);
+  const dayNums = useMemo(() =>
+    (loc.shootDates || []).filter(d => !removedShootDays.has(String(d.dayNumber))).map(d => d.dayNumber).filter(Boolean),
+    [loc, removedShootDays]);
 
   const sceneKey = s => s.manual ? ('m|' + s.id) : (s.number + '|' + (s.idx ?? ''));
 
@@ -619,15 +632,26 @@ function ScenesTable({ loc, view, edit, onPatch }) {
     setAdding(false);
   };
 
+  const moveSceneToDay = (sceneId, targetDay) => {
+    if (!onPatch) return;
+    onPatch(cur => ({
+      extraScenes: (cur.extraScenes || []).map(s => s.id === sceneId ? { ...s, dayNumber: targetDay } : s)
+    }));
+  };
+
   const SceneRow = ({ s }) => (
-    <div className="scene-row" key={sceneKey(s)} style={{ position: 'relative' }}>
+    <div className="scene-row" key={sceneKey(s)} style={{ position: 'relative' }}
+      draggable={!!s.manual}
+      onDragStart={s.manual ? e => { e.dataTransfer.effectAllowed = 'move'; setDragId(s.id); } : undefined}
+      onDragEnd={s.manual ? () => { setDragId(null); setDropDay(null); } : undefined}>
+      {s.manual && <span style={{ cursor: 'grab', color: 'var(--ink-3)', paddingRight: 4, fontSize: 12 }}>⠿</span>}
       <span className="sn">{s.number}</span>
       <span className="ie"><b>{s.type || 'INT'}</b>/{s.tod || 'D'}</span>
       <span style={{ flex: 1 }}>
         <div className="syn">{s.synopsis || <span className="faint">—</span>}</div>
         {s.segments && s.segments.length > 1 && <div className="setp">{s.segments.slice(1).join(' / ')}</div>}
       </span>
-      <span className="yr">{s.manual ? <span style={{ color: 'var(--ink-3)', fontSize: 11 }}>handmatig</span> : (s.season ? s.season + ' ' : '') + (s.year || '')}</span>
+      <span className="yr">{s.manual ? null : (s.season ? s.season + ' ' : '') + (s.year || '')}</span>
       {onPatch && (
         <button onClick={() => removeScene(s)} title="Remove scene"
           style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-3)', padding: '2px 4px', lineHeight: 1, flexShrink: 0 }}>
@@ -640,7 +664,7 @@ function ScenesTable({ loc, view, edit, onPatch }) {
   const AddBtn = () => (
     <div style={{ paddingTop: 6 }}>
       {adding
-        ? <AddSceneForm onAdd={addScene} onCancel={() => setAdding(false)} />
+        ? <AddSceneForm onAdd={addScene} onCancel={() => setAdding(false)} dayNums={dayNums} />
         : onPatch && <button className="btn sm ghost" onClick={() => setAdding(true)} style={{ width: '100%' }}>
             <Icon name="plus" size={13} />Handmatig scene toevoegen
           </button>
@@ -664,22 +688,27 @@ function ScenesTable({ loc, view, edit, onPatch }) {
     loc.scenes.filter(s => !removedKeys.has(sceneKey(s))).forEach(s => {
       const k = s.dayNumber || '—'; (g[k] = g[k] || []).push(s);
     });
-    if (extraScenes.length) (g['extra'] = g['extra'] || []).push(...extraScenes);
-    return Object.entries(g).sort((a, b) => {
-      if (a[0] === 'extra') return 1; if (b[0] === 'extra') return -1;
-      return (a[0] === '—' ? 999 : +a[0]) - (b[0] === '—' ? 999 : +b[0]);
+    // Merge extra scenes into their dayNumber group (or '—' if none)
+    extraScenes.forEach(s => {
+      const k = s.dayNumber || '—'; (g[k] = g[k] || []).push(s);
     });
+    return Object.entries(g).sort((a, b) =>
+      (a[0] === '—' ? 999 : +a[0]) - (b[0] === '—' ? 999 : +b[0])
+    );
   }, [loc, removedKeys, extraScenes]);
 
   return (
     <div className="scenes">
       {byDay.map(([day, scenes]) => {
-        const d0 = scenes[0];
+        const d0 = scenes.find(s => !s.manual) || scenes[0];
+        const isDrop = dropDay === day && dragId;
         return (
-          <div key={day}>
+          <div key={day}
+            onDragOver={dragId ? e => { e.preventDefault(); setDropDay(day); } : undefined}
+            onDrop={dragId ? e => { e.preventDefault(); moveSceneToDay(dragId, day === '—' ? null : +day); setDragId(null); setDropDay(null); } : undefined}
+            style={isDrop ? { outline: '2px solid var(--accent)', borderRadius: 8 } : {}}>
             <div className="scene-daygroup-h">
-              {day === 'extra' ? <span style={{ color: 'var(--ink-3)', fontSize: 12 }}>Handmatig toegevoegd</span>
-               : day !== '—' ? (() => {
+              {day !== '—' ? (() => {
                 const ov = (edit && edit.dayOverrides && edit.dayOverrides[String(day)]) || {};
                 const displayDay = ov.dayNumber != null ? ov.dayNumber : day;
                 const patchDayOv = patch => { if (!onPatch) return; const o = (edit && edit.dayOverrides) || {}; onPatch({ dayOverrides: { ...o, [String(day)]: { ...(o[String(day)] || {}), ...patch } } }); };
@@ -687,7 +716,7 @@ function ScenesTable({ loc, view, edit, onPatch }) {
                   <span className="dn" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                     Day <EditableDayNumber value={displayDay} onChange={v => patchDayOv({ dayNumber: v })} />
                   </span>
-                  <DateButton date={ov.date ? ov.date : d0.date} onSave={v => patchDayOv({ date: v })} style={{ fontSize: 13 }} />
+                  <DateButton date={ov.date ? ov.date : (d0 && d0.date)} onSave={v => patchDayOv({ date: v })} style={{ fontSize: 13 }} />
                 </>;
               })() : <span>Unscheduled</span>}
               <span style={{ flex: 1 }} />

@@ -7,8 +7,11 @@
   function parseSchedule(text) {
     const lines = text.split(/\r?\n/);
     const DAY_RE = /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(\d{2}\/\d{2}\/\d{4})\s+-\s+(.+?)\s*$/;
+    // Alternative format: "Day #9 - Mon 21/09/2026 - Pages: 7 1/8 Extras: 0"
+    // Also handles extra fields: "Day #7 - 14.00-22.15 - Thu 10/09/2026 - Pages: ..."
+    const DAY_RE2 = /^Day #(\d+)\b.*?\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(\d{1,2}\/\d{1,2}\/\d{4})\s*(?:-\s*(.+?))?\s*$/;
     const REGION_RE = /^(.+?)\s+-\s+(Summer|Winter|Autumn|Spring)\s*$/i;
-    const SCENE_RE = /^(\d+\.\d+[a-z]?)\s+((?:INT|EXT|I\+E)\/[A-Z]{2,4})\s+(.*)$/;
+    const SCENE_RE = /^(\d+\.\d+[a-z]?\d*)\s+((?:INT|EXT|I\+E)\/[A-Z]{2,4})\s+(.*)$/;
     const SYN_START = /(summer|winter|autumn|spring)\s+\d+\s*[-/]\s*\d{4}/i;
     const TAIL_RE = /\s+(\d+(?:\s+\d+\/\d+)?|\d+\/\d+)((?:\s+[\dab]+(?:,\s*[\dab]+)*)?)(\s+\d+)?\s*$/;
 
@@ -37,13 +40,24 @@
       if (/^\s*Extras:/.test(line)) { if (curDay && em) curDay.extras = +em[1]; continue; }
 
       const dm = t.match(DAY_RE);
-      if (dm) {
+      const dm2 = !dm && t.match(DAY_RE2);
+      if (dm || dm2) {
         flush();
-        const rest = dm[3], off = /Day Off/i.test(rest);
-        let num = null; const nm = rest.match(/Day #(\d+)/);
-        if (!off) { shootCounter++; num = nm ? +nm[1] : shootCounter; }
-        const pm = rest.match(/Pages:\s*(.+)$/);
-        curDay = { weekday: dm[1], date: dm[2], dayNumber: num, off, pages: pm ? pm[1].trim() : null, region: curRegion, extras: 0 };
+        let weekday, date, rest, num;
+        if (dm) {
+          weekday = dm[1]; date = dm[2]; rest = dm[3];
+          const off = /Day Off/i.test(rest);
+          const nm = rest.match(/Day #(\d+)/);
+          if (!off) { shootCounter++; num = nm ? +nm[1] : shootCounter; }
+          const pm = rest.match(/Pages:\s*([\d\s/]+?)(?:\s*Extras:.*)?$/);
+          curDay = { weekday, date, dayNumber: num, off, pages: pm ? pm[1].trim() : null, region: curRegion, extras: 0 };
+        } else {
+          num = +dm2[1]; weekday = dm2[2]; date = dm2[3]; rest = dm2[4] || '';
+          shootCounter++;
+          const pm = rest.match(/Pages:\s*([\d\s/]+?)(?:\s*Extras:.*)?$/);
+          const em = rest.match(/Extras:\s*(\d+)/);
+          curDay = { weekday, date, dayNumber: num, off: false, pages: pm ? pm[1].trim() : null, region: curRegion, extras: em ? +em[1] : 0 };
+        }
         days.push(curDay);
         continue;
       }

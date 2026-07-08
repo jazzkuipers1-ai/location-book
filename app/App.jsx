@@ -44,7 +44,17 @@ async function parsePdfText(file) {
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    text += content.items.map(it => it.str).join(' ') + '\n';
+    // Group items by y-position to reconstruct lines
+    const byY = {};
+    for (const item of content.items) {
+      if (!item.str) continue;
+      const y = Math.round(item.transform[5]);
+      (byY[y] = byY[y] || []).push(item);
+    }
+    const lines = Object.entries(byY)
+      .sort((a, b) => +b[0] - +a[0]) // PDF y-axis is bottom-up
+      .map(([, items]) => items.sort((a, b) => a.transform[4] - b.transform[4]).map(it => it.str).join(''));
+    text += lines.join('\n') + '\n';
   }
   return text;
 }

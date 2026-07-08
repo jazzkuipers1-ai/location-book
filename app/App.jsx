@@ -77,7 +77,7 @@ function ImportModal({ onClose, onApply, current, title }) {
     try {
       const text = await parsePdfText(file);
       const m = buildFromText(text);
-      if (!m.locations.length) throw new Error('No scenes found. First 300 chars: ' + text.slice(0, 300).replace(/\n/g, '↵'));
+      if (!m.locations.length) throw new Error('No scenes found — is this a Fuzzlecheck schedule export?');
       setModel(m); setStage('done');
     } catch (e) { setErr(e.message || String(e)); setStage('error'); }
   }

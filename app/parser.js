@@ -83,9 +83,12 @@
         if (tm) { pageLength = tm[1].trim(); cast = (tm[2] || '').trim() || null; extras = tm[3] ? +tm[3].trim() : null; setPath = head.slice(0, tm.index).trim(); }
         setPath = setPath.replace(/\/\s*$/, '').trim();
         const segs = setPath.split(/\/+/).map(s => s.trim()).filter(Boolean);
-        const location = segs[0] || setPath || '(unknown)';
+        // When path starts with a city prefix (Le/La/Les/L'), use segs[1] as the location
+        const isCityPrefix = segs.length >= 2 && /^L[ae][s']?\s+/i.test(segs[0]);
+        const locSegs = isCityPrefix ? segs.slice(1) : segs;
+        const location = locSegs[0] || setPath || '(unknown)';
         pending = {
-          number, type, tod, country, setPath, segments: segs, location, pageLength, cast, extras,
+          number, type, tod, country, setPath, segments: locSegs, location, pageLength, cast, extras,
           dayNumber: curDay ? curDay.dayNumber : null, date: curDay ? curDay.date : null, region: curRegion,
           season: null, storyNum: null, year: null, synopsis: null
         };

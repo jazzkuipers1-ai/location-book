@@ -57,6 +57,7 @@
       location_count: meta.locationCount,
       scene_count: meta.sceneCount,
       regions: meta.regions,
+      user_id: meta.userId || null,
     });
     return !error;
   }
@@ -203,5 +204,26 @@
     window.dispatchEvent(new CustomEvent('lb_reconnect'));
   });
 
-  window.LB_SYNC = { CLIENT_ID, loadState, saveState, subscribe, loadProjects, createProject, updateProject, deleteProject, getProjectByCode, uploadImage, getImageUrl, queueUpload, startQueue, flushUploadQueue, publishShare, loadShare, getShareUrl, setProjectPassword, removeProjectPassword, getProjectPassword };
+  /* ---- auth ---------------------------------------------------------------- */
+  async function signUp(email, password) {
+    return await sb.auth.signUp({ email, password });
+  }
+
+  async function signIn(email, password) {
+    return await sb.auth.signInWithPassword({ email, password });
+  }
+
+  async function signOut() {
+    return await sb.auth.signOut();
+  }
+
+  async function getSession() {
+    return await sb.auth.getSession();
+  }
+
+  function onAuthChange(callback) {
+    return sb.auth.onAuthStateChange(callback);
+  }
+
+  window.LB_SYNC = { CLIENT_ID, loadState, saveState, subscribe, loadProjects, createProject, updateProject, deleteProject, getProjectByCode, uploadImage, getImageUrl, queueUpload, startQueue, flushUploadQueue, publishShare, loadShare, getShareUrl, setProjectPassword, removeProjectPassword, getProjectPassword, signUp, signIn, signOut, getSession, onAuthChange };
 })();

@@ -818,7 +818,7 @@ function panelEl(t, setTweak) {
   );
 }
 
-function HomeRouter() {
+function HomeRouter({ user }) {
   const [projects, setProjects] = useState(() => {
     const list = loadProjectList();
     // Legacy migration: if no projects but there's an old flat state, create a project for it
@@ -881,6 +881,7 @@ function HomeRouter() {
         locationCount: m.locations.length,
         sceneCount: m.sceneTotal,
         regions: [...new Set(m.locations.flatMap(l => l.regions))],
+        userId: user ? user.id : null,
         createdAt: Date.now(), updatedAt: Date.now(),
       };
       LB_SYNC.createProject(meta).catch(() => {});
@@ -976,6 +977,8 @@ function HomeRouter() {
       onNew={handleNewProject}
       onDelete={handleDeleteProject}
       onRename={(id, name) => { handleProjectUpdated(id, { name }); }}
+      user={user}
+      onSignOut={() => LB_SYNC.signOut()}
     />
     {pendingUnlock && <UnlockModal
       projectName={pendingUnlock.name}
@@ -985,10 +988,39 @@ function HomeRouter() {
   </>);
 }
 
+function AuthWrapper({ children }) {
+  const [user, setUser] = useState(null);
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    LB_SYNC.getSession().then(({ data }) => {
+      setUser(data?.session?.user || null);
+      setChecked(true);
+    });
+    const { data: { subscription } } = LB_SYNC.onAuthChange((_event, session) => {
+      setUser(session?.user || null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (!checked) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--paper)' }}>
+      <div className="mono" style={{ fontSize: 12, color: 'var(--ink-3)' }}>Loading…</div>
+    </div>
+  );
+
+  if (!user) return <AuthScreen onAuth={setUser} />;
+  return children(user);
+}
+
 function App() {
   const shareId = new URLSearchParams(window.location.search).get('share');
   if (shareId) return <ShareView shareId={shareId} />;
-  return <HomeRouter />;
+  return (
+    <AuthWrapper>
+      {user => <HomeRouter user={user} />}
+    </AuthWrapper>
+  );
 }
 
 window.LB_App = App;

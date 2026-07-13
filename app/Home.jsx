@@ -75,7 +75,7 @@ function ProjectCard({ project, onOpen, onDelete, onRename }) {
   );
 }
 
-function LB_Home({ projects, importing, importErr, onOpen, onNew, onDelete, onRename }) {
+function LB_Home({ projects, importing, importErr, onOpen, onNew, onDelete, onRename, user, onSignOut }) {
   const [drag, setDrag] = useState(false);
   const inp = useRef(null);
 
@@ -83,10 +83,16 @@ function LB_Home({ projects, importing, importErr, onOpen, onNew, onDelete, onRe
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--paper)', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ borderBottom: '1px solid var(--line)', padding: '0 48px', height: 54, display: 'flex', alignItems: 'center', gap: 14, background: 'var(--card)' }}>
+      <div style={{ borderBottom: '1px solid var(--line)', padding: '0 48px', height: 54, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--card)' }}>
         <span className="serif" style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-.01em', display: 'flex', alignItems: 'center', gap: 7 }}>
           <span style={{ color: 'var(--accent)', fontSize: 10 }}>●</span> Location Book
         </span>
+        {user && onSignOut && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span className="mono" style={{ fontSize: 10.5, color: 'var(--ink-3)' }}>{user.email}</span>
+            <button className="btn sm" onClick={onSignOut}>Sign out</button>
+          </div>
+        )}
       </div>
 
       <div style={{ flex: 1, padding: '52px 48px', maxWidth: 1100, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>

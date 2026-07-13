@@ -77,7 +77,7 @@ function ImportModal({ onClose, onApply, current, title }) {
     try {
       const text = await parsePdfText(file);
       const m = buildFromText(text);
-      if (!m.locations.length) throw new Error('No scenes found — is this a Fuzzlecheck schedule export?');
+      if (!m.locations.length) throw new Error('No scenes found — is this a supported shooting schedule PDF?');
       setModel(m); setStage('done');
     } catch (e) { setErr(e.message || String(e)); setStage('error'); }
   }
@@ -88,7 +88,7 @@ function ImportModal({ onClose, onApply, current, title }) {
       <div className="modal">
         <div className="modal-h" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <div className="kicker">Fuzzlecheck → Locations</div>
+            <div className="kicker">Schedule → Locations</div>
             <h3>{title || 'Import shooting schedule'}</h3>
           </div>
           <IconBtn name="x" onClick={onClose} title="Close" />
@@ -740,7 +740,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
           </>
         ) : mobileTab !== 'list' ? (
           <div className="empty"><div className="serif">No locations</div>
-            <button className="btn primary" onClick={() => setShowImport(true)} style={{ marginTop: 12 }}>Import a Fuzzlecheck PDF</button></div>
+            <button className="btn primary" onClick={() => setShowImport(true)} style={{ marginTop: 12 }}>Import a shooting schedule PDF</button></div>
         ) : null}
       </main>
 
@@ -871,7 +871,7 @@ function HomeRouter({ user }) {
     try {
       const text = await parsePdfText(file);
       const m = buildFromText(text);
-      if (!m.locations.length) throw new Error('No scenes found — is this a Fuzzlecheck schedule export?');
+      if (!m.locations.length) throw new Error('No scenes found — is this a supported shooting schedule PDF?');
       const id = 'proj_' + Date.now().toString(36);
       const initialState = { model: m, edits: {}, removed: [], activeId: m.locations[0] ? m.locations[0].id : null };
       saveProjectState(id, initialState);

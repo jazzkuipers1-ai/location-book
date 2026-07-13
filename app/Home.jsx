@@ -100,7 +100,7 @@ function LB_Home({ projects, importing, importErr, onOpen, onNew, onDelete, onRe
           <div className="mono" style={{ fontSize: 10.5, letterSpacing: '.16em', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 10 }}>Art department · Location planning</div>
           <h1 className="serif" style={{ fontSize: 42, fontWeight: 600, lineHeight: 1.05, letterSpacing: '-.025em', margin: 0, marginBottom: 14 }}>Projects</h1>
           <p style={{ fontSize: 14, color: 'var(--ink-2)', margin: 0 }}>
-            Import a Fuzzlecheck shooting schedule to create a new project.
+            Import a shooting schedule PDF to create a new project.
           </p>
         </div>
 
@@ -116,7 +116,7 @@ function LB_Home({ projects, importing, importErr, onOpen, onNew, onDelete, onRe
               <Icon name="upload" size={20} style={{ color: '#fff' }} />
             </div>
             <div style={{ fontWeight: 600, fontSize: 15 }}>
-              {importing ? 'Reading schedule…' : 'Drop a Fuzzlecheck PDF to create a new project'}
+              {importing ? 'Reading schedule…' : 'Drop a shooting schedule PDF to create a new project'}
             </div>
             <div className="mono" style={{ fontSize: 11, color: 'var(--ink-3)' }}>
               {importing ? 'extracting scenes & grouping locations' : 'or click to browse'}
@@ -147,7 +147,7 @@ function LB_Home({ projects, importing, importErr, onOpen, onNew, onDelete, onRe
         {projects.length === 0 && !importing && (
           <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--ink-3)' }}>
             <div className="serif" style={{ fontSize: 18, marginBottom: 8 }}>No projects yet</div>
-            <div style={{ fontSize: 13 }}>Import a Fuzzlecheck PDF above to get started.</div>
+            <div style={{ fontSize: 13 }}>Import a shooting schedule PDF above to get started.</div>
           </div>
         )}
       </div>

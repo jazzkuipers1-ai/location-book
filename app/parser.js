@@ -11,7 +11,8 @@
     // Also handles extra fields: "Day #7 - 14.00-22.15 - Thu 10/09/2026 - Pages: ..."
     const DAY_RE2 = /^Day #(\d+)\b.*?\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(\d{1,2}\/\d{1,2}\/\d{4})\s*(?:-\s*(.+?))?\s*$/;
     const REGION_RE = /^(.+?)\s+-\s+(Summer|Winter|Autumn|Spring)\s*$/i;
-    const SCENE_RE = /^(\d+\.\d+[a-z]?\d*)\s+((?:INT|EXT|I\+E)\/[A-Z]{2,4})\s+(.*)$/;
+    const SCENE_RE = /^(\d+[-\.]\d+[a-z]?\d*)\s+((?:INT|EXT|I\+E)\/[A-Z]{2,6})\s+(.*)$/;
+    const CAST_STRIP = /\s+\d{1,3}\s+-\s+\w.*$/; // strip " 1 - Nordin, ..." cast suffix
     const SYN_START = /(summer|winter|autumn|spring)\s+\d+\s*[-/]\s*\d{4}/i;
     const TAIL_RE = /\s+(\d+(?:\s+\d+\/\d+)?|\d+\/\d+)((?:\s+[\dab]+(?:,\s*[\dab]+)*)?)(\s+\d+)?\s*$/;
 
@@ -36,6 +37,14 @@
       if (/page #/.test(t)) continue;
       if (/^--\s*\d+\s+of\s+\d+\s*--$/.test(t)) continue;
       if (/^Shooting Schedule/i.test(t)) continue;
+      if (/^End Day #/i.test(t)) { flush(); continue; }
+      if (/^Script Day:/i.test(t)) {
+        if (pending && !pending.synopsis) {
+          const syn = t.replace(/^Script Day:\s*\S+\s*/, '').replace(/\s*Vehicles:.*$/i, '').trim();
+          if (syn) pending.synopsis = syn;
+        }
+        continue;
+      }
       const em = t.match(/Extras:\s*(\d+)/);
       if (/^\s*Extras:/.test(line)) { if (curDay && em) curDay.extras = +em[1]; continue; }
 
@@ -70,6 +79,8 @@
         flush();
         const number = sm[1], tt = sm[2]; let rest = sm[3];
         const [type, tod] = tt.split('/');
+        // Strip cast suffix: " 1 - Nordin, 31 - Wesley"
+        rest = rest.replace(CAST_STRIP, '');
         let country = null; const cm = rest.match(/^([A-Z])\/\s+/); if (cm) { country = cm[1]; rest = rest.slice(cm[0].length); }
         let head = rest, synObj = null;
         const gm = rest.match(SYN_START);

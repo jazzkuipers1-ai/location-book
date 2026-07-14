@@ -605,6 +605,19 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
   };
   const openCombine = id => setCombineBase(id);
 
+  const duplicateLoc = id => {
+    setState(s => {
+      const orig = s.model.locations.find(l => l.id === id);
+      if (!orig) return s;
+      const newId = id + '_copy_' + Date.now().toString(36);
+      const copy = { ...orig, id: newId, name: orig.name + ' (copy)' };
+      const origEdit = s.edits[id] || {};
+      const newEdit = JSON.parse(JSON.stringify(origEdit));
+      const locations = [...s.model.locations, copy].sort((a, b) => b.sceneCount - a.sceneCount);
+      return { ...s, model: { ...s.model, locations }, edits: { ...s.edits, [newId]: newEdit } };
+    });
+  };
+
   const applyImport = useCallback(m => {
     setShowImport(false);
     setState(s => ({ ...s, model: m, scheduleName: m.scheduleName, removed: [], activeId: m.locations[0] ? m.locations[0].id : null }));
@@ -701,7 +714,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
           <Board model={model} edits={state.edits} removed={removed} onOpen={openLoc}
             onPatchLoc={patchById} onRename={renameLoc} onRemove={removeLoc} onCombine={openCombine}
             onCombineDrop={(src, tgt) => mergeLocations(tgt, [src])} onExport={() => setShowExport(true)}
-            onAddLocation={() => setShowAddLocation(true)} />
+            onAddLocation={() => setShowAddLocation(true)} onDuplicate={duplicateLoc} />
         ) : (activeLoc && mobileTab !== 'list') ? (
           <>
             <div className="topbar">

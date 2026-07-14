@@ -1,6 +1,6 @@
 /* Visual overview — board of location cards with cover photos. */
 
-function LocCard({ loc, edit, name, onOpen, onPatch, onRename, onRemove, onCombine, onCombineDrop }) {
+function LocCard({ loc, edit, name, onOpen, onPatch, onRename, onRemove, onCombine, onCombineDrop, onDuplicate }) {
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(name);
   const [cardOver, setCardOver] = useState(false);
@@ -55,6 +55,7 @@ function LocCard({ loc, edit, name, onOpen, onPatch, onRename, onRemove, onCombi
             { label: 'Open', icon: 'arrow', onClick: onOpen },
             { label: 'Rename', icon: 'edit', onClick: startRename },
             { label: edit.cover ? 'Replace cover' : 'Add cover', icon: 'image', onClick: () => fileInp.current.click() },
+            { label: 'Duplicate', icon: 'copy', onClick: onDuplicate },
             { label: 'Combine with…', icon: 'layers', onClick: onCombine },
             { sep: true },
             { label: 'Remove location', icon: 'trash', danger: true, onClick: onRemove },
@@ -76,7 +77,7 @@ function dominantSeason(scenes) {
   return Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0] || null;
 }
 
-function SeasonGroup({ season, locs, edits, onOpen, onPatchLoc, onRename, onRemove, onCombine, onCombineDrop, onDropSeason }) {
+function SeasonGroup({ season, locs, edits, onOpen, onPatchLoc, onRename, onRemove, onCombine, onCombineDrop, onDropSeason, onDuplicate }) {
   const [over, setOver] = useState(false);
   const hasLocId = e => { const t = e.dataTransfer.types; return t && (t.includes ? t.includes('text/loc-id') : Array.prototype.indexOf.call(t, 'text/loc-id') >= 0); };
   return (
@@ -99,7 +100,7 @@ function SeasonGroup({ season, locs, edits, onOpen, onPatchLoc, onRename, onRemo
         {locs.map(l => (
           <LocCard key={l.id} loc={l} edit={edits[l.id] || {}} name={locName(l, edits)}
             onOpen={() => onOpen(l.id)} onPatch={p => onPatchLoc(l.id, p)}
-            onRename={n => onRename(l.id, n)} onRemove={() => onRemove(l.id)} onCombine={() => onCombine(l.id)} onCombineDrop={onCombineDrop} />
+            onRename={n => onRename(l.id, n)} onRemove={() => onRemove(l.id)} onCombine={() => onCombine(l.id)} onCombineDrop={onCombineDrop} onDuplicate={() => onDuplicate(l.id)} />
         ))}
         {locs.length === 0 && (
           <div style={{ gridColumn: '1/-1', padding: '20px 0', color: 'var(--ink-3)', fontFamily: 'var(--mono)', fontSize: 11 }}>
@@ -111,7 +112,7 @@ function SeasonGroup({ season, locs, edits, onOpen, onPatchLoc, onRename, onRemo
   );
 }
 
-function Board({ model, edits, removed, onOpen, onPatchLoc, onRename, onRemove, onCombine, onCombineDrop, onExport, onAddLocation }) {
+function Board({ model, edits, removed, onOpen, onPatchLoc, onRename, onRemove, onCombine, onCombineDrop, onExport, onAddLocation, onDuplicate }) {
   const visible = model.locations.filter(l => !removed.includes(l.id));
 
   // Only use season grouping when the schedule actually has seasonal data
@@ -164,7 +165,7 @@ function Board({ model, edits, removed, onOpen, onPatchLoc, onRename, onRemove, 
             <SeasonGroup key={season} season={season} locs={seasonGroups[season] || []}
               edits={edits} onOpen={onOpen} onPatchLoc={onPatchLoc} onRename={onRename}
               onRemove={onRemove} onCombine={onCombine} onCombineDrop={onCombineDrop}
-              onDropSeason={handleDropSeason} />
+              onDropSeason={handleDropSeason} onDuplicate={onDuplicate} />
           ))
         : regionKeys.map(region => (
             <div key={region}>
@@ -177,7 +178,7 @@ function Board({ model, edits, removed, onOpen, onPatchLoc, onRename, onRemove, 
                 {regionGroups[region].map(l => (
                   <LocCard key={l.id} loc={l} edit={edits[l.id] || {}} name={locName(l, edits)}
                     onOpen={() => onOpen(l.id)} onPatch={p => onPatchLoc(l.id, p)}
-                    onRename={n => onRename(l.id, n)} onRemove={() => onRemove(l.id)} onCombine={() => onCombine(l.id)} onCombineDrop={onCombineDrop} />
+                    onRename={n => onRename(l.id, n)} onRemove={() => onRemove(l.id)} onCombine={() => onCombine(l.id)} onCombineDrop={onCombineDrop} onDuplicate={() => onDuplicate(l.id)} />
                 ))}
               </div>
             </div>

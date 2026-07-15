@@ -730,15 +730,6 @@ function ScenesTable({ loc, view, edit, onPatch }) {
             }
             {s.segments && s.segments.length > 1 && <div className="setp">{s.segments.slice(1).join(' / ')}</div>}
           </span>
-          {onPatch && allDayStrs && allDayStrs.length > 1 && (
-            <select value={dayStr || '—'}
-              onChange={e => { const nd = e.target.value; if (nd !== (dayStr || '—')) commitDrop(s, nd, null); }}
-              onClick={e => e.stopPropagation()}
-              style={{ fontSize: 11, fontFamily: 'var(--mono)', background: 'none', border: '1px solid var(--line-2)', borderRadius: 4, padding: '1px 4px', color: 'var(--ink-3)', cursor: 'pointer', flexShrink: 0 }}>
-              <option value="—">Unscheduled</option>
-              {dayNums.map(d => <option key={d} value={String(d)}>D{d}</option>)}
-            </select>
-          )}
           <span className="yr">{!s.manual ? (s.season ? s.season + ' ' : '') + (s.year || '') : null}</span>
           {onPatch && (
             <button onClick={e => { e.stopPropagation(); removeScene(s); }} title="Remove scene"

@@ -604,17 +604,49 @@ function AddSceneForm({ onAdd, onCancel, dayNums }) {
 
 function ScenesTable({ loc, view, edit, onPatch }) {
   const [adding, setAdding] = useState(false);
-  const [dragId, setDragId] = useState(null);
+  const [editingKey, setEditingKey] = useState(null);
+  const [editDraft, setEditDraft] = useState('');
+  const [dragKey, setDragKey] = useState(null);
+  const [draggedScene, setDraggedScene] = useState(null);
   const [dropDay, setDropDay] = useState(null);
+  const [dropBefore, setDropBefore] = useState(null);
 
   const removedKeys = useMemo(() => new Set((edit && edit.removedSceneKeys) || []), [edit]);
   const extraScenes = useMemo(() => (edit && edit.extraScenes) || [], [edit]);
   const removedShootDays = useMemo(() => new Set((edit && edit.removedShootDays || []).map(String)), [edit]);
+  const sceneOverrides = useMemo(() => (edit && edit.sceneOverrides) || {}, [edit]);
+  const sceneOrders = useMemo(() => (edit && edit.sceneOrders) || {}, [edit]);
   const dayNums = useMemo(() =>
     (loc.shootDates || []).filter(d => !removedShootDays.has(String(d.dayNumber))).map(d => d.dayNumber).filter(Boolean),
     [loc, removedShootDays]);
 
   const sceneKey = s => s.manual ? ('m|' + s.id) : (s.number + '|' + (s.idx ?? ''));
+
+  const effectiveDay = s => {
+    if (!s.manual) {
+      const ov = sceneOverrides[sceneKey(s)];
+      if (ov && ov.dayNumber !== undefined) return ov.dayNumber;
+    }
+    return s.dayNumber;
+  };
+
+  const effectiveSyn = s => {
+    if (!s.manual) {
+      const ov = sceneOverrides[sceneKey(s)];
+      if (ov && ov.synopsis !== undefined) return ov.synopsis;
+    }
+    return s.synopsis;
+  };
+
+  const patchScene = (s, patch) => {
+    if (!onPatch) return;
+    if (s.manual) {
+      onPatch(cur => ({ extraScenes: (cur.extraScenes || []).map(x => x.id === s.id ? { ...x, ...patch } : x) }));
+    } else {
+      const k = sceneKey(s);
+      onPatch(cur => ({ sceneOverrides: { ...(cur.sceneOverrides || {}), [k]: { ...((cur.sceneOverrides || {})[k] || {}), ...patch } } }));
+    }
+  };
 
   const removeScene = s => {
     if (!onPatch) return;
@@ -632,36 +664,94 @@ function ScenesTable({ loc, view, edit, onPatch }) {
     setAdding(false);
   };
 
-  const moveSceneToDay = (sceneId, targetDay) => {
-    if (!onPatch) return;
-    onPatch(cur => ({
-      extraScenes: (cur.extraScenes || []).map(s => s.id === sceneId ? { ...s, dayNumber: targetDay } : s)
-    }));
+  // Move scene to targetDayStr (e.g. '5' or '—'), optionally inserting before beforeKey
+  const commitDrop = (s, targetDayStr, beforeKey) => {
+    if (!onPatch || !s) return;
+    const key = sceneKey(s);
+    const targetDay = targetDayStr === '—' ? null : (targetDayStr ? +targetDayStr : null);
+    const curDayStr = String(effectiveDay(s) || '—');
+
+    if (curDayStr !== targetDayStr) patchScene(s, { dayNumber: targetDay });
+
+    onPatch(cur => {
+      const orders = { ...(cur.sceneOrders || {}) };
+      if (orders[curDayStr]) orders[curDayStr] = orders[curDayStr].filter(k => k !== key);
+      const target = (orders[targetDayStr] || []).filter(k => k !== key);
+      const idx = beforeKey ? target.indexOf(beforeKey) : target.length;
+      target.splice(idx < 0 ? target.length : idx, 0, key);
+      orders[targetDayStr] = target;
+      return { sceneOrders: orders };
+    });
   };
 
-  const SceneRow = ({ s }) => (
-    <div className="scene-row" key={sceneKey(s)} style={{ position: 'relative' }}
-      draggable={!!s.manual}
-      onDragStart={s.manual ? e => { e.dataTransfer.effectAllowed = 'move'; setDragId(s.id); } : undefined}
-      onDragEnd={s.manual ? () => { setDragId(null); setDropDay(null); } : undefined}>
-      {s.manual && <span style={{ cursor: 'grab', color: 'var(--ink-3)', paddingRight: 4, fontSize: 12 }}>⠿</span>}
-      <span className="sn">{s.number}</span>
-      <span className="ie"><b>{s.type || 'INT'}</b>/{s.tod || 'D'}</span>
-      <span style={{ flex: 1 }}>
-        <div className="syn">{s.synopsis || <span className="faint">—</span>}</div>
-        {s.segments && s.segments.length > 1 && <div className="setp">{s.segments.slice(1).join(' / ')}</div>}
-      </span>
-      <span className="yr">{s.manual ? null : (s.season ? s.season + ' ' : '') + (s.year || '')}</span>
-      {onPatch && (
-        <button onClick={() => removeScene(s)} title="Remove scene"
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-3)', padding: '2px 4px', lineHeight: 1, flexShrink: 0 }}>
-          <Icon name="x" size={13} />
-        </button>
-      )}
-    </div>
-  );
+  const sortDay = (scenes, dayStr) => {
+    const order = sceneOrders[dayStr];
+    if (!order || !order.length) return scenes;
+    return [...scenes].sort((a, b) => {
+      const ai = order.indexOf(sceneKey(a)), bi = order.indexOf(sceneKey(b));
+      if (ai === -1 && bi === -1) return 0;
+      if (ai === -1) return 1; if (bi === -1) return -1;
+      return ai - bi;
+    });
+  };
 
-  const AddBtn = () => (
+  const SceneRow = ({ s, dayStr, allDayStrs }) => {
+    const key = sceneKey(s);
+    const isEditing = editingKey === key;
+    const syn = effectiveSyn(s);
+    const isDropTarget = dropBefore === key && dragKey && dragKey !== key;
+
+    const startEdit = () => { setEditingKey(key); setEditDraft(syn || ''); };
+    const commitEdit = () => { patchScene(s, { synopsis: editDraft }); setEditingKey(null); };
+
+    return (
+      <>
+        {isDropTarget && <div style={{ height: 2, background: 'var(--accent)', borderRadius: 1, margin: '1px 0' }} />}
+        <div className="scene-row" style={{ position: 'relative', opacity: dragKey === key ? 0.4 : 1 }}
+          draggable
+          onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; setDragKey(key); setDraggedScene(s); }}
+          onDragEnd={() => { setDragKey(null); setDraggedScene(null); setDropDay(null); setDropBefore(null); }}
+          onDragOver={e => { e.preventDefault(); e.stopPropagation(); setDropDay(dayStr); setDropBefore(key); }}
+          onDrop={e => { e.preventDefault(); e.stopPropagation(); if (dragKey && dragKey !== key && draggedScene) commitDrop(draggedScene, dayStr, key); setDragKey(null); setDraggedScene(null); setDropDay(null); setDropBefore(null); }}>
+          <span style={{ cursor: 'grab', color: 'var(--ink-3)', paddingRight: 4, fontSize: 12, flexShrink: 0 }}>⠿</span>
+          <span className="sn">{s.number}</span>
+          <span className="ie"><b>{s.type || 'INT'}</b>/{s.tod || 'D'}</span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            {isEditing
+              ? <input autoFocus className="input" value={editDraft} onChange={e => setEditDraft(e.target.value)}
+                  onBlur={commitEdit}
+                  onKeyDown={e => { if (e.key === 'Enter') commitEdit(); if (e.key === 'Escape') setEditingKey(null); }}
+                  style={{ width: '100%', fontSize: 13, padding: '1px 4px' }} />
+              : <div className="syn" onClick={onPatch ? startEdit : undefined}
+                  title={onPatch ? 'Klik om te bewerken' : undefined}
+                  style={{ cursor: onPatch ? 'text' : 'default' }}>
+                  {syn || <span className="faint">—</span>}
+                </div>
+            }
+            {s.segments && s.segments.length > 1 && <div className="setp">{s.segments.slice(1).join(' / ')}</div>}
+          </span>
+          {onPatch && allDayStrs && allDayStrs.length > 1 && (
+            <select value={dayStr || '—'}
+              onChange={e => { const nd = e.target.value; if (nd !== (dayStr || '—')) commitDrop(s, nd, null); }}
+              onClick={e => e.stopPropagation()}
+              style={{ fontSize: 11, fontFamily: 'var(--mono)', background: 'none', border: '1px solid var(--line-2)', borderRadius: 4, padding: '1px 4px', color: 'var(--ink-3)', cursor: 'pointer', flexShrink: 0 }}>
+              <option value="—">Unscheduled</option>
+              {dayNums.map(d => <option key={d} value={String(d)}>D{d}</option>)}
+            </select>
+          )}
+          <span className="yr">{!s.manual ? (s.season ? s.season + ' ' : '') + (s.year || '') : null}</span>
+          {onPatch && (
+            <button onClick={e => { e.stopPropagation(); removeScene(s); }} title="Remove scene"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-3)', padding: '2px 4px', lineHeight: 1, flexShrink: 0 }}>
+              <Icon name="x" size={13} />
+            </button>
+          )}
+        </div>
+      </>
+    );
+  };
+
+  const addBtn = (
     <div style={{ paddingTop: 6 }}>
       {adding
         ? <AddSceneForm onAdd={addScene} onCancel={() => setAdding(false)} dayNums={dayNums} />
@@ -677,8 +767,8 @@ function ScenesTable({ loc, view, edit, onPatch }) {
       .sort((a, b) => parseFloat(a.number) - parseFloat(b.number));
     return (
       <div className="scenes">
-        {scenes.map(s => <SceneRow key={sceneKey(s)} s={s} />)}
-        <AddBtn />
+        {scenes.map(s => <SceneRow key={sceneKey(s)} s={s} dayStr={null} allDayStrs={null} />)}
+        {addBtn}
       </div>
     );
   }
@@ -686,32 +776,39 @@ function ScenesTable({ loc, view, edit, onPatch }) {
   const byDay = useMemo(() => {
     const g = {};
     loc.scenes.filter(s => !removedKeys.has(sceneKey(s))).forEach(s => {
-      const k = s.dayNumber || '—'; (g[k] = g[k] || []).push(s);
+      const k = String(effectiveDay(s) || '—'); (g[k] = g[k] || []).push(s);
     });
-    // Merge extra scenes into their dayNumber group (or '—' if none)
     extraScenes.forEach(s => {
-      const k = s.dayNumber || '—'; (g[k] = g[k] || []).push(s);
+      const k = String(effectiveDay(s) || '—'); (g[k] = g[k] || []).push(s);
     });
     return Object.entries(g).sort((a, b) =>
       (a[0] === '—' ? 999 : +a[0]) - (b[0] === '—' ? 999 : +b[0])
     );
-  }, [loc, removedKeys, extraScenes]);
+  }, [loc, removedKeys, extraScenes, sceneOverrides]);
+
+  const allDayStrs = byDay.map(([d]) => d);
 
   return (
     <div className="scenes">
       {byDay.map(([day, scenes]) => {
+        const sortedScenes = sortDay(scenes, day);
         const d0 = scenes.find(s => !s.manual) || scenes[0];
-        const isDrop = dropDay === day && dragId;
+        const isDayDrop = dropDay === day && dragKey && !dropBefore;
         return (
           <div key={day}
-            onDragOver={dragId ? e => { e.preventDefault(); setDropDay(day); } : undefined}
-            onDrop={dragId ? e => { e.preventDefault(); moveSceneToDay(dragId, day === '—' ? null : +day); setDragId(null); setDropDay(null); } : undefined}
-            style={isDrop ? { outline: '2px solid var(--accent)', borderRadius: 8 } : {}}>
-            <div className="scene-daygroup-h">
+            onDragOver={dragKey ? e => { e.preventDefault(); } : undefined}
+            onDrop={dragKey ? e => {
+              e.preventDefault();
+              if (!dropBefore && draggedScene) commitDrop(draggedScene, day, null);
+              setDragKey(null); setDraggedScene(null); setDropDay(null); setDropBefore(null);
+            } : undefined}
+            style={isDayDrop ? { outline: '2px solid var(--accent)', borderRadius: 8 } : {}}>
+            <div className="scene-daygroup-h"
+              onDragOver={dragKey ? e => { e.preventDefault(); e.stopPropagation(); setDropDay(day); setDropBefore(null); } : undefined}>
               {day !== '—' ? (() => {
-                const ov = (edit && edit.dayOverrides && edit.dayOverrides[String(day)]) || {};
+                const ov = (edit && edit.dayOverrides && edit.dayOverrides[day]) || {};
                 const displayDay = ov.dayNumber != null ? ov.dayNumber : day;
-                const patchDayOv = patch => { if (!onPatch) return; const o = (edit && edit.dayOverrides) || {}; onPatch({ dayOverrides: { ...o, [String(day)]: { ...(o[String(day)] || {}), ...patch } } }); };
+                const patchDayOv = patch => { if (!onPatch) return; const o = (edit && edit.dayOverrides) || {}; onPatch({ dayOverrides: { ...o, [day]: { ...(o[day] || {}), ...patch } } }); };
                 return <>
                   <span className="dn" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                     Day <EditableDayNumber value={displayDay} onChange={v => patchDayOv({ dayNumber: v })} />
@@ -722,11 +819,11 @@ function ScenesTable({ loc, view, edit, onPatch }) {
               <span style={{ flex: 1 }} />
               <span>{scenes.length} scene{scenes.length !== 1 ? 's' : ''}</span>
             </div>
-            {scenes.map(s => <SceneRow key={sceneKey(s)} s={s} />)}
+            {sortedScenes.map(s => <SceneRow key={sceneKey(s)} s={s} dayStr={day} allDayStrs={allDayStrs} />)}
           </div>
         );
       })}
-      <AddBtn />
+      {addBtn}
     </div>
   );
 }

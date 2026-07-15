@@ -606,6 +606,8 @@ function ScenesTable({ loc, view, edit, onPatch }) {
   const [adding, setAdding] = useState(false);
   const [editingKey, setEditingKey] = useState(null);
   const [editDraft, setEditDraft] = useState('');
+  const [editingYrKey, setEditingYrKey] = useState(null);
+  const [editYrDraft, setEditYrDraft] = useState('');
   const [dragKey, setDragKey] = useState(null);
   const [draggedScene, setDraggedScene] = useState(null);
   const [dropDay, setDropDay] = useState(null);
@@ -636,6 +638,21 @@ function ScenesTable({ loc, view, edit, onPatch }) {
       if (ov && ov.synopsis !== undefined) return ov.synopsis;
     }
     return s.synopsis;
+  };
+
+  const effectiveYr = s => {
+    const ov = sceneOverrides[sceneKey(s)] || {};
+    const season = ov.season !== undefined ? ov.season : s.season;
+    const year = ov.year !== undefined ? ov.year : s.year;
+    return (season ? season + ' ' : '') + (year || '');
+  };
+
+  const commitYr = (s, draft) => {
+    const parts = draft.trim().split(/\s+/);
+    const yearPart = parts.find(p => /^\d{4}$/.test(p));
+    const seasonPart = parts.filter(p => !/^\d{4}$/.test(p)).join(' ').toLowerCase() || null;
+    patchScene(s, { season: seasonPart, year: yearPart || null });
+    setEditingYrKey(null);
   };
 
   const patchScene = (s, patch) => {
@@ -695,10 +712,12 @@ function ScenesTable({ loc, view, edit, onPatch }) {
     });
   };
 
-  const SceneRow = ({ s, dayStr, allDayStrs }) => {
+  const SceneRow = ({ s, dayStr }) => {
     const key = sceneKey(s);
     const isEditing = editingKey === key;
+    const isEditingYr = editingYrKey === key;
     const syn = effectiveSyn(s);
+    const yr = effectiveYr(s);
     const isDropTarget = dropBefore === key && dragKey && dragKey !== key;
 
     const startEdit = () => { setEditingKey(key); setEditDraft(syn || ''); };
@@ -706,17 +725,21 @@ function ScenesTable({ loc, view, edit, onPatch }) {
 
     return (
       <>
-        {isDropTarget && <div style={{ height: 2, background: 'var(--accent)', borderRadius: 1, margin: '1px 0' }} />}
-        <div className="scene-row" style={{ position: 'relative', opacity: dragKey === key ? 0.4 : 1 }}
+        {isDropTarget && <div style={{ height: 2, background: 'var(--accent)', borderRadius: 1, margin: '1px 0', gridColumn: '1/-1' }} />}
+        <div className="scene-row" style={{ opacity: dragKey === key ? 0.4 : 1 }}
           draggable
           onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; setDragKey(key); setDraggedScene(s); }}
           onDragEnd={() => { setDragKey(null); setDraggedScene(null); setDropDay(null); setDropBefore(null); }}
           onDragOver={e => { e.preventDefault(); e.stopPropagation(); setDropDay(dayStr); setDropBefore(key); }}
           onDrop={e => { e.preventDefault(); e.stopPropagation(); if (dragKey && dragKey !== key && draggedScene) commitDrop(draggedScene, dayStr, key); setDragKey(null); setDraggedScene(null); setDropDay(null); setDropBefore(null); }}>
-          <span style={{ cursor: 'grab', color: 'var(--ink-3)', paddingRight: 4, fontSize: 12, flexShrink: 0 }}>⠿</span>
+          {/* col 1: grip */}
+          <span style={{ cursor: 'grab', color: 'var(--ink-3)', fontSize: 12, lineHeight: 1 }}>⠿</span>
+          {/* col 2: scene number */}
           <span className="sn">{s.number}</span>
+          {/* col 3: type/tod */}
           <span className="ie"><b>{s.type || 'INT'}</b>/{s.tod || 'D'}</span>
-          <span style={{ flex: 1, minWidth: 0 }}>
+          {/* col 4: synopsis */}
+          <span style={{ minWidth: 0 }}>
             {isEditing
               ? <input autoFocus className="input" value={editDraft} onChange={e => setEditDraft(e.target.value)}
                   onBlur={commitEdit}
@@ -730,13 +753,27 @@ function ScenesTable({ loc, view, edit, onPatch }) {
             }
             {s.segments && s.segments.length > 1 && <div className="setp">{s.segments.slice(1).join(' / ')}</div>}
           </span>
-          <span className="yr">{!s.manual ? (s.season ? s.season + ' ' : '') + (s.year || '') : null}</span>
-          {onPatch && (
-            <button onClick={e => { e.stopPropagation(); removeScene(s); }} title="Remove scene"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-3)', padding: '2px 4px', lineHeight: 1, flexShrink: 0 }}>
-              <Icon name="x" size={13} />
-            </button>
-          )}
+          {/* col 5: season / year — editable */}
+          {isEditingYr
+            ? <input autoFocus className="input" value={editYrDraft} onChange={e => setEditYrDraft(e.target.value)}
+                onBlur={() => commitYr(s, editYrDraft)}
+                onKeyDown={e => { if (e.key === 'Enter') commitYr(s, editYrDraft); if (e.key === 'Escape') setEditingYrKey(null); }}
+                style={{ fontSize: 11, padding: '1px 4px', textAlign: 'right', fontFamily: 'var(--mono)' }} />
+            : <span className="yr"
+                onClick={onPatch ? () => { setEditingYrKey(key); setEditYrDraft(yr); } : undefined}
+                title={onPatch ? 'Klik om seizoen/jaar te bewerken' : undefined}
+                style={{ cursor: onPatch ? 'text' : 'default' }}>
+                {yr || (onPatch ? <span style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontSize: 10 }}>—</span> : null)}
+              </span>
+          }
+          {/* col 6: remove button */}
+          {onPatch
+            ? <button onClick={e => { e.stopPropagation(); removeScene(s); }} title="Remove scene"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-3)', padding: '2px 4px', lineHeight: 1, justifySelf: 'center' }}>
+                <Icon name="x" size={13} />
+              </button>
+            : <span />
+          }
         </div>
       </>
     );
@@ -758,7 +795,7 @@ function ScenesTable({ loc, view, edit, onPatch }) {
       .sort((a, b) => parseFloat(a.number) - parseFloat(b.number));
     return (
       <div className="scenes">
-        {scenes.map(s => <SceneRow key={sceneKey(s)} s={s} dayStr={null} allDayStrs={null} />)}
+        {scenes.map(s => <SceneRow key={sceneKey(s)} s={s} dayStr={null} />)}
         {addBtn}
       </div>
     );
@@ -776,8 +813,6 @@ function ScenesTable({ loc, view, edit, onPatch }) {
       (a[0] === '—' ? 999 : +a[0]) - (b[0] === '—' ? 999 : +b[0])
     );
   }, [loc, removedKeys, extraScenes, sceneOverrides]);
-
-  const allDayStrs = byDay.map(([d]) => d);
 
   return (
     <div className="scenes">
@@ -810,7 +845,7 @@ function ScenesTable({ loc, view, edit, onPatch }) {
               <span style={{ flex: 1 }} />
               <span>{scenes.length} scene{scenes.length !== 1 ? 's' : ''}</span>
             </div>
-            {sortedScenes.map(s => <SceneRow key={sceneKey(s)} s={s} dayStr={day} allDayStrs={allDayStrs} />)}
+            {sortedScenes.map(s => <SceneRow key={sceneKey(s)} s={s} dayStr={day} />)}
           </div>
         );
       })}

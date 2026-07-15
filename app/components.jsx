@@ -9,6 +9,7 @@ const CATS = [
   { id: 'build',    label: 'Build',     color: 'oklch(0.64 0.10 70)' },
   { id: 'electric', label: 'Electric',  color: 'oklch(0.58 0.10 245)' },
   { id: 'repair',   label: 'Repair',    color: 'oklch(0.55 0.08 330)' },
+  { id: 'grafic',   label: 'Grafic',    color: 'oklch(0.55 0.11 300)' },
   { id: 'other',    label: 'Other',     color: 'oklch(0.60 0.02 90)' },
 ];
 const CAT = Object.fromEntries(CATS.map(c => [c.id, c]));

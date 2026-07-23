@@ -1,5 +1,33 @@
 /* ShareProjectModal — selecteer locaties en publiceer als één overzichtslink */
 
+const CAL_COLORS_SHARE = ['#9e3b2e','#2c5f8a','#3d6b4f','#a07020','#7b4d9e','#c87040','#2a7a8a','#6b3d7a','#5a6b2a','#6b3b3b'];
+
+function buildAgendaEvents(locations, edits) {
+  const events = [];
+  locations.forEach((loc, i) => {
+    const edit = edits[loc.id] || {};
+    const name = (edit.name || loc.name);
+    const color = CAL_COLORS_SHARE[i % CAL_COLORS_SHARE.length];
+    const removedDays = new Set((edit.removedShootDays || []).map(String));
+    for (const d of loc.shootDates || []) {
+      if (removedDays.has(String(d.dayNumber))) continue;
+      const ov = (edit.dayOverrides || {})[String(d.dayNumber)] || {};
+      const date = ov.date || d.date;
+      if (date) events.push({ type: 'shoot', date, dayNum: ov.dayNumber != null ? ov.dayNumber : d.dayNumber, locName: name, color });
+    }
+    for (const d of edit.extraShootDays || []) {
+      if (d.date) events.push({ type: 'shoot', date: d.date, dayNum: null, locName: name, color });
+    }
+    (edit.prepDates || []).forEach((date, j) => {
+      if (date) events.push({ type: 'prep', date, idx: j + 1, total: edit.prepDays, locName: name, color });
+    });
+    (edit.wrapDates || []).forEach((date, j) => {
+      if (date) events.push({ type: 'wrap', date, idx: j + 1, total: edit.wrapDays, locName: name, color });
+    });
+  });
+  return events;
+}
+
 function ShareProjectModal({ locations, edits, scheduleName, projectShareId, projectShareSelection, onClose, onDone }) {
   // Default: previously selected, or all if first time
   const defaultSel = projectShareSelection
@@ -7,6 +35,7 @@ function ShareProjectModal({ locations, edits, scheduleName, projectShareId, pro
     : new Set(locations.map(l => l.id));
 
   const [selected, setSelected] = useState(defaultSel);
+  const [includeAgenda, setIncludeAgenda] = useState(true);
   const [stage, setStage] = useState('idle');
   const [progress, setProgress] = useState('');
   const [projectUrl, setProjectUrl] = useState(projectShareId ? LB_SYNC.getProjectShareUrl(projectShareId) : '');
@@ -127,7 +156,12 @@ function ShareProjectModal({ locations, edits, scheduleName, projectShareId, pro
 
     setProgress('Overzicht bijwerken…');
     const locEntries = toPublish.map(l => resultMap[l.id]).filter(Boolean);
-    const projData = { version: 1, name: scheduleName || 'Project', scheduleName, locations: locEntries, updatedAt: Date.now() };
+    const agendaEvents = includeAgenda ? buildAgendaEvents(toPublish, edits) : null;
+    const projData = {
+      version: 1, name: scheduleName || 'Project', scheduleName,
+      locations: locEntries, updatedAt: Date.now(),
+      ...(agendaEvents ? { agenda: { events: agendaEvents } } : {}),
+    };
     await LB_SYNC.publishProjectShare(projId, projData);
 
     onDone({ projectShareId: projId, shareIds: newShareIds, projectShareSelection: [...selected] });
@@ -192,6 +226,18 @@ function ShareProjectModal({ locations, edits, scheduleName, projectShareId, pro
                 );
               })}
             </div>
+
+            {/* Agenda toggle */}
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderTop: '1px solid var(--line)', marginBottom: 14, cursor: 'pointer' }}>
+              <input type="checkbox" checked={includeAgenda} onChange={e => setIncludeAgenda(e.target.checked)}
+                style={{ width: 15, height: 15, accentColor: 'var(--accent)', flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 500 }}>Agenda opnemen</div>
+                <div className="mono" style={{ fontSize: 10.5, color: 'var(--ink-3)', marginTop: 1 }}>
+                  Voeg een kalender toe met alle shoot-, prep- en wrap-data aan de gedeelde link
+                </div>
+              </div>
+            </label>
 
             {projectShareId && (
               <div style={{ marginBottom: 14 }}>

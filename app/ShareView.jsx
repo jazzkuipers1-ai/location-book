@@ -367,12 +367,157 @@ function ShareView({ shareId, onBack }) {
 
 window.ShareView = ShareView;
 
+/* ---- Shared agenda calendar --------------------------------------------- */
+
+const SV_CAL_MONTHS = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
+const SV_CAL_DAYS   = ['Ma','Di','Wo','Do','Vr','Za','Zo'];
+
+function SharedAgendaView({ events }) {
+  function parseDate(str) {
+    if (!str || !/^\d{2}\/\d{2}\/\d{4}$/.test(str)) return null;
+    const [dd,mm,yyyy] = str.split('/').map(Number);
+    return new Date(yyyy, mm-1, dd);
+  }
+  function dateKey(d) {
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+
+  const byDate = useMemo(() => {
+    const m = {};
+    for (const ev of events || []) {
+      const d = parseDate(ev.date);
+      if (!d) continue;
+      const k = dateKey(d);
+      (m[k] = m[k] || []).push(ev);
+    }
+    return m;
+  }, [events]);
+
+  const defaultMonth = useMemo(() => {
+    const keys = Object.keys(byDate).sort();
+    if (!keys.length) return new Date();
+    const p = keys[0].split('-').map(Number);
+    return new Date(p[0], p[1]-1, 1);
+  }, [byDate]);
+
+  const [viewDate, setViewDate] = useState(defaultMonth);
+  const year = viewDate.getFullYear(), month = viewDate.getMonth();
+
+  const firstDow    = (new Date(year, month, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const totalCells  = Math.ceil((firstDow + daysInMonth) / 7) * 7;
+  const todayKey    = dateKey(new Date());
+
+  const cells = Array.from({ length: totalCells }, (_, i) => {
+    const n = i - firstDow + 1;
+    if (n < 1 || n > daysInMonth) return null;
+    const d   = new Date(year, month, n);
+    const key = dateKey(d);
+    return { n, key, evs: byDate[key] || [] };
+  });
+
+  const monthHasEvents = cells.some(c => c && c.evs.length > 0);
+
+  const locColors = useMemo(() => {
+    const m = {};
+    for (const ev of events || []) { if (!m[ev.locName]) m[ev.locName] = ev.color; }
+    return m;
+  }, [events]);
+
+  const eventLabel = ev => {
+    if (ev.type === 'shoot') return ev.dayNum ? `Dag ${ev.dayNum}` : 'Shoot';
+    if (ev.type === 'prep')  return ev.total > 1 ? `Prep ${ev.idx}/${ev.total}` : 'Prep';
+    return ev.total > 1 ? `Wrap ${ev.idx}/${ev.total}` : 'Wrap';
+  };
+
+  return (
+    <div style={{ maxWidth: 1080, margin: '0 auto', padding: '32px 28px 80px' }}>
+      {/* Month nav */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <h2 style={{ margin: 0, fontFamily: 'var(--serif)', fontWeight: 600 }}>{SV_CAL_MONTHS[month]} {year}</h2>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button style={{ padding: '6px 14px', borderRadius: 7, border: '1px solid var(--line)', background: 'var(--card)', cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 13 }}
+            onClick={() => setViewDate(new Date(year, month-1, 1))}>‹</button>
+          <button style={{ padding: '6px 14px', borderRadius: 7, border: '1px solid var(--line)', background: 'var(--card)', cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 13 }}
+            onClick={() => setViewDate(new Date())}>Vandaag</button>
+          <button style={{ padding: '6px 14px', borderRadius: 7, border: '1px solid var(--line)', background: 'var(--card)', cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 13 }}
+            onClick={() => setViewDate(new Date(year, month+1, 1))}>›</button>
+        </div>
+      </div>
+
+      {/* Location legend */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+        {Object.entries(locColors).map(([name, color]) => (
+          <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 99, border: '1px solid var(--line)', background: 'var(--card)' }}>
+            <div style={{ width: 9, height: 9, borderRadius: 2, background: color, flexShrink: 0 }} />
+            <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--ink-2)' }}>{name}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Type legend */}
+      <div style={{ display: 'flex', gap: 14, marginBottom: 16, alignItems: 'center' }}>
+        {[['Shoot dag', { background: 'var(--accent)', width: 26, height: 12, borderRadius: 3 }],
+          ['Prep dag',  { width: 26, height: 12, borderRadius: 3, border: '1.5px dashed var(--accent)' }],
+          ['Wrap dag',  { width: 26, height: 12, borderRadius: 3, border: '1.5px dotted var(--accent)' }],
+        ].map(([label, style]) => (
+          <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <div style={style} />
+            <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--ink-3)' }}>{label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Day headers */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 3, marginBottom: 3 }}>
+        {SV_CAL_DAYS.map(d => (
+          <div key={d} style={{ textAlign: 'center', fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--ink-3)', padding: '3px 0', fontWeight: 600, letterSpacing: '.06em' }}>{d}</div>
+        ))}
+      </div>
+
+      {/* Calendar grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 3 }}>
+        {cells.map((cell, i) => (
+          <div key={i} style={{
+            minHeight: 88,
+            background: cell ? (cell.key === todayKey ? 'color-mix(in srgb, var(--accent) 7%, var(--card))' : 'var(--card)') : 'transparent',
+            border: cell ? (cell.key === todayKey ? '1.5px solid var(--accent)' : '1px solid var(--line)') : 'none',
+            borderRadius: 8, padding: '5px 7px',
+          }}>
+            {cell && (<>
+              <div style={{ fontFamily: 'var(--mono)', fontSize: 12, fontWeight: cell.evs.length ? 700 : 400, color: cell.key === todayKey ? 'var(--accent)' : cell.evs.length ? 'var(--ink)' : 'var(--ink-3)', marginBottom: 3 }}>{cell.n}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {cell.evs.map((ev, j) => (
+                  <div key={j} title={`${ev.locName} · ${ev.type}`} style={{
+                    fontSize: 9.5, fontFamily: 'var(--mono)', padding: '2px 5px', borderRadius: 4,
+                    lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    ...(ev.type === 'shoot' ? { background: ev.color, color: '#fff', border: 'none' }
+                      : ev.type === 'prep'  ? { background: 'transparent', color: ev.color, border: `1.5px dashed ${ev.color}` }
+                      :                       { background: 'transparent', color: ev.color, border: `1.5px dotted ${ev.color}` }),
+                  }}>{eventLabel(ev)} · {ev.locName}</div>
+                ))}
+              </div>
+            </>)}
+          </div>
+        ))}
+      </div>
+
+      {!monthHasEvents && (
+        <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--ink-3)', fontFamily: 'var(--mono)', fontSize: 12 }}>
+          Geen data voor {SV_CAL_MONTHS[month].toLowerCase()} {year}.
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ---- Project overview viewer -------------------------------------------- */
 
 function ProjectShareView({ projId }) {
   const [manifest, setManifest] = useState(null);
   const [err, setErr] = useState('');
   const [activeShareId, setActiveShareId] = useState(null);
+  const [tab, setTab] = useState('locations'); // 'locations' | 'agenda'
 
   useEffect(() => {
     LB_SYNC.loadProjectShare(projId).then(d => {
@@ -407,17 +552,39 @@ function ProjectShareView({ projId }) {
     <div style={{ minHeight: '100vh', background: 'var(--paper)', color: 'var(--ink)' }}>
       {/* Header */}
       <div style={{ background: 'var(--card)', borderBottom: '2px solid var(--ink)', padding: '20px 40px', position: 'sticky', top: 0, zIndex: 10 }}>
-        {manifest.scheduleName && (
-          <div style={{ fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--ink-2)', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 4 }}>{manifest.scheduleName}</div>
-        )}
-        <div style={{ fontFamily: 'var(--serif)', fontSize: 28, fontWeight: 600, lineHeight: 1, letterSpacing: '-.01em' }}>{manifest.name}</div>
-        <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--ink-3)', marginTop: 6 }}>
-          {locs.length} locatie{locs.length !== 1 ? 's' : ''}
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            {manifest.scheduleName && (
+              <div style={{ fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--ink-2)', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 4 }}>{manifest.scheduleName}</div>
+            )}
+            <div style={{ fontFamily: 'var(--serif)', fontSize: 28, fontWeight: 600, lineHeight: 1, letterSpacing: '-.01em' }}>{manifest.name}</div>
+          </div>
+          {/* Tab switcher — only show Agenda tab when agenda data exists */}
+          <div style={{ display: 'flex', gap: 4, background: 'var(--card-2)', borderRadius: 9, padding: 3, border: '1px solid var(--line)' }}>
+            <button onClick={() => setTab('locations')} style={{ padding: '5px 14px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 12, background: tab === 'locations' ? 'var(--card)' : 'transparent', color: tab === 'locations' ? 'var(--ink)' : 'var(--ink-3)', fontWeight: tab === 'locations' ? 600 : 400, boxShadow: tab === 'locations' ? '0 1px 3px rgba(0,0,0,.08)' : 'none' }}>
+              Locaties
+            </button>
+            {manifest.agenda && (
+              <button onClick={() => setTab('agenda')} style={{ padding: '5px 14px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 12, background: tab === 'agenda' ? 'var(--card)' : 'transparent', color: tab === 'agenda' ? 'var(--ink)' : 'var(--ink-3)', fontWeight: tab === 'agenda' ? 600 : 400, boxShadow: tab === 'agenda' ? '0 1px 3px rgba(0,0,0,.08)' : 'none' }}>
+                Agenda
+              </button>
+            )}
+          </div>
         </div>
+        {tab === 'locations' && (
+          <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--ink-3)', marginTop: 8 }}>
+            {locs.length} locatie{locs.length !== 1 ? 's' : ''}
+          </div>
+        )}
       </div>
 
+      {/* Agenda tab */}
+      {tab === 'agenda' && manifest.agenda && (
+        <SharedAgendaView events={manifest.agenda.events} />
+      )}
+
       {/* Location grid */}
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 32px 80px' }}>
+      {tab === 'locations' && <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 32px 80px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 20 }}>
           {locs.map((loc, i) => (
             <div key={i}
@@ -447,7 +614,7 @@ function ProjectShareView({ projId }) {
             </div>
           ))}
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

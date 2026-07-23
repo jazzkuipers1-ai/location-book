@@ -286,13 +286,14 @@ function GalleryCell({ item, allImgIds, itemIdx, onCap, onNote, onRemove, onDraw
           className="gal-checkbox">
           {isSelected && <svg width="11" height="9" viewBox="0 0 11 9" fill="none"><path d="M1 4L4 7.5L10 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
         </div>
-        <div onClick={e => { e.stopPropagation(); setLightbox(true); }} onTouchStart={e => e.stopPropagation()} style={{ cursor: 'zoom-in' }}>
+        {/* Click photo → open annotator directly so editing tools are immediately available */}
+        <div onClick={e => { e.stopPropagation(); onDraw(); }} onTouchStart={e => e.stopPropagation()} style={{ cursor: 'crosshair' }}>
           <Img imgId={shownId(item)} />
         </div>
         {(item.strokes && item.strokes.length || item.annotatedId) ? <span className="annot-badge"><Icon name="edit" size={12} /></span> : null}
         <div className="tools">
           <button className="tbtn" title="Crop" onClick={onCrop}><Icon name="ruler" size={15} /></button>
-          <button className="tbtn" title="Draw / mark up" onClick={onDraw}><Icon name="edit" size={15} /></button>
+          <button className="tbtn" title="Lightbox" onClick={e => { e.stopPropagation(); setLightbox(true); }}><Icon name="eye" size={15} /></button>
           <button className="tbtn" title="Remove" onClick={onRemove}><Icon name="trash" size={14} /></button>
         </div>
         <div className="cap" contentEditable suppressContentEditableWarning

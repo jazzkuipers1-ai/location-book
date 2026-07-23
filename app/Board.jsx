@@ -1,5 +1,22 @@
 /* Visual overview — board of location cards with cover photos. */
 
+function minShootDay(loc, edit) {
+  const overrides = (edit && edit.sceneOverrides) || {};
+  const removedKeys = new Set((edit && edit.removedSceneKeys) || []);
+  let min = Infinity;
+  for (const s of loc.scenes || []) {
+    const k = s.manual ? ('m|' + s.id) : (s.number + '|' + (s.idx ?? ''));
+    if (removedKeys.has(k)) continue;
+    const ov = overrides[k];
+    const day = (ov && ov.dayNumber !== undefined) ? ov.dayNumber : s.dayNumber;
+    if (day != null && day < min) min = day;
+  }
+  for (const s of (edit && edit.extraScenes) || []) {
+    if (s.dayNumber != null && s.dayNumber < min) min = s.dayNumber;
+  }
+  return min;
+}
+
 function LocCard({ loc, edit, name, onOpen, onPatch, onRename, onRemove, onCombine, onCombineDrop, onDuplicate }) {
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(name);
@@ -113,7 +130,8 @@ function SeasonGroup({ season, locs, edits, onOpen, onPatchLoc, onRename, onRemo
 }
 
 function Board({ model, edits, removed, onOpen, onPatchLoc, onRename, onRemove, onCombine, onCombineDrop, onExport, onAddLocation, onDuplicate, onShareProject }) {
-  const visible = model.locations.filter(l => !removed.includes(l.id));
+  const visible = [...model.locations.filter(l => !removed.includes(l.id))]
+    .sort((a, b) => minShootDay(a, edits[a.id]) - minShootDay(b, edits[b.id]));
 
   // Only use season grouping when the schedule actually has seasonal data
   const hasSeasons = visible.some(l => dominantSeason(l.scenes) !== null);

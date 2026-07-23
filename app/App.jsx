@@ -133,7 +133,7 @@ function ImportModal({ onClose, onApply, current, title }) {
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
   "theme": "paper",
   "accent": "#9e3b2e",
-  "navSort": "region",
+  "navSort": "day",
   "sceneView": "day",
   "deckCover": false
 }/*EDITMODE-END*/;
@@ -536,6 +536,22 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
   const model = state.model;
   const removed = state.removed || [];
   const visibleLocs = model.locations.filter(l => !removed.includes(l.id));
+  const sortedVisibleLocs = [...visibleLocs].sort((a, b) => {
+    const minDay = (loc, edit) => {
+      const ov = (edit && edit.sceneOverrides) || {};
+      const rk = new Set((edit && edit.removedSceneKeys) || []);
+      let m = Infinity;
+      for (const s of loc.scenes || []) {
+        const k = s.manual ? ('m|' + s.id) : (s.number + '|' + (s.idx ?? ''));
+        if (rk.has(k)) continue;
+        const d = (ov[k] && ov[k].dayNumber !== undefined) ? ov[k].dayNumber : s.dayNumber;
+        if (d != null && d < m) m = d;
+      }
+      for (const s of (edit && edit.extraScenes) || []) { if (s.dayNumber != null && s.dayNumber < m) m = s.dayNumber; }
+      return m;
+    };
+    return minDay(a, state.edits[a.id]) - minDay(b, state.edits[b.id]);
+  });
   const activeLoc = visibleLocs.find(l => l.id === state.activeId) || visibleLocs[0];
   const edit = activeLoc ? (state.edits[activeLoc.id] || defaultEdit()) : defaultEdit();
 
@@ -688,7 +704,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
             <input placeholder="Search locations…" style={{ width: '100%', padding: '8px 10px 8px 30px', background: 'var(--card-2)', border: '1px solid var(--line)', borderRadius: 7, fontSize: 13, outline: 'none' }} />
           </div>
           <div style={{ overflowY: 'auto', flex: 1, padding: '6px 10px 12px' }}>
-            {model.locations.filter(l => !removed.includes(l.id)).map(l => (
+            {sortedVisibleLocs.map(l => (
               <button key={l.id} className={'loc-item' + (activeLoc && l.id === activeLoc.id ? ' active' : '')}
                 onClick={() => { openLoc(l.id); }}
                 style={{ width: '100%', textAlign: 'left', background: 'none', border: '1px solid transparent', borderRadius: 9, padding: '10px 9px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 2 }}>
@@ -840,7 +856,7 @@ function panelEl(t, setTweak) {
       <TweakRadio label="Theme" value={t.theme} options={['paper', 'blueprint', 'studio']} onChange={v => setTweak('theme', v)} />
       <TweakColor label="Accent" value={t.accent} options={['#9e3b2e', '#4f6f3f', '#2f5d8c', '#9a6a17', '#7a4a5e']} onChange={v => setTweak('accent', v)} />
       <TweakSection label="Navigation" />
-      <TweakRadio label="Sort locations" value={t.navSort} options={['region', 'count', 'a–z']} onChange={v => setTweak('navSort', v)} />
+      <TweakRadio label="Sort locations" value={t.navSort} options={['day', 'region', 'count', 'a–z']} onChange={v => setTweak('navSort', v)} />
       <TweakSection label="Location file" />
       <TweakRadio label="Scenes" value={t.sceneView} options={['by day', 'flat']} onChange={v => setTweak('sceneView', v)} />
       <TweakSection label="Export deck" />

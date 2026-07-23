@@ -1,5 +1,22 @@
 /* Sidebar — location index grouped by region, with search + cover thumbs. */
 
+function minShootDay(loc, edit) {
+  const overrides = (edit && edit.sceneOverrides) || {};
+  const removedKeys = new Set((edit && edit.removedSceneKeys) || []);
+  let min = Infinity;
+  for (const s of loc.scenes || []) {
+    const k = s.manual ? ('m|' + s.id) : (s.number + '|' + (s.idx ?? ''));
+    if (removedKeys.has(k)) continue;
+    const ov = overrides[k];
+    const day = (ov && ov.dayNumber !== undefined) ? ov.dayNumber : s.dayNumber;
+    if (day != null && day < min) min = day;
+  }
+  for (const s of (edit && edit.extraScenes) || []) {
+    if (s.dayNumber != null && s.dayNumber < min) min = s.dayNumber;
+  }
+  return min;
+}
+
 function EditableName({ value, onChange }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -92,18 +109,22 @@ function Sidebar({ model, edits, activeId, onSelect, onImport, onUpdateSchedule,
   const hasSeasons = visible.some(l => sidebarDominantSeason(l.scenes) !== null);
 
   const regionOrder = model.regions || [];
+  const byDay = (a, b) => minShootDay(a, edits[a.id]) - minShootDay(b, edits[b.id]);
+
   const groups = useMemo(() => {
     if (navSort === 'count')
       return [['All locations · most scenes', [...filtered].sort((a, b) => b.sceneCount - a.sceneCount)]];
     if (navSort === 'a–z')
       return [['All locations · A–Z', [...filtered].sort((a, b) => locName(a, edits).localeCompare(locName(b, edits)))]];
+    if (navSort === 'day')
+      return [['All locations · shoot day', [...filtered].sort(byDay)]];
     if (hasSeasons) {
       const g = {};
       filtered.forEach(l => {
         const s = (edits[l.id] || {}).seasonOverride || sidebarDominantSeason(l.scenes) || 'other';
         (g[s] = g[s] || []).push(l);
       });
-      return SIDEBAR_SEASON_ORDER.filter(s => g[s]).map(s => [SIDEBAR_SEASON_LABEL[s] || s, g[s], s]);
+      return SIDEBAR_SEASON_ORDER.filter(s => g[s]).map(s => [SIDEBAR_SEASON_LABEL[s] || s, [...g[s]].sort(byDay), s]);
     }
     const g = {};
     filtered.forEach(l => { const r = l.regions[0] || 'Other'; (g[r] = g[r] || []).push(l); });
@@ -111,7 +132,7 @@ function Sidebar({ model, edits, activeId, onSelect, onImport, onUpdateSchedule,
       const ia = regionOrder.indexOf(a), ib = regionOrder.indexOf(b);
       return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
     });
-    return keys.map(k => [k, g[k], null]);
+    return keys.map(k => [k, [...g[k]].sort(byDay), null]);
   }, [filtered, navSort, edits, hasSeasons]);
 
   const hasLocId = e => { const t = e.dataTransfer.types; return t && (t.includes ? t.includes('text/loc-id') : Array.prototype.indexOf.call(t, 'text/loc-id') >= 0); };

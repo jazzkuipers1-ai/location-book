@@ -96,33 +96,42 @@ function ShareProjectModal({ locations, edits, scheduleName, projectShareId, pro
     setStage('publishing');
     const projId = projectShareId || ('p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6));
     const newShareIds = {};
-    const locEntries = [];
+    // Build result map keyed by loc.id so we can sort back at the end
+    const resultMap = {};
     const toPublish = locations.filter(l => selected.has(l.id));
+    const needsPublish = toPublish.filter(l => !(edits[l.id] || {}).shareId);
 
-    for (let i = 0; i < toPublish.length; i++) {
-      const loc = toPublish[i];
+    // Already-published: include instantly without re-uploading
+    for (const loc of toPublish) {
+      const edit = edits[loc.id] || {};
+      if (edit.shareId) {
+        const coverUrl = edit.cover ? LB_SYNC.getImageUrl(edit.cover) : null;
+        resultMap[loc.id] = { name: locName(loc), shareId: edit.shareId, coverUrl, regions: loc.regions || [], sceneCount: loc.sceneCount || 0 };
+      }
+    }
+
+    // New locations: publish (upload images + create share JSON)
+    for (let i = 0; i < needsPublish.length; i++) {
+      const loc = needsPublish[i];
       const edit = edits[loc.id] || {};
       const name = locName(loc);
-      setProgress((i + 1) + ' / ' + toPublish.length + ' — ' + name);
+      setProgress('Publiceren ' + (i + 1) + ' / ' + needsPublish.length + ' — ' + name);
       try {
         const { sid, coverUrl } = await publishLocShare(loc, edit, name);
         newShareIds[loc.id] = sid;
-        locEntries.push({ name, shareId: sid, coverUrl, regions: loc.regions || [], sceneCount: loc.sceneCount || 0 });
+        resultMap[loc.id] = { name, shareId: sid, coverUrl, regions: loc.regions || [], sceneCount: loc.sceneCount || 0 };
       } catch (e) {
         console.error('[ShareProject] failed for', loc.id, e);
       }
     }
 
     setProgress('Overzicht bijwerken…');
-    const projData = {
-      version: 1, name: scheduleName || 'Project', scheduleName,
-      locations: locEntries, updatedAt: Date.now(),
-    };
+    const locEntries = toPublish.map(l => resultMap[l.id]).filter(Boolean);
+    const projData = { version: 1, name: scheduleName || 'Project', scheduleName, locations: locEntries, updatedAt: Date.now() };
     await LB_SYNC.publishProjectShare(projId, projData);
 
-    const url = LB_SYNC.getProjectShareUrl(projId);
     onDone({ projectShareId: projId, shareIds: newShareIds, projectShareSelection: [...selected] });
-    setProjectUrl(url);
+    setProjectUrl(LB_SYNC.getProjectShareUrl(projId));
     setStage('done');
   }
 

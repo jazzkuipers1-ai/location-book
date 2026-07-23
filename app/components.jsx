@@ -31,6 +31,7 @@ const PATHS = {
   ruler: 'M3 11 11 3l4 4-8 8zM6 6l1.5 1.5M8.5 3.5 10 5M5 9l1.5 1.5',
   layers: 'M9 3 2.5 6.5 9 10l6.5-3.5L9 3ZM3 10l6 3.2L15 10M3 13l6 3.2L15 13',
   marker: 'M5 14 L8 17 L16 9 L13 6 Z M5 14 L3 17 L6 16 Z',
+  minus: 'M4 9h10',
   film: 'M3 3h12v12H3zM3 6.5h12M3 11.5h12M6 3v12M12 3v12',
   edit: 'M4 12.5 11.5 5l2 2L6 14.5l-2.5.5.5-2.5ZM10.5 6l2 2',
   dots: 'M5 9h.01M9 9h.01M13 9h.01',

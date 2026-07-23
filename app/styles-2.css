@@ -177,18 +177,21 @@
 .inc-chip.on .chk-mini { background: var(--accent); border-color: var(--accent); }
 
 /* ====================================================== ANNOTATOR ======== */
-.annot { display: flex; width: min(1180px, 98vw); height: min(92vh, 880px); background: var(--card); border: 1px solid var(--line-2); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow); }
-.annot-stage { flex: 1; background: #1c1813; display: grid; place-items: center; padding: 18px; min-width: 0; }
+.annot { display: flex; flex-direction: column; width: min(1180px, 98vw); height: min(94vh, 900px); background: var(--card); border: 1px solid var(--line-2); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow); }
+.annot-bar { display: flex; align-items: center; gap: 5px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--card); flex-shrink: 0; overflow-x: auto; scrollbar-width: none; }
+.annot-bar::-webkit-scrollbar { display: none; }
+.annot-bar-sep { width: 1px; height: 22px; background: var(--line); flex-shrink: 0; margin: 0 3px; }
+.annot-stage { flex: 1; min-height: 0; background: #1c1813; display: grid; place-items: center; padding: 16px; overflow: hidden; }
 .annot-imgwrap { position: relative; display: inline-block; max-width: 100%; max-height: 100%; line-height: 0; }
-.annot-img { display: block; max-width: 100%; max-height: calc(92vh - 36px); object-fit: contain; user-select: none; -webkit-user-drag: none; }
+.annot-img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; user-select: none; -webkit-user-drag: none; }
 .annot-canvas { position: absolute; inset: 0; touch-action: none; cursor: crosshair; }
-.annot-side { width: 308px; flex-shrink: 0; border-left: 1px solid var(--line); padding: 18px; display: flex; flex-direction: column; gap: 15px; background: var(--card); }
-.annot-tools { border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
-.swatches { display: flex; gap: 8px; flex-wrap: wrap; }
-.swatch { width: 36px; height: 36px; border-radius: 9px; border: 2px solid var(--line); cursor: pointer; }
+.annot-note { flex-shrink: 0; border-top: 1px solid var(--line); padding: 10px 14px; background: var(--card); }
+.annot-note textarea { width: 100%; height: 70px; resize: none; }
+.swatches { display: flex; gap: 5px; align-items: center; }
+.swatch { width: 22px; height: 22px; border-radius: 5px; border: 2px solid transparent; cursor: pointer; flex-shrink: 0; }
 .swatch.on { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ink); }
-.sizes { display: flex; gap: 8px; margin-top: 12px; }
-.sizebtn { width: 46px; height: 42px; border: 1px solid var(--line-2); border-radius: 9px; background: var(--card); display: grid; place-items: center; cursor: pointer; color: var(--ink-2); }
+.sizes { display: flex; gap: 4px; align-items: center; }
+.sizebtn { width: 32px; height: 32px; border: 1px solid var(--line-2); border-radius: 7px; background: var(--card); display: grid; place-items: center; cursor: pointer; color: var(--ink-2); flex-shrink: 0; }
 .sizebtn.on { border-color: var(--ink); color: var(--ink); background: var(--card-2); }
 
 /* ====================================================== GALLERY ITEM ===== */

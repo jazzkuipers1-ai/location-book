@@ -45,9 +45,9 @@
   /* ---- modals ---- */
   .modal { border-radius: 20px 20px 0 0 !important; margin: 0 !important; width: 100vw !important; max-height: 90dvh; overflow-y: auto; position: fixed; bottom: 0; left: 0; }
   .scrim { align-items: flex-end; padding: 0; }
-  .annot { width: 100vw; height: 100dvh; border-radius: 0; flex-direction: column; }
-  .annot-side { width: 100%; border-left: none; border-top: 1px solid var(--line); padding: 12px; flex-direction: row; flex-wrap: wrap; gap: 10px; }
-  .annot-img { max-height: 50dvh; }
+  .annot { width: 100vw; height: 100dvh; border-radius: 0; }
+  .annot-bar { padding: 6px 8px; gap: 4px; }
+  .annot-img { max-height: 100%; }
 
   /* ---- adjustments ---- */
   .adj { grid-template-columns: 26px 1fr auto; }

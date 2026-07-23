@@ -659,6 +659,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
   const mobileTabs = [
     { id: 'board', icon: 'grid', label: 'Overview' },
     { id: 'list', icon: 'list', label: 'Locations' },
+    { id: 'calendar', icon: 'cal', label: 'Agenda' },
     { id: 'file', icon: 'page', label: activeLoc ? locName(activeLoc, state.edits).split(' ')[0] : 'File' },
     { id: 'export', icon: 'download', label: 'Export' },
   ];
@@ -667,6 +668,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
     if (tab === 'export') { setShowExport(true); return; }
     setMobileTab(tab);
     if (tab === 'board') setView('board');
+    if (tab === 'calendar') setView('calendar');
     if (tab === 'file' && activeLoc) setView('file');
   };
 

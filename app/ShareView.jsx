@@ -32,7 +32,7 @@ function SV_Section({ title, count, color, children }) {
   );
 }
 
-function ShareView({ shareId }) {
+function ShareView({ shareId, onBack }) {
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
   const [lightbox, setLightbox] = useState(null);
@@ -118,6 +118,11 @@ function ShareView({ shareId }) {
 
       {/* Title bar */}
       <div style={{ background: 'var(--card)', borderBottom: '2px solid var(--ink)', padding: '20px 40px', display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap', position: 'sticky', top: 0, zIndex: 10 }}>
+        {onBack && (
+          <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--ink-2)', padding: '4px 0', flexShrink: 0 }}>
+            ← Alle locaties
+          </button>
+        )}
         <div>
           {data.scheduleName && <div style={{ fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--ink-2)', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 4 }}>{data.scheduleName}</div>}
           <div style={{ fontFamily: 'var(--serif)', fontSize: 28, fontWeight: 600, lineHeight: 1, letterSpacing: '-.01em' }}>{data.name}</div>
@@ -361,3 +366,90 @@ function ShareView({ shareId }) {
 }
 
 window.ShareView = ShareView;
+
+/* ---- Project overview viewer -------------------------------------------- */
+
+function ProjectShareView({ projId }) {
+  const [manifest, setManifest] = useState(null);
+  const [err, setErr] = useState('');
+  const [activeShareId, setActiveShareId] = useState(null);
+
+  useEffect(() => {
+    LB_SYNC.loadProjectShare(projId).then(d => {
+      if (d) { setManifest(d); }
+      else setErr('Project link niet gevonden of verlopen.');
+    }).catch(() => setErr('Kon het project niet laden. Controleer je internetverbinding.'));
+  }, [projId]);
+
+  if (err) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--paper)' }}>
+      <div style={{ textAlign: 'center', color: 'var(--ink-3)' }}>
+        <div style={{ fontSize: 32, marginBottom: 12 }}>—</div>
+        <div style={{ fontSize: 15, fontFamily: 'var(--mono)' }}>{err}</div>
+      </div>
+    </div>
+  );
+
+  if (!manifest) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--paper)' }}>
+      <div style={{ fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--ink-3)' }}>Laden…</div>
+    </div>
+  );
+
+  // Show individual location
+  if (activeShareId) return (
+    <ShareView shareId={activeShareId} onBack={() => setActiveShareId(null)} />
+  );
+
+  // Overview grid
+  const locs = manifest.locations || [];
+  return (
+    <div style={{ minHeight: '100vh', background: 'var(--paper)', color: 'var(--ink)' }}>
+      {/* Header */}
+      <div style={{ background: 'var(--card)', borderBottom: '2px solid var(--ink)', padding: '20px 40px', position: 'sticky', top: 0, zIndex: 10 }}>
+        {manifest.scheduleName && (
+          <div style={{ fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--ink-2)', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 4 }}>{manifest.scheduleName}</div>
+        )}
+        <div style={{ fontFamily: 'var(--serif)', fontSize: 28, fontWeight: 600, lineHeight: 1, letterSpacing: '-.01em' }}>{manifest.name}</div>
+        <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--ink-3)', marginTop: 6 }}>
+          {locs.length} locatie{locs.length !== 1 ? 's' : ''}
+        </div>
+      </div>
+
+      {/* Location grid */}
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 32px 80px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 20 }}>
+          {locs.map((loc, i) => (
+            <div key={i}
+              onClick={() => loc.shareId && setActiveShareId(loc.shareId)}
+              style={{ borderRadius: 14, overflow: 'hidden', background: 'var(--card)', border: '1px solid var(--line)', cursor: loc.shareId ? 'pointer' : 'default', transition: 'transform .15s, box-shadow .15s' }}
+              onMouseEnter={e => { if (loc.shareId) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 36px rgba(40,32,18,.12)'; } }}
+              onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}>
+              {/* Cover */}
+              <div style={{ height: 180, background: 'var(--card-2)', overflow: 'hidden' }}>
+                {loc.coverUrl
+                  ? <img src={loc.coverUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  : <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-3)', fontFamily: 'var(--mono)', fontSize: 11 }}>geen foto</div>
+                }
+              </div>
+              {/* Info */}
+              <div style={{ padding: '14px 16px 16px' }}>
+                <div style={{ fontFamily: 'var(--serif)', fontSize: 17, fontWeight: 600, marginBottom: 4, lineHeight: 1.2 }}>{loc.name}</div>
+                {(loc.regions || []).length > 0 && (
+                  <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink-3)', marginBottom: 8 }}>{loc.regions[0]}</div>
+                )}
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <span style={{ fontFamily: 'var(--serif)', fontSize: 20, fontWeight: 600, color: 'var(--accent)' }}>{loc.sceneCount}</span>
+                  <span style={{ fontFamily: 'var(--mono)', fontSize: 9.5, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>scenes</span>
+                  {!loc.shareId && <span style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink-3)', marginLeft: 'auto' }}>niet gepubliceerd</span>}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+window.ProjectShareView = ProjectShareView;

@@ -352,6 +352,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
   const [mobileTab, setMobileTab] = useState('board'); // 'board' | 'list' | 'file'
   const [showExport, setShowExport] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [showProjectShare, setShowProjectShare] = useState(false);
   const [combineBase, setCombineBase] = useState(null);
   const [diffPending, setDiffPending] = useState(null); // { newModel }
   const [deck, setDeck] = useState(null); // { entries, opts }
@@ -740,6 +741,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
                 </span>
               )}
               <button className="btn sm topbar-desktop-only" onClick={() => setShowShare(true)}><Icon name="arrow" size={14} />Share…</button>
+              <button className="btn sm topbar-desktop-only" onClick={() => setShowProjectShare(true)}><Icon name="layers" size={14} />Share project…</button>
               <button className="btn sm topbar-desktop-only" onClick={() => setShowExport(true)}><Icon name="layers" size={14} />Export…</button>
               <button className="btn sm primary topbar-desktop-only" onClick={quickExport}><Icon name="page" size={14} />Export this deck</button>
               <button className="btn sm primary" style={{ display: 'none' }} onClick={quickExport}
@@ -770,6 +772,21 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
       {showShare && activeLoc && <ShareModal loc={activeLoc} edit={edit} name={locName(activeLoc, state.edits)} scheduleName={model.scheduleName}
         onClose={() => setShowShare(false)}
         onShareIdSaved={sid => patchActive({ shareId: sid })} />}
+      {showProjectShare && <ShareProjectModal
+        locations={model.locations.filter(l => !removed.includes(l.id))}
+        edits={state.edits}
+        scheduleName={model.scheduleName}
+        projectShareId={state.projectShareId || null}
+        onClose={() => setShowProjectShare(false)}
+        onDone={({ projectShareId, shareIds }) => {
+          setState(s => {
+            const edits = { ...s.edits };
+            Object.entries(shareIds).forEach(([locId, sid]) => {
+              edits[locId] = { ...(edits[locId] || {}), shareId: sid };
+            });
+            return { ...s, edits, projectShareId };
+          });
+        }} />}
       {showSetPassword && <SetPasswordModal
         hasPassword={!!remoteHash}
         onClose={() => setShowSetPassword(false)}
@@ -1027,8 +1044,11 @@ function AuthWrapper({ children }) {
 }
 
 function App() {
-  const shareId = new URLSearchParams(window.location.search).get('share');
+  const params = new URLSearchParams(window.location.search);
+  const shareId = params.get('share');
+  const projectId = params.get('project');
   if (shareId) return <ShareView shareId={shareId} />;
+  if (projectId) return <ProjectShareView projId={projectId} />;
   return (
     <AuthWrapper>
       {user => <HomeRouter user={user} />}

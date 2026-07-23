@@ -153,6 +153,26 @@
     return window.location.origin + window.location.pathname + '?share=' + shareId;
   }
 
+  async function publishProjectShare(projId, projData) {
+    const blob = new Blob([JSON.stringify(projData)], { type: 'application/json' });
+    const path = 'shares/proj_' + projId + '.json';
+    const { error } = await sb.storage.from('project-images').upload(path, blob, { upsert: true, contentType: 'application/json' });
+    if (error) throw error;
+  }
+
+  async function loadProjectShare(projId) {
+    const url = SUPABASE_URL + '/storage/v1/object/public/project-images/shares/proj_' + projId + '.json?t=' + Date.now();
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      return await res.json();
+    } catch { return null; }
+  }
+
+  function getProjectShareUrl(projId) {
+    return window.location.origin + window.location.pathname + '?project=' + projId;
+  }
+
   function getImageUrl(imageId) {
     return SUPABASE_URL + '/storage/v1/object/public/project-images/images/' + imageId;
   }
@@ -225,5 +245,5 @@
     return sb.auth.onAuthStateChange(callback);
   }
 
-  window.LB_SYNC = { CLIENT_ID, loadState, saveState, subscribe, loadProjects, createProject, updateProject, deleteProject, getProjectByCode, uploadImage, getImageUrl, queueUpload, startQueue, flushUploadQueue, publishShare, loadShare, getShareUrl, setProjectPassword, removeProjectPassword, getProjectPassword, signUp, signIn, signOut, getSession, onAuthChange };
+  window.LB_SYNC = { CLIENT_ID, loadState, saveState, subscribe, loadProjects, createProject, updateProject, deleteProject, getProjectByCode, uploadImage, getImageUrl, queueUpload, startQueue, flushUploadQueue, publishShare, loadShare, getShareUrl, publishProjectShare, loadProjectShare, getProjectShareUrl, setProjectPassword, removeProjectPassword, getProjectPassword, signUp, signIn, signOut, getSession, onAuthChange };
 })();

@@ -208,13 +208,27 @@ function DateButton({ date, onSave, style }) {
     ? (() => { const [dd,mm,yyyy]=date.split('/').map(Number); return new Date(yyyy,mm-1,dd).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}); })()
     : 'Set date';
 
-  const openPicker = () => {
+  const updatePos = React.useCallback(() => {
     if (btnRef.current) {
       const r = btnRef.current.getBoundingClientRect();
       setPos({ top: r.bottom + 6, left: Math.min(r.left, window.innerWidth - 270) });
     }
+  }, []);
+
+  const openPicker = () => {
+    updatePos();
     setOpen(o => !o);
   };
+
+  React.useEffect(() => {
+    if (!open) return;
+    window.addEventListener('scroll', updatePos, true);
+    window.addEventListener('resize', updatePos);
+    return () => {
+      window.removeEventListener('scroll', updatePos, true);
+      window.removeEventListener('resize', updatePos);
+    };
+  }, [open, updatePos]);
 
   return (
     <span style={{position:'relative',display:'inline-block',...style}}>

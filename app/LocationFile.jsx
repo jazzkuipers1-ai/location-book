@@ -991,27 +991,31 @@ function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine,
                 <option value="before_shooting">Before shooting</option>
                 <option value="after_wrap">After wrap</option>
               </select>
-              {(edit.prepDays || 0) > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 5, width: '100%', marginTop: 2 }}>
-                  {Array.from({ length: Math.ceil(edit.prepDays) }, (_, i) => {
-                    const isHalf = edit.prepDays % 1 !== 0 && i === Math.ceil(edit.prepDays) - 1;
-                    return (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink-3)', minWidth: 44 }}>Prep {i + 1}{isHalf ? ' ½' : ''}</span>
-                        <DateButton
-                          date={(edit.prepDates || [])[i] || null}
-                          onSave={v => {
-                            const dates = Array.from({ length: Math.ceil(edit.prepDays) }, (_, j) => (edit.prepDates || [])[j] ?? null);
-                            dates[i] = v;
-                            onPatch({ prepDates: dates });
-                          }}
-                          style={{ fontSize: 12 }}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              {((edit.prepDays || 0) > 0 || edit.prepTiming) && (() => {
+                const count = Math.max(Math.ceil(edit.prepDays || 0), edit.prepTiming ? 1 : 0);
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5, width: '100%', marginTop: 2 }}>
+                    {Array.from({ length: count }, (_, i) => {
+                      const isHalf = (edit.prepDays || 0) % 1 !== 0 && i === count - 1 && (edit.prepDays || 0) > 0;
+                      const label = (edit.prepDays || 0) === 0 ? 'Datum' : `Prep ${i + 1}${isHalf ? ' ½' : ''}`;
+                      return (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink-3)', minWidth: 44 }}>{label}</span>
+                          <DateButton
+                            date={(edit.prepDates || [])[i] || null}
+                            onSave={v => {
+                              const dates = Array.from({ length: count }, (_, j) => (edit.prepDates || [])[j] ?? null);
+                              dates[i] = v;
+                              onPatch({ prepDates: dates });
+                            }}
+                            style={{ fontSize: 12 }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           </div>
           <div className="metric"><div className="k">Wrap</div>
@@ -1030,27 +1034,31 @@ function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine,
                 <option value="after_wrap">After wrap</option>
                 <option value="before_shooting">Before shooting</option>
               </select>
-              {(edit.wrapDays || 0) > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 5, width: '100%', marginTop: 2 }}>
-                  {Array.from({ length: Math.ceil(edit.wrapDays) }, (_, i) => {
-                    const isHalf = edit.wrapDays % 1 !== 0 && i === Math.ceil(edit.wrapDays) - 1;
-                    return (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink-3)', minWidth: 44 }}>Wrap {i + 1}{isHalf ? ' ½' : ''}</span>
-                        <DateButton
-                          date={(edit.wrapDates || [])[i] || null}
-                          onSave={v => {
-                            const dates = Array.from({ length: Math.ceil(edit.wrapDays) }, (_, j) => (edit.wrapDates || [])[j] ?? null);
-                            dates[i] = v;
-                            onPatch({ wrapDates: dates });
-                          }}
-                          style={{ fontSize: 12 }}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              {((edit.wrapDays || 0) > 0 || edit.wrapTiming) && (() => {
+                const count = Math.max(Math.ceil(edit.wrapDays || 0), edit.wrapTiming ? 1 : 0);
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5, width: '100%', marginTop: 2 }}>
+                    {Array.from({ length: count }, (_, i) => {
+                      const isHalf = (edit.wrapDays || 0) % 1 !== 0 && i === count - 1 && (edit.wrapDays || 0) > 0;
+                      const label = (edit.wrapDays || 0) === 0 ? 'Datum' : `Wrap ${i + 1}${isHalf ? ' ½' : ''}`;
+                      return (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink-3)', minWidth: 44 }}>{label}</span>
+                          <DateButton
+                            date={(edit.wrapDates || [])[i] || null}
+                            onSave={v => {
+                              const dates = Array.from({ length: count }, (_, j) => (edit.wrapDates || [])[j] ?? null);
+                              dates[i] = v;
+                              onPatch({ wrapDates: dates });
+                            }}
+                            style={{ fontSize: 12 }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>

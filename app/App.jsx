@@ -777,14 +777,15 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
         edits={state.edits}
         scheduleName={model.scheduleName}
         projectShareId={state.projectShareId || null}
+        projectShareSelection={state.projectShareSelection || null}
         onClose={() => setShowProjectShare(false)}
-        onDone={({ projectShareId, shareIds }) => {
+        onDone={({ projectShareId, shareIds, projectShareSelection }) => {
           setState(s => {
             const edits = { ...s.edits };
             Object.entries(shareIds).forEach(([locId, sid]) => {
               edits[locId] = { ...(edits[locId] || {}), shareId: sid };
             });
-            return { ...s, edits, projectShareId };
+            return { ...s, edits, projectShareId, projectShareSelection };
           });
         }} />}
       {showSetPassword && <SetPasswordModal

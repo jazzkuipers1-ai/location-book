@@ -980,7 +980,8 @@ function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine,
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <DayStepper value={edit.prepDays} onChange={v => {
                   const old = edit.prepDates || [];
-                  onPatch({ prepDays: v, prepDates: Array.from({ length: v }, (_, i) => old[i] ?? null) });
+                  const count = Math.ceil(v);
+                  onPatch({ prepDays: v, prepDates: Array.from({ length: count }, (_, i) => old[i] ?? null) });
                 }} /><small>days</small>
               </div>
               <select className="input" style={{ fontSize: 12, padding: '3px 6px', width: '100%' }}
@@ -992,20 +993,23 @@ function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine,
               </select>
               {(edit.prepDays || 0) > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5, width: '100%', marginTop: 2 }}>
-                  {Array.from({ length: edit.prepDays }, (_, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink-3)', minWidth: 38 }}>Prep {i + 1}</span>
-                      <DateButton
-                        date={(edit.prepDates || [])[i] || null}
-                        onSave={v => {
-                          const dates = Array.from({ length: edit.prepDays }, (_, j) => (edit.prepDates || [])[j] ?? null);
-                          dates[i] = v;
-                          onPatch({ prepDates: dates });
-                        }}
-                        style={{ fontSize: 12 }}
-                      />
-                    </div>
-                  ))}
+                  {Array.from({ length: Math.ceil(edit.prepDays) }, (_, i) => {
+                    const isHalf = edit.prepDays % 1 !== 0 && i === Math.ceil(edit.prepDays) - 1;
+                    return (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink-3)', minWidth: 44 }}>Prep {i + 1}{isHalf ? ' ½' : ''}</span>
+                        <DateButton
+                          date={(edit.prepDates || [])[i] || null}
+                          onSave={v => {
+                            const dates = Array.from({ length: Math.ceil(edit.prepDays) }, (_, j) => (edit.prepDates || [])[j] ?? null);
+                            dates[i] = v;
+                            onPatch({ prepDates: dates });
+                          }}
+                          style={{ fontSize: 12 }}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1015,7 +1019,8 @@ function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine,
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <DayStepper value={edit.wrapDays} onChange={v => {
                   const old = edit.wrapDates || [];
-                  onPatch({ wrapDays: v, wrapDates: Array.from({ length: v }, (_, i) => old[i] ?? null) });
+                  const count = Math.ceil(v);
+                  onPatch({ wrapDays: v, wrapDates: Array.from({ length: count }, (_, i) => old[i] ?? null) });
                 }} /><small>days</small>
               </div>
               <select className="input" style={{ fontSize: 12, padding: '3px 6px', width: '100%' }}
@@ -1027,20 +1032,23 @@ function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine,
               </select>
               {(edit.wrapDays || 0) > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5, width: '100%', marginTop: 2 }}>
-                  {Array.from({ length: edit.wrapDays }, (_, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink-3)', minWidth: 38 }}>Wrap {i + 1}</span>
-                      <DateButton
-                        date={(edit.wrapDates || [])[i] || null}
-                        onSave={v => {
-                          const dates = Array.from({ length: edit.wrapDays }, (_, j) => (edit.wrapDates || [])[j] ?? null);
-                          dates[i] = v;
-                          onPatch({ wrapDates: dates });
-                        }}
-                        style={{ fontSize: 12 }}
-                      />
-                    </div>
-                  ))}
+                  {Array.from({ length: Math.ceil(edit.wrapDays) }, (_, i) => {
+                    const isHalf = edit.wrapDays % 1 !== 0 && i === Math.ceil(edit.wrapDays) - 1;
+                    return (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink-3)', minWidth: 44 }}>Wrap {i + 1}{isHalf ? ' ½' : ''}</span>
+                        <DateButton
+                          date={(edit.wrapDates || [])[i] || null}
+                          onSave={v => {
+                            const dates = Array.from({ length: Math.ceil(edit.wrapDays) }, (_, j) => (edit.wrapDates || [])[j] ?? null);
+                            dates[i] = v;
+                            onPatch({ wrapDates: dates });
+                          }}
+                          style={{ fontSize: 12 }}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

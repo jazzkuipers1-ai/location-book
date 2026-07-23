@@ -715,7 +715,8 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
           <Board model={model} edits={state.edits} removed={removed} onOpen={openLoc}
             onPatchLoc={patchById} onRename={renameLoc} onRemove={removeLoc} onCombine={openCombine}
             onCombineDrop={(src, tgt) => mergeLocations(tgt, [src])} onExport={() => setShowExport(true)}
-            onAddLocation={() => setShowAddLocation(true)} onDuplicate={duplicateLoc} />
+            onAddLocation={() => setShowAddLocation(true)} onDuplicate={duplicateLoc}
+            onShareProject={() => setShowProjectShare(true)} />
         ) : (activeLoc && mobileTab !== 'list') ? (
           <>
             <div className="topbar">
@@ -741,7 +742,6 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
                 </span>
               )}
               <button className="btn sm topbar-desktop-only" onClick={() => setShowShare(true)}><Icon name="arrow" size={14} />Share…</button>
-              <button className="btn sm topbar-desktop-only" onClick={() => setShowProjectShare(true)}><Icon name="layers" size={14} />Share project…</button>
               <button className="btn sm topbar-desktop-only" onClick={() => setShowExport(true)}><Icon name="layers" size={14} />Export…</button>
               <button className="btn sm primary topbar-desktop-only" onClick={quickExport}><Icon name="page" size={14} />Export this deck</button>
               <button className="btn sm primary" style={{ display: 'none' }} onClick={quickExport}

@@ -112,7 +112,7 @@ function SeasonGroup({ season, locs, edits, onOpen, onPatchLoc, onRename, onRemo
   );
 }
 
-function Board({ model, edits, removed, onOpen, onPatchLoc, onRename, onRemove, onCombine, onCombineDrop, onExport, onAddLocation, onDuplicate }) {
+function Board({ model, edits, removed, onOpen, onPatchLoc, onRename, onRemove, onCombine, onCombineDrop, onExport, onAddLocation, onDuplicate, onShareProject }) {
   const visible = model.locations.filter(l => !removed.includes(l.id));
 
   // Only use season grouping when the schedule actually has seasonal data
@@ -156,6 +156,7 @@ function Board({ model, edits, removed, onOpen, onPatchLoc, onRename, onRemove, 
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn" onClick={onAddLocation}><Icon name="plus" size={15} />Add location</button>
+          <button className="btn" onClick={onShareProject}><Icon name="arrow" size={15} />Share project…</button>
           <button className="btn primary" onClick={onExport}><Icon name="download" size={15} />Export…</button>
         </div>
       </div>

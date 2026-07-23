@@ -77,7 +77,7 @@ function sidebarDominantSeason(scenes) {
   return Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0] || null;
 }
 
-function Sidebar({ model, edits, activeId, onSelect, onImport, onUpdateSchedule, onExport, navSort, view, onOverview, removed, onRestore, onRenameSchedule, onGoHome, hasPassword, onSetPassword, onCollapse, onCompressPhotos, onPatchLoc }) {
+function Sidebar({ model, edits, activeId, onSelect, onImport, onUpdateSchedule, onExport, navSort, view, onOverview, onCalendar, removed, onRestore, onRenameSchedule, onGoHome, hasPassword, onSetPassword, onCollapse, onCompressPhotos, onPatchLoc }) {
   const [q, setQ] = useState('');
   const [showHidden, setShowHidden] = useState(false);
   const [seasonOver, setSeasonOver] = useState(null);
@@ -155,7 +155,8 @@ function Sidebar({ model, edits, activeId, onSelect, onImport, onUpdateSchedule,
 
       <div className="nav-tabs">
         <button className={'nav-tab' + (view === 'board' ? ' on' : '')} onClick={onOverview}><Icon name="grid" size={14} />Overview</button>
-        <button className={'nav-tab' + (view !== 'board' ? ' on' : '')} onClick={() => onSelect(activeId)}><Icon name="list" size={14} />List</button>
+        <button className={'nav-tab' + (view === 'calendar' ? ' on' : '')} onClick={onCalendar}><Icon name="cal" size={14} />Agenda</button>
+        <button className={'nav-tab' + (view !== 'board' && view !== 'calendar' ? ' on' : '')} onClick={() => onSelect(activeId)}><Icon name="list" size={14} />List</button>
       </div>
 
       <div className="search">

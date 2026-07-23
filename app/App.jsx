@@ -679,7 +679,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
 
       {/* Desktop sidebar */}
       <Sidebar model={model} edits={state.edits} activeId={activeLoc ? activeLoc.id : null} navSort={t.navSort}
-        view={view} onOverview={() => setView('board')} removed={removed} onRestore={restoreLoc}
+        view={view} onOverview={() => setView('board')} onCalendar={() => setView('calendar')} removed={removed} onRestore={restoreLoc}
         onSelect={openLoc} onImport={() => setShowImport(true)} onUpdateSchedule={() => setShowUpdateSchedule(true)} onExport={() => setShowExport(true)} onPatchLoc={patchById}
         hasPassword={!!remoteHash} onSetPassword={() => setShowSetPassword(true)}
         onCollapse={() => setSideCollapsed(true)}
@@ -727,7 +727,9 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
       )}
 
       <main className="main">
-        {(view === 'board' && mobileTab !== 'list') ? (
+        {(view === 'calendar' && mobileTab !== 'list') ? (
+          <CalendarView model={model} edits={state.edits} removed={removed} onOpenLoc={openLoc} />
+        ) : (view === 'board' && mobileTab !== 'list') ? (
           <Board model={model} edits={state.edits} removed={removed} onOpen={openLoc}
             onPatchLoc={patchById} onRename={renameLoc} onRemove={removeLoc} onCombine={openCombine}
             onCombineDrop={(src, tgt) => mergeLocations(tgt, [src])} onExport={() => setShowExport(true)}

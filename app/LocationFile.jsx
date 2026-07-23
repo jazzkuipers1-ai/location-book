@@ -948,7 +948,10 @@ function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine,
           <div className="metric"><div className="k">Prep</div>
             <div className="v" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <DayStepper value={edit.prepDays} onChange={v => onPatch({ prepDays: v })} /><small>days</small>
+                <DayStepper value={edit.prepDays} onChange={v => {
+                  const old = edit.prepDates || [];
+                  onPatch({ prepDays: v, prepDates: Array.from({ length: v }, (_, i) => old[i] ?? null) });
+                }} /><small>days</small>
               </div>
               <select className="input" style={{ fontSize: 12, padding: '3px 6px', width: '100%' }}
                 value={edit.prepTiming || ''}
@@ -957,12 +960,33 @@ function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine,
                 <option value="before_shooting">Before shooting</option>
                 <option value="after_wrap">After wrap</option>
               </select>
+              {(edit.prepDays || 0) > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5, width: '100%', marginTop: 2 }}>
+                  {Array.from({ length: edit.prepDays }, (_, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink-3)', minWidth: 38 }}>Prep {i + 1}</span>
+                      <DateButton
+                        date={(edit.prepDates || [])[i] || null}
+                        onSave={v => {
+                          const dates = Array.from({ length: edit.prepDays }, (_, j) => (edit.prepDates || [])[j] ?? null);
+                          dates[i] = v;
+                          onPatch({ prepDates: dates });
+                        }}
+                        style={{ fontSize: 12 }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           <div className="metric"><div className="k">Wrap</div>
             <div className="v" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <DayStepper value={edit.wrapDays} onChange={v => onPatch({ wrapDays: v })} /><small>days</small>
+                <DayStepper value={edit.wrapDays} onChange={v => {
+                  const old = edit.wrapDates || [];
+                  onPatch({ wrapDays: v, wrapDates: Array.from({ length: v }, (_, i) => old[i] ?? null) });
+                }} /><small>days</small>
               </div>
               <select className="input" style={{ fontSize: 12, padding: '3px 6px', width: '100%' }}
                 value={edit.wrapTiming || ''}
@@ -971,6 +995,24 @@ function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine,
                 <option value="after_wrap">After wrap</option>
                 <option value="before_shooting">Before shooting</option>
               </select>
+              {(edit.wrapDays || 0) > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5, width: '100%', marginTop: 2 }}>
+                  {Array.from({ length: edit.wrapDays }, (_, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink-3)', minWidth: 38 }}>Wrap {i + 1}</span>
+                      <DateButton
+                        date={(edit.wrapDates || [])[i] || null}
+                        onSave={v => {
+                          const dates = Array.from({ length: edit.wrapDays }, (_, j) => (edit.wrapDates || [])[j] ?? null);
+                          dates[i] = v;
+                          onPatch({ wrapDates: dates });
+                        }}
+                        style={{ fontSize: 12 }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

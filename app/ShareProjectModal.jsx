@@ -112,8 +112,8 @@ function ShareProjectModal({ locations, edits, scheduleName, projectShareId, pro
         const base = (loc.scenes || []).filter(s => !removed.has(sceneKey(s)));
         return [...base, ...(edit.extraScenes || [])].sort((a, b) => parseFloat(a.number) - parseFloat(b.number));
       })(),
-      prepDays: edit.prepDays || 0, prepTiming: edit.prepTiming || null,
-      wrapDays: edit.wrapDays || 0, wrapTiming: edit.wrapTiming || null,
+      prepDays: edit.prepDays || 0, prepTiming: edit.prepTiming || null, prepDates: edit.prepDates || [],
+      wrapDays: edit.wrapDays || 0, wrapTiming: edit.wrapTiming || null, wrapDates: edit.wrapDates || [],
       updatedAt: Date.now(),
     };
 

@@ -225,6 +225,34 @@ function ShareView({ shareId, onBack }) {
           </SV_Section>
         )}
 
+        {/* Prep dates */}
+        {(data.prepDates || []).some(Boolean) && (
+          <SV_Section title="Prep" count={(data.prepDates || []).filter(Boolean).length + ' dag' + ((data.prepDates || []).filter(Boolean).length !== 1 ? 'en' : '')}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+              {(data.prepDates || []).map((d, i) => d ? (
+                <div key={i} style={{ textAlign: 'center', background: 'var(--card)', borderRadius: 10, padding: '12px 18px', border: '1.5px dashed var(--line-2)', minWidth: 72 }}>
+                  <div style={{ fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--ink-3)', marginBottom: 4 }}>Prep {i + 1}</div>
+                  <div style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--ink)', fontWeight: 600 }}>{fmtD(d)}</div>
+                </div>
+              ) : null)}
+            </div>
+          </SV_Section>
+        )}
+
+        {/* Wrap dates */}
+        {(data.wrapDates || []).some(Boolean) && (
+          <SV_Section title="Wrap" count={(data.wrapDates || []).filter(Boolean).length + ' dag' + ((data.wrapDates || []).filter(Boolean).length !== 1 ? 'en' : '')}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+              {(data.wrapDates || []).map((d, i) => d ? (
+                <div key={i} style={{ textAlign: 'center', background: 'var(--card)', borderRadius: 10, padding: '12px 18px', border: '1.5px dotted var(--line-2)', minWidth: 72 }}>
+                  <div style={{ fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--ink-3)', marginBottom: 4 }}>Wrap {i + 1}</div>
+                  <div style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--ink)', fontWeight: 600 }}>{fmtD(d)}</div>
+                </div>
+              ) : null)}
+            </div>
+          </SV_Section>
+        )}
+
         {/* Adjustments */}
         {(data.adjustments || []).length > 0 && (
           <SV_Section title="Adjustments" count={(data.adjustments || []).length}>

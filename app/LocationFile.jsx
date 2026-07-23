@@ -134,7 +134,7 @@ function toStoredDate(yyyy, mm, dd) {
   return `${String(dd).padStart(2,'0')}/${String(mm+1).padStart(2,'0')}/${yyyy}`;
 }
 
-function CalendarPicker({ date, onSave, onClose }) {
+function CalendarPicker({ date, onSave, onClose, portalPos }) {
   const parsed = date && /^\d{2}\/\d{2}\/\d{4}$/.test(date)
     ? (() => { const [dd,mm,yyyy] = date.split('/').map(Number); return new Date(yyyy, mm-1, dd); })()
     : new Date();
@@ -161,7 +161,10 @@ function CalendarPicker({ date, onSave, onClose }) {
 
   return (
     <div ref={ref} onMouseDown={e => e.stopPropagation()} style={{
-      position:'absolute', top:'calc(100% + 6px)', left:0, zIndex:9999,
+      position: portalPos ? 'fixed' : 'absolute',
+      top: portalPos ? portalPos.top : 'calc(100% + 6px)',
+      left: portalPos ? portalPos.left : 0,
+      zIndex:9999,
       background:'var(--card)', border:'1px solid var(--line-2)', borderRadius:12,
       boxShadow:'0 8px 32px rgba(0,0,0,.18)', padding:'14px 16px', width:248,
       userSelect:'none', minWidth:248,
@@ -198,19 +201,32 @@ function CalendarPicker({ date, onSave, onClose }) {
 
 function DateButton({ date, onSave, style }) {
   const [open, setOpen] = React.useState(false);
-  const ref = React.useRef(null);
+  const [pos, setPos] = React.useState({ top: 0, left: 0 });
+  const btnRef = React.useRef(null);
   const isValid = date && /^\d{2}\/\d{2}\/\d{4}$/.test(date);
   const fmt = isValid
     ? (() => { const [dd,mm,yyyy]=date.split('/').map(Number); return new Date(yyyy,mm-1,dd).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}); })()
     : 'Set date';
+
+  const openPicker = () => {
+    if (btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 6, left: Math.min(r.left, window.innerWidth - 270) });
+    }
+    setOpen(o => !o);
+  };
+
   return (
-    <span ref={ref} style={{position:'relative',display:'inline-block',...style}}>
-      <button type="button" onClick={()=>setOpen(o=>!o)}
-        style={{background:'none',border:'none',padding:0,cursor:'pointer',font:'inherit',color:'inherit',
+    <span style={{position:'relative',display:'inline-block',...style}}>
+      <button ref={btnRef} type="button" onClick={openPicker}
+        style={{background:'none',border:'none',padding:0,cursor:'pointer',font:'inherit',
           fontWeight:600,fontSize:13,borderBottom:'1px dashed var(--ink-3)',color: isValid ? 'inherit' : 'var(--accent)'}}>
         {fmt}
       </button>
-      {open && <CalendarPicker date={isValid ? date : null} onSave={onSave} onClose={()=>setOpen(false)} />}
+      {open && ReactDOM.createPortal(
+        <CalendarPicker date={isValid ? date : null} onSave={v=>{onSave(v);setOpen(false);}} onClose={()=>setOpen(false)} portalPos={pos} />,
+        document.body
+      )}
     </span>
   );
 }

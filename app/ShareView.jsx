@@ -452,10 +452,12 @@ function SharedAgendaView({ events }) {
     return m;
   }, [events]);
 
+  const TIMING_SHORT = { before_shooting: 'BS', after_wrap: 'AW' };
   const eventLabel = ev => {
+    const t = ev.timing ? ` ${TIMING_SHORT[ev.timing] || ''}` : '';
     if (ev.type === 'shoot') return ev.dayNum ? `Dag ${ev.dayNum}` : 'Shoot';
-    if (ev.type === 'prep')  return ev.total > 1 ? `Prep ${ev.idx}/${ev.total}` : 'Prep';
-    return ev.total > 1 ? `Wrap ${ev.idx}/${ev.total}` : 'Wrap';
+    if (ev.type === 'prep')  return (ev.total > 1 ? `Prep ${ev.idx}/${ev.total}` : 'Prep') + t;
+    return (ev.total > 1 ? `Wrap ${ev.idx}/${ev.total}` : 'Wrap') + t;
   };
 
   return (

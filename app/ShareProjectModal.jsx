@@ -19,10 +19,10 @@ function buildAgendaEvents(locations, edits) {
       if (d.date) events.push({ type: 'shoot', date: d.date, dayNum: null, locName: name, color });
     }
     (edit.prepDates || []).forEach((date, j) => {
-      if (date) events.push({ type: 'prep', date, idx: j + 1, total: edit.prepDays, locName: name, color });
+      if (date) events.push({ type: 'prep', date, idx: j + 1, total: edit.prepDays, locName: name, color, timing: edit.prepTiming || null });
     });
     (edit.wrapDates || []).forEach((date, j) => {
-      if (date) events.push({ type: 'wrap', date, idx: j + 1, total: edit.wrapDays, locName: name, color });
+      if (date) events.push({ type: 'wrap', date, idx: j + 1, total: edit.wrapDays, locName: name, color, timing: edit.wrapTiming || null });
     });
   });
   return events;

@@ -62,12 +62,12 @@ function CalendarView({ model, edits, removed, onOpenLoc }) {
       // Prep dates
       (edit.prepDates || []).forEach((dateStr, i) => {
         const date = parseCalDate(dateStr);
-        if (date) add(calDateKey(date), { type: 'prep', name, locId: loc.id, color, idx: i + 1, total: edit.prepDays });
+        if (date) add(calDateKey(date), { type: 'prep', name, locId: loc.id, color, idx: i + 1, total: edit.prepDays, timing: edit.prepTiming || null });
       });
       // Wrap dates
       (edit.wrapDates || []).forEach((dateStr, i) => {
         const date = parseCalDate(dateStr);
-        if (date) add(calDateKey(date), { type: 'wrap', name, locId: loc.id, color, idx: i + 1, total: edit.wrapDays });
+        if (date) add(calDateKey(date), { type: 'wrap', name, locId: loc.id, color, idx: i + 1, total: edit.wrapDays, timing: edit.wrapTiming || null });
       });
     }
     return result;
@@ -107,10 +107,12 @@ function CalendarView({ model, edits, removed, onOpenLoc }) {
   // Count events in month for "no data" hint
   const monthHasEvents = cells.some(c => c && c.evs.length > 0);
 
+  const TIMING_SHORT = { before_shooting: 'BS', after_wrap: 'AW' };
   const eventLabel = ev => {
+    const t = ev.timing ? ` ${TIMING_SHORT[ev.timing] || ''}` : '';
     if (ev.type === 'shoot') return ev.dayNum ? `Dag ${ev.dayNum}` : 'Shoot';
-    if (ev.type === 'prep')  return ev.total > 1 ? `Prep ${ev.idx}/${ev.total}` : 'Prep';
-    return ev.total > 1 ? `Wrap ${ev.idx}/${ev.total}` : 'Wrap';
+    if (ev.type === 'prep')  return (ev.total > 1 ? `Prep ${ev.idx}/${ev.total}` : 'Prep') + t;
+    return (ev.total > 1 ? `Wrap ${ev.idx}/${ev.total}` : 'Wrap') + t;
   };
 
   return (

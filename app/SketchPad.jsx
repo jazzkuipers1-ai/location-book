@@ -96,24 +96,39 @@ function SketchPad({ onSave, onClose }) {
   const bgRef   = useRef(null);  // white bg + grid (never touched by user)
   const drawRef = useRef(null);  // transparent drawing layer
 
-  const [tool, setTool]       = useState('pen');
-  const [color, setColor]     = useState('#111111');
+  const [tool, setTool]         = useState('pen');
+  const [color, setColor]       = useState('#111111');
   const [widthIdx, setWidthIdx] = useState(1);
-  const [grid, setGrid]       = useState('dots');
-  const [imgs, setImgs]       = useState([]);
-  const [selId, setSelId]     = useState(null);
-  const [saving, setSaving]   = useState(false);
-  const [canUndo, setCanUndo] = useState(false);
-  const [canRedo, setCanRedo] = useState(false);
+  const [grid, setGrid]         = useState('dots');
+  const [imgs, setImgs]         = useState([]);
+  const [selId, setSelId]       = useState(null);
+  const [saving, setSaving]     = useState(false);
+  const [canUndo, setCanUndo]   = useState(false);
+  const [canRedo, setCanRedo]   = useState(false);
   const [canvasDisplaySize, setCanvasDisplaySize] = useState({ w: 1, h: 1 });
+  const [zoom, setZoom]         = useState(1);
+  const [pan, setPan]           = useState({ x: 0, y: 0 });
 
-  const isDown    = useRef(false);
-  const lastPt    = useRef(null);
-  const lineFrom  = useRef(null);
-  const preSnap   = useRef(null);
-  const undoStack = useRef([]);
-  const redoStack = useRef([]);
-  const imgIdCtr  = useRef(0);
+  const isDown         = useRef(false);
+  const lastPt         = useRef(null);
+  const lineFrom       = useRef(null);
+  const preSnap        = useRef(null);
+  const undoStack      = useRef([]);
+  const redoStack      = useRef([]);
+  const imgIdCtr       = useRef(0);
+  const activePointers = useRef(new Map());
+  const pinchState     = useRef(null);
+  const curPts         = useRef([]);
+  const holdTimer      = useRef(null);
+  const isSnapped      = useRef(false);
+
+  // Stable refs for use inside event handlers (no stale closures)
+  const toolRef      = useRef(tool);
+  const widthIdxRef  = useRef(widthIdx);
+  const colorRef     = useRef(color);
+  useEffect(() => { toolRef.current = tool; }, [tool]);
+  useEffect(() => { widthIdxRef.current = widthIdx; }, [widthIdx]);
+  useEffect(() => { colorRef.current = color; }, [color]);
 
   /* ─── Init ─── */
   useEffect(() => {
@@ -127,7 +142,6 @@ function SketchPad({ onSave, onClose }) {
     pushUndo();
   }, []);
 
-  // Track canvas CSS size so SketchImage % coords stay in sync
   useEffect(() => {
     const el = drawRef.current;
     if (!el) return;
@@ -139,7 +153,6 @@ function SketchPad({ onSave, onClose }) {
     return () => obs.disconnect();
   }, []);
 
-  // Repaint grid background when grid option changes
   useEffect(() => {
     const bg = bgRef.current;
     if (!bg) return;
@@ -148,6 +161,8 @@ function SketchPad({ onSave, onClose }) {
     ctx.fillRect(0, 0, SP_W, SP_H);
     paintGrid(ctx, grid);
   }, [grid]);
+
+  useEffect(() => { if (zoom <= 1) setPan({ x: 0, y: 0 }); }, [zoom]);
 
   function paintGrid(ctx, mode) {
     if (mode === 'none') return;
@@ -199,41 +214,39 @@ function SketchPad({ onSave, onClose }) {
     setCanRedo(redoStack.current.length > 0);
   }
 
-  /* ─── Pointer coordinate mapping ─── */
+  /* ─── Pointer coordinate mapping (works correctly with CSS zoom/pan) ─── */
   function getCoords(e) {
     const canvas = drawRef.current;
     const rect   = canvas.getBoundingClientRect();
     return {
       x: (e.clientX - rect.left) * SP_W / rect.width,
       y: (e.clientY - rect.top)  * SP_H / rect.height,
-      // Apple Pencil: e.pointerType === 'pen', e.pressure 0–1
       p: e.pointerType === 'pen' ? Math.max(0.08, e.pressure || 0.5) : 0.5,
     };
   }
 
   /* ─── Apply tool style to context ─── */
   function applyStyle(ctx, pressure) {
-    const w = _SP_WIDTHS[widthIdx];
+    const w = _SP_WIDTHS[widthIdxRef.current];
     ctx.lineCap  = 'round';
     ctx.lineJoin = 'round';
-    if (tool === 'eraser') {
+    if (toolRef.current === 'eraser') {
       ctx.globalCompositeOperation = 'destination-out';
       ctx.strokeStyle = 'rgba(0,0,0,1)';
       ctx.fillStyle   = 'rgba(0,0,0,1)';
       ctx.lineWidth   = w * 3;
       ctx.globalAlpha = 1;
-    } else if (tool === 'marker') {
+    } else if (toolRef.current === 'marker') {
       ctx.globalCompositeOperation = 'source-over';
-      ctx.strokeStyle = color;
-      ctx.fillStyle   = color;
+      ctx.strokeStyle = colorRef.current;
+      ctx.fillStyle   = colorRef.current;
       ctx.lineWidth   = w * 2.5;
       ctx.globalAlpha = 0.28;
     } else {
       ctx.globalCompositeOperation = 'source-over';
-      ctx.strokeStyle = color;
-      ctx.fillStyle   = color;
-      // Pen: pressure-sensitive width; pencil/line/rect: fixed
-      ctx.lineWidth   = tool === 'pen' ? w * (0.3 + pressure * 1.4) : w;
+      ctx.strokeStyle = colorRef.current;
+      ctx.fillStyle   = colorRef.current;
+      ctx.lineWidth   = toolRef.current === 'pen' ? w * (0.3 + pressure * 1.4) : w;
       ctx.globalAlpha = 1;
     }
   }
@@ -243,38 +256,110 @@ function SketchPad({ onSave, onClose }) {
     ctx.globalAlpha = 1;
   }
 
+  /* ─── Draw collected points as smooth quadratic bezier stroke ─── */
+  function drawSmoothStroke(ctx, pts) {
+    if (!pts.length) return;
+    applyStyle(ctx, pts[0].p);
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length - 1; i++) {
+      const mx = (pts[i].x + pts[i + 1].x) / 2;
+      const my = (pts[i].y + pts[i + 1].y) / 2;
+      ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+    }
+    ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
+    ctx.stroke();
+    resetStyle(ctx);
+  }
+
+  /* ─── Snap freehand stroke to a straight line (Procreate-style) ─── */
+  function snapStroke() {
+    const pts = curPts.current;
+    if (pts.length < 2 || !preSnap.current) return;
+    curPts.current = [pts[0], pts[pts.length - 1]];
+    isSnapped.current = true;
+    const ctx = drawRef.current.getContext('2d');
+    ctx.putImageData(preSnap.current, 0, 0);
+    applyStyle(ctx, pts[0].p);
+    ctx.beginPath();
+    ctx.moveTo(curPts.current[0].x, curPts.current[0].y);
+    ctx.lineTo(curPts.current[1].x, curPts.current[1].y);
+    ctx.stroke();
+    resetStyle(ctx);
+  }
+
   /* ─── Pointer event handlers ─── */
   function onPtrDown(e) {
-    if (tool === 'move') return;
+    if (toolRef.current === 'move') return;
     e.preventDefault();
     drawRef.current.setPointerCapture(e.pointerId);
-    setSelId(null);
-    isDown.current = true;
-    const pt = getCoords(e);
-    lastPt.current = pt;
+    activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-    if (tool === 'line' || tool === 'rect') {
-      lineFrom.current = pt;
-      preSnap.current  = drawRef.current.getContext('2d').getImageData(0, 0, SP_W, SP_H);
+    // Second finger → pinch zoom mode, cancel any in-progress stroke
+    if (activePointers.current.size === 2) {
+      isDown.current = false;
+      clearTimeout(holdTimer.current);
+      curPts.current = [];
+      isSnapped.current = false;
+      if (preSnap.current) drawRef.current.getContext('2d').putImageData(preSnap.current, 0, 0);
+      const [a, b] = [...activePointers.current.values()];
+      const dist = Math.hypot(b.x - a.x, b.y - a.y);
+      pinchState.current = { prevDist: dist, prevCx: (a.x + b.x) / 2, prevCy: (a.y + b.y) / 2 };
       return;
     }
 
-    // Dot at touchdown point
+    setSelId(null);
+    isDown.current = true;
+    isSnapped.current = false;
+    const pt = getCoords(e);
+    lastPt.current = pt;
+    curPts.current = [pt];
+
+    // Save canvas snapshot so we can redraw the whole stroke each frame (smooth + marker fix)
+    preSnap.current = drawRef.current.getContext('2d').getImageData(0, 0, SP_W, SP_H);
+
+    if (toolRef.current === 'line' || toolRef.current === 'rect') {
+      lineFrom.current = pt;
+      return;
+    }
+
+    // Draw initial dot at touch-down point
     const ctx = drawRef.current.getContext('2d');
     applyStyle(ctx, pt.p);
     ctx.beginPath();
     ctx.arc(pt.x, pt.y, Math.max(ctx.lineWidth / 2, 0.5), 0, Math.PI * 2);
     ctx.fill();
     resetStyle(ctx);
+
+    // Hold pen still for 800ms → snap to straight line (Apple Pencil QuickShape)
+    if (toolRef.current === 'pen') {
+      clearTimeout(holdTimer.current);
+      holdTimer.current = setTimeout(snapStroke, 800);
+    }
   }
 
   function onPtrMove(e) {
+    activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    // Pinch zoom
+    if (activePointers.current.size === 2 && pinchState.current) {
+      e.preventDefault();
+      const [a, b] = [...activePointers.current.values()];
+      const newDist = Math.hypot(b.x - a.x, b.y - a.y);
+      const newCx = (a.x + b.x) / 2, newCy = (a.y + b.y) / 2;
+      const { prevDist, prevCx, prevCy } = pinchState.current;
+      setZoom(z => Math.max(1, Math.min(5, z * (newDist / prevDist))));
+      setPan(p => ({ x: p.x + (newCx - prevCx), y: p.y + (newCy - prevCy) }));
+      pinchState.current = { prevDist: newDist, prevCx: newCx, prevCy: newCy };
+      return;
+    }
+
     if (!isDown.current) return;
     e.preventDefault();
-    const pt  = getCoords(e);
+    const pt = getCoords(e);
     const ctx = drawRef.current.getContext('2d');
 
-    if (tool === 'line') {
+    if (toolRef.current === 'line') {
       ctx.putImageData(preSnap.current, 0, 0);
       applyStyle(ctx, 0.5);
       ctx.beginPath();
@@ -285,7 +370,7 @@ function SketchPad({ onSave, onClose }) {
       return;
     }
 
-    if (tool === 'rect') {
+    if (toolRef.current === 'rect') {
       ctx.putImageData(preSnap.current, 0, 0);
       const x = Math.min(lineFrom.current.x, pt.x);
       const y = Math.min(lineFrom.current.y, pt.y);
@@ -297,19 +382,48 @@ function SketchPad({ onSave, onClose }) {
       return;
     }
 
-    // Freehand stroke
-    applyStyle(ctx, pt.p);
-    ctx.beginPath();
-    ctx.moveTo(lastPt.current.x, lastPt.current.y);
-    ctx.lineTo(pt.x, pt.y);
-    ctx.stroke();
-    resetStyle(ctx);
+    if (isSnapped.current) {
+      // After snap: drag to reposition the endpoint (Procreate-style)
+      curPts.current = [curPts.current[0], pt];
+      ctx.putImageData(preSnap.current, 0, 0);
+      applyStyle(ctx, curPts.current[0].p);
+      ctx.beginPath();
+      ctx.moveTo(curPts.current[0].x, curPts.current[0].y);
+      ctx.lineTo(pt.x, pt.y);
+      ctx.stroke();
+      resetStyle(ctx);
+      return;
+    }
+
+    curPts.current.push(pt);
+
+    // Reset hold timer whenever pen moves significantly (so only true pauses snap)
+    if (toolRef.current === 'pen') {
+      const prev = curPts.current[curPts.current.length - 2];
+      if (prev) {
+        const dx = pt.x - prev.x, dy = pt.y - prev.y;
+        if (Math.sqrt(dx * dx + dy * dy) > 8) {
+          clearTimeout(holdTimer.current);
+          holdTimer.current = setTimeout(snapStroke, 800);
+        }
+      }
+    }
+
+    // Restore pre-snap, redraw entire stroke as smooth bezier
+    // This eliminates marker alpha-accumulation blobs and gives smooth curves
+    ctx.putImageData(preSnap.current, 0, 0);
+    drawSmoothStroke(ctx, curPts.current);
     lastPt.current = pt;
   }
 
-  function onPtrUp() {
+  function onPtrUp(e) {
+    activePointers.current.delete(e.pointerId);
+    clearTimeout(holdTimer.current);
+    if (activePointers.current.size < 2) pinchState.current = null;
     if (!isDown.current) return;
     isDown.current = false;
+    isSnapped.current = false;
+    curPts.current = [];
     pushUndo();
   }
 
@@ -381,7 +495,7 @@ function SketchPad({ onSave, onClose }) {
   /* ─── Tool list ─── */
   const toolList = [
     { id: 'pen',    icon: 'edit',   label: 'Pen',    key: 'P' },
-    { id: 'marker', icon: 'layers', label: 'Marker', key: 'M' },
+    { id: 'marker', icon: 'marker', label: 'Marker', key: 'M' },
     { id: 'line',   icon: 'arrow',  label: 'Line',   key: 'L' },
     { id: 'rect',   icon: 'film',   label: 'Rect',   key: 'R' },
     { id: 'eraser', icon: 'x',      label: 'Eraser', key: 'E' },
@@ -394,7 +508,6 @@ function SketchPad({ onSave, onClose }) {
     { id: 'lines', label: '⊞', title: 'Line grid'  },
   ];
 
-  /* ─── Draw canvas pointer events pass-through when in move mode ─── */
   const drawPointerEvents = tool === 'move' ? 'none' : 'auto';
 
   const btnBase = {
@@ -402,6 +515,9 @@ function SketchPad({ onSave, onClose }) {
     flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
     gap: 2, borderRadius: 12, transition: 'background .12s',
   };
+
+  const wrapTransform = (zoom !== 1 || pan.x || pan.y)
+    ? `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` : undefined;
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 9000, display: 'flex', flexDirection: 'column', background: '#191714', userSelect: 'none' }}>
@@ -452,6 +568,13 @@ function SketchPad({ onSave, onClose }) {
 
         <div style={{ flex: 1, minWidth: 8 }} />
 
+        {zoom > 1 && (
+          <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
+            style={{ background: '#38332a', border: 'none', borderRadius: 8, padding: '8px 12px', color: '#e0d8c8', cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 11, flexShrink: 0 }}>
+            ×{zoom.toFixed(1)} reset
+          </button>
+        )}
+
         {/* Undo / Redo */}
         <button disabled={!canUndo} onClick={undo}
           style={{ background: canUndo ? '#38332a' : 'transparent', border: 'none', borderRadius: 8, padding: '8px 12px', color: canUndo ? '#e0d8c8' : '#484038', cursor: canUndo ? 'pointer' : 'default', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
@@ -483,7 +606,7 @@ function SketchPad({ onSave, onClose }) {
 
           <div style={{ height: 1, background: '#38332a', width: 44, margin: '5px 0' }} />
 
-          <button onClick={insertImage} title="Insert image (I)"
+          <button onClick={insertImage} title="Insert image"
             style={{ ...btnBase, width: 54, height: 54, background: 'transparent', color: '#8a7868' }}>
             <Icon name="image" size={22} sw={1.7} />
             <span style={{ fontSize: 8, fontFamily: 'var(--mono)' }}>Insert</span>
@@ -506,11 +629,11 @@ function SketchPad({ onSave, onClose }) {
         </div>
 
         {/* ── Canvas area ── */}
-        <div style={{ flex: 1, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18, background: '#191714' }}
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18, background: '#191714' }}
           onClick={() => setSelId(null)}>
 
-          {/* Canvas wrapper — determines display size; all layers inside use position:absolute */}
-          <div style={{ position: 'relative', lineHeight: 0, boxShadow: '0 10px 70px rgba(0,0,0,.8)', borderRadius: 3, overflow: 'visible', display: 'inline-block' }}>
+          {/* Canvas wrapper — receives pinch zoom/pan transform */}
+          <div style={{ position: 'relative', lineHeight: 0, boxShadow: '0 10px 70px rgba(0,0,0,.8)', borderRadius: 3, overflow: 'visible', display: 'inline-block', transform: wrapTransform, transformOrigin: 'center' }}>
 
             {/* Background canvas (white + grid) */}
             <canvas ref={bgRef} width={SP_W} height={SP_H}
@@ -554,7 +677,7 @@ function SketchPad({ onSave, onClose }) {
       <div style={{ padding: '5px 12px', background: '#222019', borderTop: '1px solid #0c0b09', color: '#5a5040', fontFamily: 'var(--mono)', fontSize: 10, display: 'flex', gap: 16, flexShrink: 0 }}>
         <span>P pen · M marker · L line · R rect · E eraser · V move</span>
         <span>⌘Z undo · ⌘⇧Z redo</span>
-        <span style={{ flex: 1, textAlign: 'right' }}>Apple Pencil supported — pressure sensitive</span>
+        <span style={{ flex: 1, textAlign: 'right' }}>Apple Pencil: vasthouden → rechte lijn · knijp om in te zoomen</span>
       </div>
     </div>
   );

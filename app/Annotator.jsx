@@ -8,12 +8,20 @@ const PEN_SIZES  = [{ k: 'XS', w: 2 }, { k: 'S', w: 5 }, { k: 'M', w: 10 }, { k:
 function drawStroke(ctx, s, w, h) {
   ctx.beginPath();
   if (s.shape === 'ellipse') {
-    // cx/cy/rx/ry stored normalised
     ctx.ellipse(s.cx * w, s.cy * h, Math.max(1, s.rx * w), Math.max(1, s.ry * h), 0, 0, Math.PI * 2);
   } else if (s.shape === 'rect') {
     ctx.rect(s.x1 * w, s.y1 * h, (s.x2 - s.x1) * w, (s.y2 - s.y1) * h);
   } else {
-    s.pts.forEach((p, i) => { const x = p[0] * w, y = p[1] * h; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    const pts = s.pts;
+    if (!pts || !pts.length) return;
+    ctx.moveTo(pts[0][0] * w, pts[0][1] * h);
+    // Quadratic bezier through midpoints for smooth curves
+    for (let i = 1; i < pts.length - 1; i++) {
+      const mx = (pts[i][0] + pts[i + 1][0]) / 2 * w;
+      const my = (pts[i][1] + pts[i + 1][1]) / 2 * h;
+      ctx.quadraticCurveTo(pts[i][0] * w, pts[i][1] * h, mx, my);
+    }
+    ctx.lineTo(pts[pts.length - 1][0] * w, pts[pts.length - 1][1] * h);
   }
   ctx.stroke();
 }

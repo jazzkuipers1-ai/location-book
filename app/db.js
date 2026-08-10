@@ -43,8 +43,18 @@
   }
   async function getURL(id) {
     if (_urls.has(id)) return _urls.get(id);
-    const blob = await getBlob(id);
+    let blob = await getBlob(id);
     if (blob) {
+      // Converteer HEIC naar JPEG als de browser het niet kan tonen
+      if (blob.type === 'image/heic' || blob.type === 'image/heif' || blob.type === '') {
+        try {
+          if (window.heic2any) {
+            const converted = await heic2any({ blob, toType: 'image/jpeg', quality: 0.85 });
+            blob = Array.isArray(converted) ? converted[0] : converted;
+            await replaceBlob(id, blob);
+          }
+        } catch(e) { /* niet converteerbaar, toon toch */ }
+      }
       const url = URL.createObjectURL(blob);
       _urls.set(id, url);
       return url;

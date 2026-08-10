@@ -44,6 +44,9 @@
 .icon-btn { width: 28px; height: 28px; border-radius: 7px; border: 1px solid transparent; background: none; cursor: pointer; color: var(--ink-2); display: grid; place-items: center; }
 .icon-btn:hover { background: var(--card-2); color: var(--ink); }
 .icon-btn.danger:hover { color: var(--accent); }
+.icon-btn.large { width: 38px; height: 38px; border-radius: 9px; }
+.icon-btn:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+.annot-save-btn { height: 38px; padding: 0 18px; font-size: 13px; }
 
 .adj-add { display: flex; gap: 8px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
 .cat-picker { display: inline-flex; gap: 4px; flex-wrap: wrap; }

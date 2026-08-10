@@ -253,13 +253,17 @@ const GAL_KINDS = [
   { id: 'moodboard', label: 'Moodboard', icon: 'grid' },
 ];
 
-function Lightbox({ imgIds, startIdx, onClose }) {
+function Lightbox({ imgIds, startIdx, items, onClose, onDraw }) {
   const [idx, setIdx] = useState(startIdx || 0);
   const [url, setUrl] = useState(null);
   const imgId = imgIds[idx];
+  const touchStart = useRef(null);
+
   useEffect(() => { setUrl(null); LB.db.getURL(imgId).then(setUrl); }, [imgId]);
+
   const prev = () => setIdx(i => Math.max(0, i - 1));
   const next = () => setIdx(i => Math.min(imgIds.length - 1, i + 1));
+
   useEffect(() => {
     const onKey = e => {
       if (e.key === 'Escape' || e.key === 'Backspace') onClose();
@@ -269,28 +273,62 @@ function Lightbox({ imgIds, startIdx, onClose }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
+
+  const handleTouchStart = e => { touchStart.current = e.touches[0].clientX; };
+  const handleTouchEnd = e => {
+    if (touchStart.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStart.current;
+    touchStart.current = null;
+    if (Math.abs(dx) < 40) return;
+    if (dx < 0) next(); else prev();
+  };
+
+  const currentItem = items && items[idx];
+
   return ReactDOM.createPortal(
     <div onClick={onClose}
+      onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-      <button onClick={onClose} style={{ position: 'fixed', top: 16, right: 20, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 36, height: 36, cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Icon name="x" size={16} />
-      </button>
+      {/* Top bar */}
+      <div onClick={e => e.stopPropagation()} style={{ position: 'fixed', top: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' }}>
+        <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>
+          {imgIds.length > 1 ? `${idx + 1} / ${imgIds.length}` : ''}
+        </span>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {onDraw && currentItem && (
+            <button onClick={() => { onClose(); onDraw(currentItem); }}
+              style={{ background: 'rgba(255,255,255,0.18)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: '#fff', fontFamily: 'var(--mono)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Icon name="edit" size={13} />Bewerken
+            </button>
+          )}
+          <button onClick={onClose}
+            style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 36, height: 36, cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="x" size={16} />
+          </button>
+        </div>
+      </div>
+      {/* Prev arrow */}
       {imgIds.length > 1 && idx > 0 && (
         <button onClick={e => { e.stopPropagation(); prev(); }}
-          style={{ position: 'fixed', left: 16, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 44, height: 44, cursor: 'pointer', color: '#fff', fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+          style={{ position: 'fixed', left: 12, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 44, height: 44, cursor: 'pointer', color: '#fff', fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
       )}
+      {/* Next arrow */}
       {imgIds.length > 1 && idx < imgIds.length - 1 && (
         <button onClick={e => { e.stopPropagation(); next(); }}
-          style={{ position: 'fixed', right: 16, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 44, height: 44, cursor: 'pointer', color: '#fff', fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+          style={{ position: 'fixed', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 44, height: 44, cursor: 'pointer', color: '#fff', fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
       )}
+      {/* Image */}
       {url
         ? <img src={url} onClick={e => e.stopPropagation()}
-            style={{ maxWidth: '92vw', maxHeight: '90vh', borderRadius: 8, objectFit: 'contain', boxShadow: '0 8px 40px rgba(0,0,0,0.5)' }} />
+            style={{ maxWidth: '88vw', maxHeight: '84vh', borderRadius: 8, objectFit: 'contain', boxShadow: '0 8px 40px rgba(0,0,0,0.5)', userSelect: 'none', WebkitUserSelect: 'none' }} />
         : <div style={{ color: 'rgba(255,255,255,0.4)', fontFamily: 'var(--mono)', fontSize: 12 }}>Loading…</div>
       }
+      {/* Swipe hint dots */}
       {imgIds.length > 1 && (
-        <div style={{ position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)', fontFamily: 'var(--mono)', fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>
-          {idx + 1} / {imgIds.length}
+        <div onClick={e => e.stopPropagation()} style={{ position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 5 }}>
+          {imgIds.map((_, i) => (
+            <div key={i} onClick={() => setIdx(i)} style={{ width: i === idx ? 18 : 6, height: 6, borderRadius: 3, background: i === idx ? '#fff' : 'rgba(255,255,255,0.35)', cursor: 'pointer', transition: 'width .2s, background .2s' }} />
+          ))}
         </div>
       )}
     </div>,
@@ -298,7 +336,7 @@ function Lightbox({ imgIds, startIdx, onClose }) {
   );
 }
 
-function GalleryCell({ item, allImgIds, itemIdx, onCap, onNote, onRemove, onDraw, onCrop, onDragStart, onDragEnter, onDragEnd, isDragOver, accentColor, isSelected, onToggleSelect }) {
+function GalleryCell({ item, allImgIds, allItems, itemIdx, onCap, onNote, onRemove, onDraw, onCrop, onDragStart, onDragEnter, onDragEnd, isDragOver, accentColor, isSelected, onToggleSelect }) {
   const [lightbox, setLightbox] = useState(false);
   return (
     <div className={'gal-item' + (isDragOver ? ' drag-over' : '') + (isSelected ? ' gal-selected' : '')}
@@ -316,14 +354,14 @@ function GalleryCell({ item, allImgIds, itemIdx, onCap, onNote, onRemove, onDraw
           className="gal-checkbox">
           {isSelected && <svg width="11" height="9" viewBox="0 0 11 9" fill="none"><path d="M1 4L4 7.5L10 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
         </div>
-        {/* Click photo → open annotator directly so editing tools are immediately available */}
-        <div onClick={e => { e.stopPropagation(); onDraw(); }} onTouchStart={e => e.stopPropagation()} style={{ cursor: 'crosshair' }}>
+        {/* Click photo → open lightbox viewer */}
+        <div onClick={e => { e.stopPropagation(); setLightbox(true); }} style={{ cursor: 'zoom-in' }}>
           <Img imgId={shownId(item)} />
         </div>
         {(item.strokes && item.strokes.length || item.annotatedId) ? <span className="annot-badge"><Icon name="edit" size={12} /></span> : null}
         <div className="tools">
+          <button className="tbtn" title="Tekenen" onClick={e => { e.stopPropagation(); onDraw(); }}><Icon name="edit" size={14} /></button>
           <button className="tbtn" title="Crop" onClick={onCrop}><Icon name="ruler" size={15} /></button>
-          <button className="tbtn" title="Lightbox" onClick={e => { e.stopPropagation(); setLightbox(true); }}><Icon name="eye" size={15} /></button>
           <button className="tbtn" title="Remove" onClick={onRemove}><Icon name="trash" size={14} /></button>
         </div>
         <div className="cap" contentEditable suppressContentEditableWarning
@@ -332,7 +370,8 @@ function GalleryCell({ item, allImgIds, itemIdx, onCap, onNote, onRemove, onDraw
       <textarea className="gal-note" rows={1} placeholder="Add a note…" defaultValue={item.note || ''}
         onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
         onBlur={e => onNote(e.target.value)} />
-      {lightbox && <Lightbox imgIds={allImgIds || [shownId(item)]} startIdx={itemIdx || 0} onClose={() => setLightbox(false)} />}
+      {lightbox && <Lightbox imgIds={allImgIds || [shownId(item)]} startIdx={itemIdx || 0}
+        items={allItems} onDraw={onDraw} onClose={() => setLightbox(false)} />}
     </div>
   );
 }
@@ -447,7 +486,7 @@ function Gallery({ catId, catColor, items, onChange, onDraw, onDropFromOther }) 
         style={{ '--gal-accent': accentColor, '--gal-soft': softColor }}
         {...zoneProps}>
         {items.map((it, idx) => <GalleryCell key={it.id} item={it}
-          allImgIds={items.map(i => shownId(i))} itemIdx={idx}
+          allImgIds={items.map(i => shownId(i))} allItems={items} itemIdx={idx}
           onCap={c => patch(it.id, { cap: c })} onNote={n => patch(it.id, { note: n })}
           onRemove={() => remove(it)} onDraw={() => onDraw(it)}
           onCrop={() => setCropId(it.id)}

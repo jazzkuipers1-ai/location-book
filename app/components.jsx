@@ -58,10 +58,10 @@ function Icon({ name, size = 16, sw = 1.6, style }) {
   );
 }
 
-function IconBtn({ name, title, onClick, danger, size = 16 }) {
+function IconBtn({ name, title, onClick, danger, disabled, size = 16, large }) {
   return (
-    <button className={'icon-btn' + (danger ? ' danger' : '')} title={title}
-      onClick={onClick} type="button"><Icon name={name} size={size} /></button>
+    <button className={'icon-btn' + (danger ? ' danger' : '') + (large ? ' large' : '')} title={title}
+      onClick={onClick} disabled={disabled} type="button"><Icon name={name} size={size} /></button>
   );
 }
 
@@ -184,8 +184,18 @@ async function compressExistingPhotos(state, onProgress) {
 window.compressExistingPhotos = compressExistingPhotos;
 
 async function filesToIds(fileList) {
-  const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
-  if (!files.length) return [];
+  const raw = Array.from(fileList).filter(f => f.type.startsWith('image/') || /\.heic$/i.test(f.name) || /\.heif$/i.test(f.name));
+  if (!raw.length) return [];
+  // Converteer HEIC naar JPEG
+  const files = await Promise.all(raw.map(async f => {
+    if (/\.heic$/i.test(f.name) || /\.heif$/i.test(f.name) || f.type === 'image/heic' || f.type === 'image/heif') {
+      try {
+        const blob = await heic2any({ blob: f, toType: 'image/jpeg', quality: 0.85 });
+        return new File([Array.isArray(blob) ? blob[0] : blob], f.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
+      } catch(e) { return f; }
+    }
+    return f;
+  }));
   // Write all originals to IndexedDB in parallel — instant UI feedback
   const ids = await Promise.all(files.map(f => LB.db.putImage(f)));
   // Compress in background, yielding to the browser between each photo
@@ -293,7 +303,7 @@ function CoverDrop({ id, onSet, onClear, height = 210, radius = 14, label = 'Add
           <div className="s mono">drag &amp; drop or click to browse</div>
         </div>
       )}
-      <input ref={inp} type="file" accept="image/*" hidden onChange={async e => {
+      <input ref={inp} type="file" accept="image/*,.heic,.heif,.HEIC,.HEIF" hidden onChange={async e => {
         const ids = await filesToIds(e.target.files); if (ids[0]) onSet(ids[0]); e.target.value = '';
       }} />
     </div>

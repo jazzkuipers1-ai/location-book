@@ -2,6 +2,11 @@
    image appendix. Accepts MANY locations so you can batch-export a selection.
    Always rendered in the light "document" palette, independent of app theme.   */
 
+/* Hex equivalents of CATS oklch() colors — html2canvas doesn't support oklch */
+const CATS_HEX = { paint:'#c26b4c', remove:'#63778b', dress:'#4b8358', build:'#b38143', electric:'#4280b1', repair:'#8c6088', grafic:'#7c61a8', other:'#858073' };
+const CATS_PDF = CATS.map(c => ({ ...c, color: CATS_HEX[c.id] || c.color }));
+const CAT_PDF  = Object.fromEntries(CATS_PDF.map(c => [c.id, c]));
+
 const DECK_CSS = `
 .deckroot{position:fixed;inset:0;z-index:60;background:#2a2620;display:flex;flex-direction:column;}
 .deck-chrome{flex:0 0 auto;display:flex;align-items:center;gap:14px;padding:11px 18px;background:#1c1813;color:#e9e2d2;border-bottom:1px solid #000;}
@@ -86,7 +91,7 @@ function OverviewPage({ loc, edit, name, scheduleName }) {
   const groups = {};
   adj.forEach(a => { const k = a.area || 'General'; (groups[k] = groups[k] || []).push(a); });
   const groupList = Object.entries(groups);
-  const usedCats = CATS.filter(c => adj.some(a => a.cat === c.id));
+  const usedCats = CATS_PDF.filter(c => adj.some(a => a.cat === c.id));
   const gal = edit.galleries || {};
   const galCats = edit.galCategories && edit.galCategories.length
     ? edit.galCategories
@@ -149,7 +154,7 @@ function OverviewPage({ loc, edit, name, scheduleName }) {
                     <span className="dk-mono" style={{ fontSize: 10, color: 'var(--dk-ink3)' }}>{list.length}</span>
                   </div>
                   {list.map(a => {
-                    const c = CAT[a.cat] || CAT.other;
+                    const c = CAT_PDF[a.cat] || CAT_PDF.other;
                     return (
                       <div key={a.id} style={{ display: 'flex', gap: 9, alignItems: 'flex-start', padding: '3px 0' }}>
                         <span className="dk-tick" style={{ background: c.color, marginTop: 6 }} />
@@ -290,6 +295,8 @@ function AppendixPage({ name, scheduleName, label, color, items, part, parts }) 
 function Deck({ entries, scheduleName, opts, onClose }) {
   const o = opts || {};
   const [scale, setScale] = useState(1);
+  const [exporting, setExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState('');
   useEffect(() => {
     const fit = () => setScale(Math.min(1, (window.innerWidth - 80) / 1280));
     fit(); window.addEventListener('resize', fit); return () => window.removeEventListener('resize', fit);
@@ -298,6 +305,35 @@ function Deck({ entries, scheduleName, opts, onClose }) {
     const k = e => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k);
   }, [onClose]);
+
+  async function exportPDF() {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const pageEls = document.querySelectorAll('.deck-page');
+      if (!pageEls.length) return;
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [1280, 800], hotfixes: ['px_scaling'] });
+      for (let i = 0; i < pageEls.length; i++) {
+        setExportProgress((i + 1) + ' / ' + pageEls.length);
+        if (i > 0) pdf.addPage([1280, 800], 'landscape');
+        const canvas = await html2canvas(pageEls[i], {
+          scale: 2, useCORS: true, allowTaint: false, logging: false,
+          width: 1280, height: 800, windowWidth: 1280, windowHeight: 800,
+        });
+        pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 1280, 800);
+      }
+      const filename = (entries.length === 1 ? entries[0].name : scheduleName || 'location-book')
+        .replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.pdf';
+      pdf.save(filename);
+    } catch (e) {
+      console.error('[Deck] PDF export failed', e);
+      alert('Export mislukt: ' + e.message);
+    } finally {
+      setExporting(false);
+      setExportProgress('');
+    }
+  }
 
   const PER_SCENE_PAGE = 40;
   const PER_APPENDIX = 4;
@@ -354,8 +390,10 @@ function Deck({ entries, scheduleName, opts, onClose }) {
         <button className="btn sm" onClick={onClose} style={{ background: '#2a2620', color: '#e9e2d2', borderColor: '#000' }}><Icon name="arrow" size={14} style={{ transform: 'rotate(180deg)' }} />Back</button>
         <span className="t">{multi ? entries.length + ' locations · ' : entries[0].name + ' · '}{pages.length} page{pages.length !== 1 ? 's' : ''} · 1280×800</span>
         <span style={{ flex: 1 }} />
-        <span className="t" style={{ opacity: .7 }}>Save as PDF → landscape, margins “None”</span>
-        <button className="btn sm primary" onClick={() => window.print()}><Icon name="download" size={14} />Save PDF</button>
+        {exporting && <span className="t">{exportProgress ? 'Pagina ' + exportProgress + ' renderen…' : 'Voorbereiden…'}</span>}
+        <button className="btn sm primary" onClick={exportPDF} disabled={exporting} style={{ opacity: exporting ? .6 : 1 }}>
+          <Icon name="download" size={14} />{exporting ? 'Exporteren…' : 'Save PDF'}
+        </button>
       </div>
       <div className="deck-scroll">
         {pages.map((p, i) => (

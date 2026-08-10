@@ -26,7 +26,14 @@ function drawStroke(ctx, s, w, h) {
 }
 
 async function bakeAnnotation(imgEl, strokes) {
-  const W = imgEl.naturalWidth, H = imgEl.naturalHeight;
+  let W = imgEl.naturalWidth, H = imgEl.naturalHeight;
+  if (!W || !H) throw new Error('Image not loaded');
+  // iOS Safari canvas limit ~16MP — cap to 2048px on longest side
+  const MAX = 2048;
+  if (W > MAX || H > MAX) {
+    const scale = MAX / Math.max(W, H);
+    W = Math.round(W * scale); H = Math.round(H * scale);
+  }
   const ink = document.createElement('canvas'); ink.width = W; ink.height = H;
   const ictx = ink.getContext('2d');
   ictx.lineCap = 'round'; ictx.lineJoin = 'round';
@@ -42,7 +49,9 @@ async function bakeAnnotation(imgEl, strokes) {
   const ctx = out.getContext('2d');
   ctx.drawImage(imgEl, 0, 0, W, H);
   ctx.drawImage(ink, 0, 0);
-  const blob = await new Promise(res => out.toBlob(res, 'image/jpeg', 0.9));
+  const blob = await new Promise((res, rej) => {
+    out.toBlob(b => b ? res(b) : rej(new Error('toBlob returned null')), 'image/jpeg', 0.9);
+  });
   return LB.db.putImage(blob);
 }
 
@@ -253,6 +262,7 @@ function Annotator({ originalId, init, onSave, onClose }) {
     let annotatedId = null;
     try { if (strokes.length && imgRef.current) annotatedId = await bakeAnnotation(imgRef.current, strokes); }
     catch (e) { console.warn('bake failed', e); }
+    finally { setSaving(false); }
     onSave({ strokes, note, annotatedId });
   }
 
@@ -270,7 +280,7 @@ function Annotator({ originalId, init, onSave, onClose }) {
 
         {/* ── Always-visible top toolbar ── */}
         <div className="annot-bar">
-          <IconBtn name="x" onClick={onClose} title="Sluiten" />
+          <IconBtn name="x" onClick={onClose} title="Sluiten" size={18} large />
           {SEP}
 
           {/* Tool selector */}
@@ -311,10 +321,10 @@ function Annotator({ originalId, init, onSave, onClose }) {
           </div>
           {SEP}
 
-          {/* History */}
-          <IconBtn name="undo" onClick={undo} disabled={!strokes.length} title="Ongedaan" />
-          <IconBtn name="redo" onClick={redo} disabled={!future.length} title="Opnieuw" />
-          <IconBtn name="trash" onClick={clear} disabled={!strokes.length} title="Alles wissen" />
+          {/* History — larger touch targets */}
+          <IconBtn name="undo" onClick={undo} disabled={!strokes.length} title="Ongedaan" size={18} large />
+          <IconBtn name="redo" onClick={redo} disabled={!future.length} title="Opnieuw" size={18} large />
+          <IconBtn name="trash" onClick={clear} disabled={!strokes.length} title="Alles wissen" size={18} large />
           {SEP}
 
           {/* Zoom */}
@@ -341,8 +351,8 @@ function Annotator({ originalId, init, onSave, onClose }) {
           </button>
 
           <div style={{ flex: 1, minWidth: 8 }} />
-          <button className="btn sm primary" onClick={save} disabled={saving} style={{ flexShrink: 0 }}>
-            <Icon name="check" size={14} />{saving ? '…' : 'Opslaan'}
+          <button className="btn primary annot-save-btn" onClick={save} disabled={saving} style={{ flexShrink: 0 }}>
+            <Icon name="check" size={15} />{saving ? '…' : 'Opslaan'}
           </button>
         </div>
 
@@ -350,7 +360,7 @@ function Annotator({ originalId, init, onSave, onClose }) {
         <div className="annot-stage">
           <div className="annot-imgwrap"
             style={{ transformOrigin: 'center', transform: wrapTransform, touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}>
-            {url && <img ref={imgRef} src={url} alt="" className="annot-img" onLoad={redraw} draggable="false" crossOrigin="anonymous" />}
+            {url && <img ref={imgRef} src={url} alt="" className="annot-img" onLoad={redraw} draggable="false" />}
             <canvas ref={canRef} className="annot-canvas"
               style={{ touchAction: 'none', cursor: canvasCursor, userSelect: 'none', WebkitUserSelect: 'none' }}
               onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}

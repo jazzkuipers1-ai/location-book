@@ -59,11 +59,24 @@
       _urls.set(id, url);
       return url;
     }
-    // No local blob — fall back to Supabase public URL (uploaded by another device)
+    // No local blob — fetch van Supabase en converteer indien HEIC
     if (window.LB_SYNC && window.LB_SYNC.getImageUrl) {
-      const url = window.LB_SYNC.getImageUrl(id);
-      _urls.set(id, url);
-      return url;
+      const remoteUrl = window.LB_SYNC.getImageUrl(id);
+      try {
+        const resp = await fetch(remoteUrl);
+        let blob = await resp.blob();
+        if (window.heic2any && (blob.type === 'image/heic' || blob.type === 'image/heif' || /\.heic$/i.test(remoteUrl))) {
+          const converted = await heic2any({ blob, toType: 'image/jpeg', quality: 0.85 });
+          blob = Array.isArray(converted) ? converted[0] : converted;
+        }
+        await replaceBlob(id, blob);
+        const url = URL.createObjectURL(blob);
+        _urls.set(id, url);
+        return url;
+      } catch(e) {
+        _urls.set(id, remoteUrl);
+        return remoteUrl;
+      }
     }
     return null;
   }

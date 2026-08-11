@@ -46,7 +46,7 @@
     let blob = await getBlob(id);
     if (blob) {
       // Converteer HEIC naar JPEG als de browser het niet kan tonen
-      if (blob.type === 'image/heic' || blob.type === 'image/heif' || blob.type === '') {
+      if (blob.type === 'image/heic' || blob.type === 'image/heif') {
         try {
           if (window.heic2any) {
             const converted = await heic2any({ blob, toType: 'image/jpeg', quality: 0.85 });

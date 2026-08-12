@@ -199,3 +199,17 @@ input, textarea, select { font-family: inherit; color: inherit; }
 /* ============================================================ FOOTER ==== */
 .empty { text-align: center; padding: 80px 20px; color: var(--ink-2); }
 .empty .serif { font-size: 26px; color: var(--ink); margin-bottom: 8px; }
+
+/* ── Annotator toolbar – scrollable op smalle schermen ── */
+.annot-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  gap: 2px;
+  padding: 4px 6px;
+  flex-shrink: 0;
+  scrollbar-width: none;
+}
+.annot-bar::-webkit-scrollbar { display: none; }

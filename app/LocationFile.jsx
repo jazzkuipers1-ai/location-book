@@ -253,7 +253,7 @@ const GAL_KINDS = [
   { id: 'moodboard', label: 'Moodboard', icon: 'grid' },
 ];
 
-function Lightbox({ imgIds, startIdx, items, onClose, onDraw }) {
+function Lightbox({ imgIds, startIdx, items, onClose, onDraw, onCrop }) {
   const [idx, setIdx] = useState(startIdx || 0);
   const [url, setUrl] = useState(null);
   const imgId = imgIds[idx];
@@ -295,10 +295,16 @@ function Lightbox({ imgIds, startIdx, items, onClose, onDraw }) {
           {imgIds.length > 1 ? `${idx + 1} / ${imgIds.length}` : ''}
         </span>
         <div style={{ display: 'flex', gap: 8 }}>
+          {onCrop && currentItem && (
+            <button onClick={() => { onClose(); onCrop(); }}
+              style={{ background: 'rgba(255,255,255,0.18)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: '#fff', fontFamily: 'var(--mono)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Icon name="ruler" size={13} />Crop
+            </button>
+          )}
           {onDraw && currentItem && (
             <button onClick={() => { onClose(); onDraw(currentItem); }}
               style={{ background: 'rgba(255,255,255,0.18)', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', color: '#fff', fontFamily: 'var(--mono)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Icon name="edit" size={13} />Bewerken
+              <Icon name="edit" size={13} />Tekenen
             </button>
           )}
           <button onClick={onClose}
@@ -371,7 +377,7 @@ function GalleryCell({ item, allImgIds, allItems, itemIdx, onCap, onNote, onRemo
         onInput={e => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
         onBlur={e => onNote(e.target.value)} />
       {lightbox && <Lightbox imgIds={allImgIds || [shownId(item)]} startIdx={itemIdx || 0}
-        items={allItems} onDraw={onDraw} onClose={() => setLightbox(false)} />}
+        items={allItems} onDraw={onDraw} onCrop={onCrop} onClose={() => setLightbox(false)} />}
     </div>
   );
 }

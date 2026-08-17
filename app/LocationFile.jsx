@@ -520,11 +520,12 @@ function Gallery({ catId, catColor, items, onChange, onDraw, onDropFromOther }) 
   );
 }
 
-function VisualSection({ edit, onPatch, onDraw, onSketch }) {
+function VisualSection({ edit, loc, onPatch, onDraw, onSketch }) {
   const cats = edit.galCategories && edit.galCategories.length
     ? edit.galCategories
     : [{ id: 'photos', label: 'Photos', colorId: 'slate' }];
   const gal = edit.galleries || {};
+  const catAdjs = edit.categoryAdjustments || {};
 
   const setCats = newCats => onPatch({ galCategories: newCats });
   // Functional form: always read current galleries from state, never from stale closure
@@ -569,15 +570,23 @@ function VisualSection({ edit, onPatch, onDraw, onSketch }) {
   return (
     <div className="sec">
       <div className="sec-h">
-        <span className="num">04</span><h2>Visual references</h2>
+        <span className="num">03</span><h2>Visual references</h2>
         <span className="mono" style={{ fontSize: 11, color: 'var(--ink-2)' }}>{total} image{total !== 1 ? 's' : ''}</span>
         <span className="ln" />
         <button className="btn sm ghost" onClick={addCat} style={{ marginLeft: 8, flexShrink: 0 }}>
           <Icon name="plus" size={13} />Category
         </button>
       </div>
-      {cats.map(cat => {
+      {cats.map((cat, catIndex) => {
         const color = CAT_COLORS.find(c => c.id === cat.colorId) || CAT_COLORS[0];
+        // Backward-compat: first category falls back to legacy edit.adjustments
+        const adjItems = catAdjs[cat.id] !== undefined
+          ? catAdjs[cat.id]
+          : (catIndex === 0 ? (edit.adjustments || []) : []);
+        const setAdjItems = arr => onPatch(cur => ({
+          categoryAdjustments: { ...(cur.categoryAdjustments || {}), [cat.id]: arr },
+          ...(cur.adjustments && cur.adjustments.length ? { adjustments: [] } : {}),
+        }));
         return (
           <div className="vis-block" key={cat.id} style={{ '--cat-accent': color.hex, '--cat-soft': color.soft }}>
             <div className="vis-block-h" style={{ borderLeft: '3px solid ' + color.hex, paddingLeft: 10 }}>
@@ -607,6 +616,9 @@ function VisualSection({ edit, onPatch, onDraw, onSketch }) {
                 </button>
               )}
             </div>
+            <div style={{ marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid var(--line-2)' }}>
+              <Adjustments loc={loc} items={adjItems} onChange={setAdjItems} showSummary={false} />
+            </div>
             <Gallery
               catId={cat.id}
               catColor={color}
@@ -625,30 +637,39 @@ function VisualSection({ edit, onPatch, onDraw, onSketch }) {
         { id: 'measurements', label: 'Measurements', icon: 'ruler',  canSketch: true  },
         { id: 'designs',      label: 'Designs',      icon: 'layers', canSketch: false },
         { id: 'moodboard',    label: 'Moodboard',    icon: 'grid',   canSketch: false },
-      ].map(g => (
-        <div className="vis-block" key={g.id}>
-          <div className="vis-block-h">
-            <Icon name={g.icon} size={15} style={{ color: 'var(--ink-2)' }} />
-            <span className="vn">{g.label}</span>
-            <span className="vc">{(gal[g.id] || []).length}</span>
-            <span className="ln" />
-            {g.canSketch && onSketch && (
-              <button className="btn sm ghost" onClick={() => onSketch(g.id)}
-                style={{ marginLeft: 6, flexShrink: 0, gap: 4 }}>
-                <Icon name="edit" size={12} />Sketch
-              </button>
-            )}
+      ].map(g => {
+        const adjItems = catAdjs[g.id] || [];
+        const setAdjItems = arr => onPatch(cur => ({
+          categoryAdjustments: { ...(cur.categoryAdjustments || {}), [g.id]: arr },
+        }));
+        return (
+          <div className="vis-block" key={g.id}>
+            <div className="vis-block-h">
+              <Icon name={g.icon} size={15} style={{ color: 'var(--ink-2)' }} />
+              <span className="vn">{g.label}</span>
+              <span className="vc">{(gal[g.id] || []).length}</span>
+              <span className="ln" />
+              {g.canSketch && onSketch && (
+                <button className="btn sm ghost" onClick={() => onSketch(g.id)}
+                  style={{ marginLeft: 6, flexShrink: 0, gap: 4 }}>
+                  <Icon name="edit" size={12} />Sketch
+                </button>
+              )}
+            </div>
+            <div style={{ marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid var(--line-2)' }}>
+              <Adjustments loc={loc} items={adjItems} onChange={setAdjItems} showSummary={false} />
+            </div>
+            <Gallery
+              catId={g.id}
+              catColor={null}
+              items={gal[g.id] || []}
+              onChange={arr => setGal(g.id, arr)}
+              onDraw={it => onDraw(g.id, it)}
+              onDropFromOther={() => {}}
+            />
           </div>
-          <Gallery
-            catId={g.id}
-            catColor={null}
-            items={gal[g.id] || []}
-            onChange={arr => setGal(g.id, arr)}
-            onDraw={it => onDraw(g.id, it)}
-            onDropFromOther={() => {}}
-          />
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -956,7 +977,10 @@ function AddDayButton({ onAdd }) {
 }
 
 function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine, sceneView, onExport }) {
-  const adj = edit.adjustments || [];
+  const allCatAdjs = edit.categoryAdjustments || {};
+  const adj = Object.values(allCatAdjs).flat().concat(
+    !edit.categoryAdjustments ? (edit.adjustments || []) : []
+  );
   const region = loc.regions.join(' · ');
   const [annot, setAnnot] = useState(null);    // {kind, item}
   const [sketch, setSketch] = useState(null);  // galKindId to add sketch into
@@ -1155,25 +1179,19 @@ function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine,
         </div>
       </div>
 
-      {/* adjustments */}
-      <div className="sec">
-        <div className="sec-h"><span className="num">02</span><h2>Adjustments</h2><span className="ln" /></div>
-        <Adjustments loc={loc} items={adj} onChange={a => onPatch({ adjustments: a })} />
-      </div>
-
       {/* scenes */}
       <div className="sec">
-        <div className="sec-h"><span className="num">03</span><h2>Scenes here</h2>
+        <div className="sec-h"><span className="num">02</span><h2>Scenes here</h2>
           <span className="mono" style={{ fontSize: 11, color: 'var(--ink-2)' }}>from schedule</span><span className="ln" /></div>
         <ScenesTable loc={loc} view={sceneView} edit={edit} onPatch={onPatch} />
       </div>
 
       {/* visuals */}
-      <VisualSection edit={edit} onPatch={onPatch} onDraw={openDraw} onSketch={kind => setSketch(kind)} />
+      <VisualSection edit={edit} loc={loc} onPatch={onPatch} onDraw={openDraw} onSketch={kind => setSketch(kind)} />
 
       {/* notes */}
       <div className="sec">
-        <div className="sec-h"><span className="num">05</span><h2>Notes</h2><span className="ln" /></div>
+        <div className="sec-h"><span className="num">04</span><h2>Notes</h2><span className="ln" /></div>
         <BulletNotes key={'notes' + loc.id} value={edit.notes || ''} onChange={v => onPatch({ notes: v })} />
       </div>
 

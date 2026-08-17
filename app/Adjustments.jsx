@@ -109,7 +109,7 @@ function AddComposer({ areas, onAdd }) {
   );
 }
 
-function Adjustments({ loc, items, onChange }) {
+function Adjustments({ loc, items, onChange, showSummary = true }) {
   const areas = useMemo(() => {
     const s = new Set(loc.sets || []);
     items.forEach(i => { if (i.area) s.add(i.area); });
@@ -132,7 +132,7 @@ function Adjustments({ loc, items, onChange }) {
 
   return (
     <div>
-      {items.length > 0 && (
+      {showSummary && items.length > 0 && (
         <div className="adj-summary">
           <div>
             <div className="big">{items.length}</div>

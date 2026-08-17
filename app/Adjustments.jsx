@@ -75,14 +75,13 @@ function AdjRow({ a, onPatch, onDelete }) {
   );
 }
 
-function AddComposer({ areas, onAdd }) {
+function AddComposer({ onAdd }) {
   const [text, setText] = useState('');
   const [cat, setCat] = useState('paint');
-  const [area, setArea] = useState('');
   const submit = () => {
     if (!text.trim()) return;
-    onAdd({ id: uid(), cat, text: text.trim(), area: area.trim(), done: false, measure: '', thumb: null });
-    setText(''); 
+    onAdd({ id: uid(), cat, text: text.trim(), area: '', done: false, measure: '', thumb: null });
+    setText('');
   };
   return (
     <div className="card" style={{ padding: 12, marginBottom: 16 }}>
@@ -99,10 +98,6 @@ function AddComposer({ areas, onAdd }) {
         <input className="input" placeholder="e.g. Paint the back wall warm grey · take out all furniture · drill for curtain rail…"
           value={text} onChange={e => setText(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') submit(); }} style={{ flex: 1 }} />
-        <input className="input" list="area-list" placeholder="area" value={area}
-          onChange={e => setArea(e.target.value)} style={{ width: 150 }}
-          onKeyDown={e => { if (e.key === 'Enter') submit(); }} />
-        <datalist id="area-list">{areas.map(a => <option key={a} value={a} />)}</datalist>
         <button className="btn primary" type="button" onClick={submit}><Icon name="plus" size={15} />Add</button>
       </div>
     </div>
@@ -110,12 +105,6 @@ function AddComposer({ areas, onAdd }) {
 }
 
 function Adjustments({ loc, items, onChange, showSummary = true }) {
-  const areas = useMemo(() => {
-    const s = new Set(loc.sets || []);
-    items.forEach(i => { if (i.area) s.add(i.area); });
-    return [...s];
-  }, [loc, items]);
-
   const patch = (id, p) => onChange(items.map(i => i.id === id ? { ...i, ...p } : i));
   const del = id => onChange(items.filter(i => i.id !== id));
   const add = a => onChange([...items, a]);
@@ -156,7 +145,7 @@ function Adjustments({ loc, items, onChange, showSummary = true }) {
         </div>
       )}
 
-      <AddComposer areas={areas} onAdd={add} />
+      <AddComposer onAdd={add} />
 
       {items.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--ink-3)', fontFamily: 'var(--mono)', fontSize: 12 }}>

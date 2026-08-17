@@ -3,11 +3,17 @@
   "configurations": [
     {
       "name": "location-book",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "cwd": "location-book-app",
-      "port": 5173,
-      "autoPort": false
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-s", "."],
+      "port": 8766,
+      "autoPort": true
+    },
+    {
+      "name": "storyboard",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "/Users/jazzkuipers/Downloads/storyboard-app"],
+      "port": 8767,
+      "autoPort": true
     }
   ]
 }

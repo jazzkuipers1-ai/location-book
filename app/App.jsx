@@ -370,6 +370,18 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
     setTimeout(() => setToast(null), 3000);
   }, [compressProgress]);
 
+  const [syncProgress, setSyncProgress] = useState(null);
+  const handleSyncPhotos = useCallback(async () => {
+    if (syncProgress) return;
+    setSyncProgress({ done: 0, total: 1 });
+    await syncPhotosToCloud(stateRef.current, (done, total) => {
+      setSyncProgress({ done, total });
+    });
+    setSyncProgress(null);
+    setToast('Foto\'s worden gesynchroniseerd ✓');
+    setTimeout(() => setToast(null), 3000);
+  }, [syncProgress]);
+
   useEffect(() => { document.documentElement.dataset.theme = t.theme; }, [t.theme]);
   useEffect(() => {
     const r = document.documentElement.style;
@@ -438,14 +450,46 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
   const stateRef = useRef(state);
   useEffect(() => { stateRef.current = state; }, [state]);
 
+  // Merge only new gallery images from remote into local state — preserves local edits
+  const mergeRemoteImages = (local, remote) => {
+    if (!local || !remote) return local || remote;
+    const localEdits = local.edits || {};
+    const remoteEdits = remote.edits || {};
+    const allLocIds = new Set([...Object.keys(localEdits), ...Object.keys(remoteEdits)]);
+    const mergedEdits = { ...localEdits };
+    for (const locId of allLocIds) {
+      const lEdit = localEdits[locId];
+      const rEdit = remoteEdits[locId];
+      if (!rEdit) continue;
+      if (!lEdit) { mergedEdits[locId] = rEdit; continue; }
+      // Merge galleries: union items by image ID, local order preserved, remote-only items appended
+      const lGal = lEdit.galleries || {};
+      const rGal = rEdit.galleries || {};
+      const allCats = new Set([...Object.keys(lGal), ...Object.keys(rGal)]);
+      const mergedGal = { ...lGal };
+      for (const cat of allCats) {
+        const lItems = lGal[cat] || [];
+        const rItems = rGal[cat] || [];
+        const seen = new Set(lItems.map(i => i.id));
+        mergedGal[cat] = [...lItems, ...rItems.filter(i => !seen.has(i.id))];
+      }
+      mergedEdits[locId] = { ...lEdit, galleries: mergedGal };
+    }
+    return { ...local, edits: mergedEdits };
+  };
+
   const applyRemoteState = useCallback(incoming => {
     if (!incoming) return;
     if (incoming._clientId === LB_SYNC.CLIENT_ID) return; // our own echo
     if (incoming._savedAt && incoming._savedAt <= lastSeenSavedAt.current) return;
-    if (Date.now() - lastLocalEditAt.current < 10000) return; // local edits have 10s priority
     if (incoming._savedAt) lastSeenSavedAt.current = incoming._savedAt;
     applyingRemote.current = true;
-    setState(cur => ({ ...incoming, _clientId: undefined, _savedAt: undefined, activeId: cur ? cur.activeId : incoming.activeId }));
+    if (Date.now() - lastLocalEditAt.current < 10000) {
+      // During active local editing: only merge new images — don't overwrite local changes
+      setState(cur => mergeRemoteImages(cur, incoming));
+    } else {
+      setState(cur => ({ ...incoming, _clientId: undefined, _savedAt: undefined, activeId: cur ? cur.activeId : incoming.activeId }));
+    }
   }, []);
 
   const saveTimer = useRef();
@@ -686,6 +730,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
         hasPassword={!!remoteHash} onSetPassword={() => setShowSetPassword(true)}
         onCollapse={() => setSideCollapsed(true)}
         onCompressPhotos={handleCompressPhotos}
+        onSyncPhotos={handleSyncPhotos} syncProgress={syncProgress}
         onRenameSchedule={name => setState(s => ({ ...s, model: { ...s.model, scheduleName: name }, scheduleName: name }))}
         onGoHome={onGoHome} />
 
@@ -892,7 +937,21 @@ function HomeRouter({ user }) {
     }
     return list;
   });
-  const [activeProjectId, setActiveProjectId] = useState(null);
+  const [activeProjectId, setActiveProjectIdRaw] = useState(() => {
+    // Restore last open project after refresh
+    const saved = sessionStorage.getItem('lb_active_project');
+    if (saved) {
+      // Verify the project still exists locally
+      const list = loadProjectList();
+      if (list.some(p => p.id === saved)) return saved;
+    }
+    return null;
+  });
+  const setActiveProjectId = id => {
+    setActiveProjectIdRaw(id);
+    if (id) sessionStorage.setItem('lb_active_project', id);
+    else sessionStorage.removeItem('lb_active_project');
+  };
   const [pendingUnlock, setPendingUnlock] = useState(null); // { id, name, hash }
   const [importing, setImporting] = useState(false);
   const [importErr, setImportErr] = useState('');

@@ -156,17 +156,34 @@ function Annotator({ originalId, init, onSave, onClose }) {
     redraw();
   };
 
+  // Smooth zoom via rAF — accumulate pinch deltas and flush to React once per frame
+  const rafPinch = useRef(null);
+  const pendingZoom = useRef(null);
+  const pendingPan  = useRef(null);
+
+  const flushPinch = useCallback(() => {
+    rafPinch.current = null;
+    if (pendingZoom.current !== null) { setZoom(pendingZoom.current); pendingZoom.current = null; }
+    if (pendingPan.current  !== null) { setPan(pendingPan.current);   pendingPan.current  = null; }
+  }, []);
+
   const down = e => {
     e.preventDefault();
-    activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    // Palm rejection: if Apple Pencil (pen) is already drawing, ignore all touch/finger input
+    const hasPen = [...activePointers.current.values()].some(p => p.pointerType === 'pen');
+    if (hasPen && e.pointerType === 'touch') return;
+
+    activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY, pointerType: e.pointerType });
     canRef.current.setPointerCapture(e.pointerId);
 
-    if (activePointers.current.size === 2) {
+    // Pinch: only count touch pointers (not the pencil itself)
+    const touchPtrs = [...activePointers.current.values()].filter(p => p.pointerType !== 'pen');
+    if (touchPtrs.length === 2) {
       clearTimeout(holdTimer.current);
       cur.current = null; isSnapped.current = false; panDrag.current = null;
-      const pts = [...activePointers.current.values()];
-      const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
-      pinchState.current = { prevDist: dist, prevCx: (pts[0].x + pts[1].x) / 2, prevCy: (pts[0].y + pts[1].y) / 2 };
+      const dist = Math.hypot(touchPtrs[1].x - touchPtrs[0].x, touchPtrs[1].y - touchPtrs[0].y);
+      pinchState.current = { prevDist: dist, prevCx: (touchPtrs[0].x + touchPtrs[1].x) / 2, prevCy: (touchPtrs[0].y + touchPtrs[1].y) / 2 };
       redraw(); return;
     }
 
@@ -188,17 +205,21 @@ function Annotator({ originalId, init, onSave, onClose }) {
   };
 
   const move = e => {
-    activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY, pointerType: e.pointerType });
 
-    if (activePointers.current.size === 2 && pinchState.current) {
+    const touchPtrs = [...activePointers.current.values()].filter(p => p.pointerType !== 'pen');
+    if (touchPtrs.length === 2 && pinchState.current) {
       e.preventDefault();
-      const pts = [...activePointers.current.values()];
-      const newDist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
-      const newCx = (pts[0].x + pts[1].x) / 2, newCy = (pts[0].y + pts[1].y) / 2;
+      const newDist = Math.hypot(touchPtrs[1].x - touchPtrs[0].x, touchPtrs[1].y - touchPtrs[0].y);
+      const newCx = (touchPtrs[0].x + touchPtrs[1].x) / 2, newCy = (touchPtrs[0].y + touchPtrs[1].y) / 2;
       const { prevDist, prevCx, prevCy } = pinchState.current;
-      setZoom(z => Math.max(1, Math.min(5, z * (newDist / prevDist))));
-      setPan(p => ({ x: p.x + (newCx - prevCx), y: p.y + (newCy - prevCy) }));
+      const ratio = newDist / prevDist;
+      const curZ = pendingZoom.current ?? zoom;
+      pendingZoom.current = Math.max(1, Math.min(5, curZ * ratio));
+      const curP = pendingPan.current ?? pan;
+      pendingPan.current = { x: curP.x + (newCx - prevCx), y: curP.y + (newCy - prevCy) };
       pinchState.current = { prevDist: newDist, prevCx: newCx, prevCy: newCy };
+      if (!rafPinch.current) rafPinch.current = requestAnimationFrame(flushPinch);
       return;
     }
 
@@ -240,12 +261,11 @@ function Annotator({ originalId, init, onSave, onClose }) {
     activePointers.current.delete(e.pointerId);
     clearTimeout(holdTimer.current);
     isSnapped.current = false;
-    if (activePointers.current.size < 2) pinchState.current = null;
-    if (activePointers.current.size === 0) panDrag.current = null;
+    const touchPtrs = [...activePointers.current.values()].filter(p => p.pointerType !== 'pen');
+    if (touchPtrs.length < 2) pinchState.current = null;
+    if (activePointers.current.size === 0) { panDrag.current = null; pendingZoom.current = null; pendingPan.current = null; }
     if (!cur.current) return;
     const s = cur.current; cur.current = null;
-    activePointers.current.clear();
-    pinchState.current = null;
     if (s.pts && s.pts.length || s.shape) { setStrokes(p => [...p, s]); setFuture([]); }
     redraw();
   };
@@ -359,7 +379,7 @@ function Annotator({ originalId, init, onSave, onClose }) {
         {/* ── Photo stage — fills remaining height ── */}
         <div className="annot-stage">
           <div className="annot-imgwrap"
-            style={{ transformOrigin: 'center', transform: wrapTransform, touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}>
+            style={{ transformOrigin: 'center', transform: wrapTransform, touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', willChange: 'transform' }}>
             {url && <img ref={imgRef} src={url} alt="" className="annot-img" onLoad={redraw} draggable="false" />}
             <canvas ref={canRef} className="annot-canvas"
               style={{ touchAction: 'none', cursor: canvasCursor, userSelect: 'none', WebkitUserSelect: 'none' }}

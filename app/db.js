@@ -76,6 +76,8 @@
       tx.objectStore(STORE).put(blob, id);
       tx.oncomplete = res; tx.onerror = () => rej(tx.error);
     });
+    // Notify any Img component currently showing this id to reload its URL
+    window.dispatchEvent(new CustomEvent('lb_blob_updated', { detail: id }));
   }
 
   async function delImage(id) {
@@ -87,7 +89,8 @@
       tx.oncomplete = res; tx.onerror = res;
     });
   }
-  LB.db = { putImage, replaceBlob, getBlob, getURL, delImage };
+  function cacheURL(id, url) { _urls.set(id, url); }
+  LB.db = { putImage, replaceBlob, getBlob, getURL, delImage, cacheURL };
 
   // ------------------------------ structured state (localStorage) --------
   const KEY = 'lb_state_v2';

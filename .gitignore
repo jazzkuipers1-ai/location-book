@@ -11,3 +11,4 @@ location-book-app/dist/
 # Environment / secrets
 .env
 .env.local
+.vercel

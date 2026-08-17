@@ -211,6 +211,9 @@
 .gal-cell .tbtn { width: 30px; height: 30px; border-radius: 8px; background: rgba(20,16,8,.6); color: #fff; border: none; cursor: pointer; display: grid; place-items: center; backdrop-filter: blur(4px); }
 .gal-cell .tbtn:hover { background: rgba(20,16,8,.82); }
 .gal-cell .annot-badge { position: absolute; top: 8px; left: 8px; width: 22px; height: 22px; border-radius: 6px; background: var(--accent); color: #fff; display: grid; place-items: center; }
+.upload-spinner { position: absolute; bottom: 8px; right: 8px; width: 26px; height: 26px; border-radius: 50%; background: rgba(20,16,8,.55); display: grid; place-items: center; pointer-events: none; }
+.upload-spinner svg { width: 16px; height: 16px; animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 .gal-note { border: none; border-top: 1px solid var(--line); padding: 8px 10px; font-size: 12.5px; line-height: 1.35; background: var(--card); outline: none; resize: none; width: 100%; font-family: inherit; color: var(--ink); }
 .gal-note:focus { background: var(--card-2); }
 .gal-note::placeholder { color: var(--ink-3); }

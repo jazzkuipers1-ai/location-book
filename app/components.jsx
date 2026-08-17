@@ -83,14 +83,40 @@ function Stepper({ value, onChange, min = 0, max = 99 }) {
 /* ---- async image from IndexedDB id -------------------------------------- */
 function Img({ imgId, alt, className, style }) {
   const [url, setUrl] = useState(null);
+  const [broken, setBroken] = useState(false);
+
+  const load = (id, live) => {
+    setBroken(false);
+    setUrl(null);
+    LB.db.getURL(id).then(u => { if (live.ok) setUrl(u); });
+  };
+
   useEffect(() => {
-    let live = true;
-    if (!imgId) { setUrl(null); return; }
-    LB.db.getURL(imgId).then(u => { if (live) setUrl(u); });
-    return () => { live = false; };
+    const live = { ok: true };
+    if (!imgId) { setUrl(null); return () => { live.ok = false; }; }
+    load(imgId, live);
+    // Reload when a blob for this image is replaced (e.g. after compression)
+    const onUpdate = e => { if (e.detail === imgId) load(imgId, live); };
+    window.addEventListener('lb_blob_updated', onUpdate);
+    return () => { live.ok = false; window.removeEventListener('lb_blob_updated', onUpdate); };
   }, [imgId]);
-  if (!url) return <div className={className} style={{ ...style, background: 'var(--card-2)' }} />;
-  return <img src={url} alt={alt || ''} className={className} style={style} />;
+
+  if (!url || broken) return <div className={className} style={{ ...style, background: 'var(--card-2)' }} />;
+  return <img src={url} alt={alt || ''} className={className} style={style} onError={() => setBroken(true)} />;
+}
+
+function useIsUploading(id) {
+  const check = () => {
+    try { return JSON.parse(localStorage.getItem('lb_upload_queue') || '[]').includes(id); }
+    catch { return false; }
+  };
+  const [pending, setPending] = useState(check);
+  useEffect(() => {
+    const h = () => setPending(check());
+    window.addEventListener('lb_upload_state', h);
+    return () => window.removeEventListener('lb_upload_state', h);
+  }, [id]);
+  return pending;
 }
 
 /* ---- file -> IndexedDB ids ---------------------------------------------- */
@@ -183,6 +209,24 @@ async function compressExistingPhotos(state, onProgress) {
 
 window.compressExistingPhotos = compressExistingPhotos;
 
+// Upload all locally-available photos to Supabase so other devices can see them.
+async function syncPhotosToCloud(state, onProgress) {
+  if (!window.LB_SYNC) return;
+  const ids = collectAllImageIds(state);
+  let done = 0;
+  for (const id of ids) {
+    try {
+      const blob = await LB.db.getBlob(id);
+      if (blob) {
+        LB_SYNC.queueUpload(id);
+      }
+    } catch (e) { /* skip */ }
+    onProgress(++done, ids.length);
+  }
+  LB_SYNC.startQueue();
+}
+window.syncPhotosToCloud = syncPhotosToCloud;
+
 async function filesToIds(fileList) {
   const raw = Array.from(fileList).filter(f => f.type.startsWith('image/') || /\.heic$/i.test(f.name) || /\.heif$/i.test(f.name));
   if (!raw.length) return [];
@@ -196,8 +240,13 @@ async function filesToIds(fileList) {
     }
     return f;
   }));
-  // Write all originals to IndexedDB in parallel — instant UI feedback
-  const ids = await Promise.all(files.map(f => LB.db.putImage(f)));
+  // Write to IndexedDB and immediately cache a preview URL — photo shows before IndexedDB read completes
+  const ids = await Promise.all(files.map(async f => {
+    const previewUrl = URL.createObjectURL(f);
+    const id = await LB.db.putImage(f);
+    LB.db.cacheURL(id, previewUrl); // instant: getURL() returns this without hitting IndexedDB
+    return id;
+  }));
   // Compress in background, yielding to the browser between each photo
   (async () => {
     for (let i = 0; i < files.length; i++) {
@@ -315,5 +364,6 @@ function locName(loc, edits) { const e = edits && edits[loc.id]; return (e && e.
 
 Object.assign(window, {
   Icon, IconBtn, Stepper, Img, CATS, CAT, filesToIds, useDrop, uid, fmtDate, Menu, CoverDrop, locName,
+  useIsUploading,
   useState, useEffect, useRef, useCallback, useMemo,
 });

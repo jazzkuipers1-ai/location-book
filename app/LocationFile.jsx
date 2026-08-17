@@ -344,6 +344,7 @@ function Lightbox({ imgIds, startIdx, items, onClose, onDraw, onCrop }) {
 
 function GalleryCell({ item, allImgIds, allItems, itemIdx, onCap, onNote, onRemove, onDraw, onCrop, onDragStart, onDragEnter, onDragEnd, isDragOver, accentColor, isSelected, onToggleSelect }) {
   const [lightbox, setLightbox] = useState(false);
+  const uploading = useIsUploading(item.id);
   return (
     <div className={'gal-item' + (isDragOver ? ' drag-over' : '') + (isSelected ? ' gal-selected' : '')}
       style={{ ...(isDragOver && accentColor ? { boxShadow: '0 0 0 2px ' + accentColor } : {}), ...(isSelected ? { outline: '2px solid var(--accent)', outlineOffset: 1 } : {}) }}
@@ -364,6 +365,14 @@ function GalleryCell({ item, allImgIds, allItems, itemIdx, onCap, onNote, onRemo
         <div onClick={e => { e.stopPropagation(); setLightbox(true); }} style={{ cursor: 'zoom-in' }}>
           <Img imgId={shownId(item)} />
         </div>
+        {uploading && (
+          <div className="upload-spinner" title="Uploading…">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="12" r="9" stroke="rgba(255,255,255,0.3)" strokeWidth="2.5"/>
+              <path d="M12 3a9 9 0 0 1 9 9" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+            </svg>
+          </div>
+        )}
         {(item.strokes && item.strokes.length || item.annotatedId) ? <span className="annot-badge"><Icon name="edit" size={12} /></span> : null}
         <div className="tools">
           <button className="tbtn" title="Tekenen" onClick={e => { e.stopPropagation(); onDraw(); }}><Icon name="edit" size={14} /></button>
@@ -392,7 +401,7 @@ function Dropzone({ onFiles }) {
         <div className="t">Drop images</div>
         <div className="s mono">or click to browse</div>
       </div>
-      <input ref={inp} type="file" accept="image/*" multiple hidden onChange={async e => {
+      <input ref={inp} type="file" accept="image/*,.heic,.heif,.HEIC,.HEIF" multiple hidden onChange={async e => {
         await onFiles(e.target.files); e.target.value = '';
       }} />
     </div>

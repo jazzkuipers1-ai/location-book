@@ -184,6 +184,7 @@
     try {
       const q = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
       if (!q.includes(id)) { q.push(id); localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); }
+      window.dispatchEvent(new CustomEvent('lb_upload_state'));
     } catch (e) {}
   }
 
@@ -205,6 +206,7 @@
           const updated = curr.filter(i => i !== id);
           if (updated.length === 0) localStorage.removeItem(QUEUE_KEY);
           else localStorage.setItem(QUEUE_KEY, JSON.stringify(updated));
+          window.dispatchEvent(new CustomEvent('lb_upload_state'));
         } catch (e) {
           break; // offline or upload error — stop and retry on reconnect
         }
@@ -223,6 +225,10 @@
     startQueue();
     window.dispatchEvent(new CustomEvent('lb_reconnect'));
   });
+
+  // On startup: flush any uploads queued from previous sessions
+  if (navigator.onLine) setTimeout(startQueue, 1500);
+  else window.addEventListener('online', startQueue, { once: true });
 
   /* ---- auth ---------------------------------------------------------------- */
   async function signUp(email, password) {

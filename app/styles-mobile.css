@@ -68,6 +68,30 @@
   .toast { bottom: 72px; width: calc(100% - 32px); justify-content: center; }
 }
 
+/* ============================================================ TABLET ======= */
+@media (min-width: 769px) and (max-width: 1100px) {
+  .canvas { padding: 20px 20px 100px; }
+  .gal-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+  .board-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+  .annot { width: 99vw; height: 96dvh; border-radius: 0; }
+  .annot-bar { padding: 6px 8px; gap: 3px; }
+  .metrics { grid-template-columns: repeat(2, 1fr) !important; }
+  .side { width: 260px; }
+  .app { grid-template-columns: 260px 1fr; }
+}
+
+/* ============================================================ TOUCH ======== */
+/* Op touch-apparaten (telefoon + iPad): toon knoppen altijd — geen hover */
+@media (hover: none) {
+  .gal-cell .tools { opacity: 1; }
+  .gal-cell .tbtn { background: rgba(20,16,8,0.55); }
+  .gal-drag-handle { display: none; }
+  .gal-cell .gal-checkbox { opacity: 0.8 !important; }
+  .cover-actions { opacity: 1; }
+  .loc-card-cam { opacity: 1; }
+  .cover-actions .btn { background: rgba(20,16,8,0.55); }
+}
+
 /* ============================================================ MOBILE NAV = */
 .mobile-nav {
   display: none;

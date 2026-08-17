@@ -77,7 +77,7 @@ function sidebarDominantSeason(scenes) {
   return Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0] || null;
 }
 
-function Sidebar({ model, edits, activeId, onSelect, onImport, onUpdateSchedule, onExport, navSort, view, onOverview, onCalendar, removed, onRestore, onRenameSchedule, onGoHome, hasPassword, onSetPassword, onCollapse, onCompressPhotos, onPatchLoc }) {
+function Sidebar({ model, edits, activeId, onSelect, onImport, onUpdateSchedule, onExport, navSort, view, onOverview, onCalendar, removed, onRestore, onRenameSchedule, onGoHome, hasPassword, onSetPassword, onCollapse, onCompressPhotos, onSyncPhotos, syncProgress, onPatchLoc }) {
   const [q, setQ] = useState('');
   const [showHidden, setShowHidden] = useState(false);
   const [seasonOver, setSeasonOver] = useState(null);
@@ -211,6 +211,9 @@ function Sidebar({ model, edits, activeId, onSelect, onImport, onUpdateSchedule,
         {onUpdateSchedule && <button className="btn block sm" onClick={onUpdateSchedule}><Icon name="reset" size={14} />Update schedule…</button>}
         <button className="btn block sm ghost" onClick={onSetPassword}><Icon name="lock" size={14} />{hasPassword ? 'Change password…' : 'Set password…'}</button>
         {onCompressPhotos && <button className="btn block sm ghost" onClick={onCompressPhotos}><Icon name="image" size={14} />Compress existing photos</button>}
+        {onSyncPhotos && <button className="btn block sm ghost" onClick={onSyncPhotos} disabled={!!syncProgress} style={{ opacity: syncProgress ? 0.6 : 1 }}>
+          <Icon name="upload" size={14} />{syncProgress ? `Syncing… ${syncProgress.done}/${syncProgress.total}` : 'Sync photos to cloud'}
+        </button>}
         <button className="btn block sm ghost" onClick={onImport}><Icon name="upload" size={14} />Import schedule</button>
       </div>
     </aside>

@@ -363,7 +363,7 @@ function GalleryCell({ item, allImgIds, allItems, itemIdx, onCap, onNote, onRemo
         </div>
         {/* Click photo → open lightbox viewer */}
         <div onClick={e => { e.stopPropagation(); setLightbox(true); }} style={{ cursor: 'zoom-in' }}>
-          <Img imgId={shownId(item)} />
+          <Img imgId={shownId(item)} thumb />
         </div>
         {uploading && (
           <div className="upload-spinner" title="Uploading…">

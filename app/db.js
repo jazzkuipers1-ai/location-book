@@ -90,7 +90,55 @@
     });
   }
   function cacheURL(id, url) { _urls.set(id, url); }
-  LB.db = { putImage, replaceBlob, getBlob, getURL, delImage, cacheURL };
+
+  const THUMB_PX = 400;
+  function makeThumbBlob(blob) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const burl = URL.createObjectURL(blob);
+      img.onload = () => {
+        URL.revokeObjectURL(burl);
+        let w = img.naturalWidth, h = img.naturalHeight;
+        if (w >= h) { h = Math.round(h * THUMB_PX / w); w = THUMB_PX; }
+        else         { w = Math.round(w * THUMB_PX / h); h = THUMB_PX; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        canvas.toBlob(b => b ? resolve(b) : reject(new Error('thumb failed')), 'image/jpeg', 0.8);
+      };
+      img.onerror = () => { URL.revokeObjectURL(burl); reject(new Error('decode failed')); };
+      img.src = burl;
+    });
+  }
+
+  async function putThumb(id, blob) {
+    const thumbId = id + '_thumb';
+    const db = await open();
+    await new Promise((res, rej) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).put(blob, thumbId);
+      tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+    });
+  }
+
+  async function getThumbnailURL(id) {
+    const thumbId = id + '_thumb';
+    if (_urls.has(thumbId)) return _urls.get(thumbId);
+    let blob = await getBlob(thumbId);
+    if (!blob) {
+      const full = await getBlob(id);
+      if (!full) return getURL(id); // remote image — fallback to full
+      try {
+        blob = await makeThumbBlob(full);
+        await putThumb(id, blob);
+      } catch(e) { return getURL(id); }
+    }
+    const url = URL.createObjectURL(blob);
+    _urls.set(thumbId, url);
+    return url;
+  }
+
+  LB.db = { putImage, replaceBlob, getBlob, getURL, getThumbnailURL, putThumb, makeThumbBlob, delImage, cacheURL };
 
   // ------------------------------ structured state (localStorage) --------
   const KEY = 'lb_state_v2';

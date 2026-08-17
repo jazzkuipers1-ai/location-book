@@ -81,25 +81,25 @@ function Stepper({ value, onChange, min = 0, max = 99 }) {
 }
 
 /* ---- async image from IndexedDB id -------------------------------------- */
-function Img({ imgId, alt, className, style }) {
+function Img({ imgId, alt, className, style, thumb }) {
   const [url, setUrl] = useState(null);
   const [broken, setBroken] = useState(false);
 
   const load = (id, live) => {
     setBroken(false);
     setUrl(null);
-    LB.db.getURL(id).then(u => { if (live.ok) setUrl(u); });
+    const fn = thumb ? LB.db.getThumbnailURL : LB.db.getURL;
+    fn(id).then(u => { if (live.ok) setUrl(u); });
   };
 
   useEffect(() => {
     const live = { ok: true };
     if (!imgId) { setUrl(null); return () => { live.ok = false; }; }
     load(imgId, live);
-    // Reload when a blob for this image is replaced (e.g. after compression)
     const onUpdate = e => { if (e.detail === imgId) load(imgId, live); };
     window.addEventListener('lb_blob_updated', onUpdate);
     return () => { live.ok = false; window.removeEventListener('lb_blob_updated', onUpdate); };
-  }, [imgId]);
+  }, [imgId, thumb]);
 
   if (!url || broken) return <div className={className} style={{ ...style, background: 'var(--card-2)' }} />;
   return <img src={url} alt={alt || ''} className={className} style={style} onError={() => setBroken(true)} />;
@@ -120,8 +120,8 @@ function useIsUploading(id) {
 }
 
 /* ---- file -> IndexedDB ids ---------------------------------------------- */
-const IMG_MAX_PX = 2400;   // longest side — covers A4 at ~290 dpi
-const IMG_QUALITY = 0.88;  // JPEG quality — excellent visual quality, ~50% smaller than raw
+const IMG_MAX_PX = 1920;   // longest side — covers A4 at ~230 dpi, loads faster on mobile
+const IMG_QUALITY = 0.85;  // JPEG quality
 
 function compressImage(file) {
   return new Promise((resolve, reject) => {
@@ -247,16 +247,20 @@ async function filesToIds(fileList) {
     LB.db.cacheURL(id, previewUrl); // instant: getURL() returns this without hitting IndexedDB
     return id;
   }));
-  // Compress in background, yielding to the browser between each photo
+  // Compress + thumbnail in background, yielding to the browser between each photo
   (async () => {
     for (let i = 0; i < files.length; i++) {
       await new Promise(r => setTimeout(r, 50)); // let browser breathe
       try {
         const compressed = await compressImage(files[i]);
+        const useBlob = compressed.size < files[i].size * 0.85 ? compressed : files[i];
         if (compressed.size < files[i].size * 0.85) {
           await LB.db.replaceBlob(ids[i], compressed);
           if (window.LB_SYNC) { LB_SYNC.queueUpload(ids[i]); LB_SYNC.startQueue(); }
         }
+        // Always generate a thumbnail for fast gallery display
+        const thumb = await LB.db.makeThumbBlob(useBlob);
+        await LB.db.putThumb(ids[i], thumb);
       } catch (e) { /* skip — original stays */ }
     }
   })();

@@ -109,13 +109,6 @@ function Adjustments({ loc, items, onChange, showSummary = true }) {
   const del = id => onChange(items.filter(i => i.id !== id));
   const add = a => onChange([...items, a]);
 
-  // group by area
-  const groups = useMemo(() => {
-    const g = {};
-    items.forEach(i => { const k = i.area || 'General'; (g[k] = g[k] || []).push(i); });
-    return Object.entries(g).sort((a, b) => a[0] === 'General' ? 1 : b[0] === 'General' ? -1 : a[0].localeCompare(b[0]));
-  }, [items]);
-
   const done = items.filter(i => i.done).length;
   const byCat = CATS.map(c => ({ ...c, n: items.filter(i => i.cat === c.id).length })).filter(c => c.n);
 
@@ -126,11 +119,6 @@ function Adjustments({ loc, items, onChange, showSummary = true }) {
           <div>
             <div className="big">{items.length}</div>
             <div className="lbl">change{items.length !== 1 ? 's' : ''}</div>
-          </div>
-          <div className="vln" />
-          <div>
-            <div className="big">{groups.length}</div>
-            <div className="lbl">area{groups.length !== 1 ? 's' : ''}</div>
           </div>
           <div className="vln" />
           <div className="progress-wrap">
@@ -151,19 +139,18 @@ function Adjustments({ loc, items, onChange, showSummary = true }) {
         <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--ink-3)', fontFamily: 'var(--mono)', fontSize: 12 }}>
           No adjustments yet — add the first change above.
         </div>
-      ) : groups.map(([area, list]) => (
-        <div className="adj-room" key={area}>
-          <div className="adj-room-h">
-            <Icon name="pin" size={13} style={{ color: 'var(--ink-2)' }} />
-            <span className="rn">{area}</span>
-            <span className="rc">{list.filter(i => i.done).length}/{list.length}</span>
-            <span className="ln" />
-          </div>
-          <div className="adj-list">
-            {list.map(a => <AdjRow key={a.id} a={a} onPatch={p => patch(a.id, p)} onDelete={() => del(a.id)} />)}
-          </div>
+      ) : (
+        <div className="adj-list">
+          {items.map((a, i) => (
+            <div key={a.id}>
+              <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--ink-3)', marginBottom: 4 }}>
+                adjustment #{i + 1}
+              </div>
+              <AdjRow a={a} onPatch={p => patch(a.id, p)} onDelete={() => del(a.id)} />
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }

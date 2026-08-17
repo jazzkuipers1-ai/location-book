@@ -87,7 +87,8 @@ function CoverPage({ loc, edit, name, scheduleName }) {
 }
 
 function OverviewPage({ loc, edit, name, scheduleName }) {
-  const adj = edit.adjustments || [];
+  const catAdjs = edit.categoryAdjustments || {};
+  const adj = Object.values(catAdjs).flat().concat(!edit.categoryAdjustments ? (edit.adjustments || []) : []);
   const groups = {};
   adj.forEach(a => { const k = a.area || 'General'; (groups[k] = groups[k] || []).push(a); });
   const groupList = Object.entries(groups);
@@ -258,9 +259,10 @@ function ScenesPage({ loc, name, scheduleName, scenes, part, parts }) {
   );
 }
 
-function AppendixPage({ name, scheduleName, label, color, items, part, parts }) {
+function AppendixPage({ name, scheduleName, label, color, items, adjItems, part, parts }) {
   const cols = items.length === 1 ? 1 : 2;
   const accent = color || '#6b7a8d';
+  const adjs = adjItems || [];
   return (
     <div className="deck-page">
       <div className="dk-pad">
@@ -271,7 +273,25 @@ function AppendixPage({ name, scheduleName, label, color, items, part, parts }) 
           {parts > 1 && <span className="dk-mono" style={{ fontSize: 11, color: 'var(--dk-ink3)' }}>{part} / {parts}</span>}
           <span className="dk-serif" style={{ fontSize: 24, fontWeight: 600, color: accent }}>{label}</span>
         </div>
-        <div style={{ flex: 1, minHeight: 0, marginTop: 18, display: 'grid', gridTemplateColumns: 'repeat(' + cols + ',1fr)', gridAutoRows: '1fr', gap: 16 }}>
+        {/* Adjustments for this category — only on first page */}
+        {part === 1 && adjs.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 14, marginBottom: 14 }}>
+            {adjs.map(a => {
+              const c = CAT_PDF[a.cat] || CAT_PDF.other;
+              return (
+                <div key={a.id} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '5px 0', borderBottom: '1px solid var(--dk-line)' }}>
+                  <span className="dk-tick" style={{ background: c.color, marginTop: 5 }} />
+                  <span style={{ fontSize: 12, lineHeight: 1.35, flex: 1, textDecoration: a.done ? 'line-through' : 'none', color: a.done ? 'var(--dk-ink3)' : '#221d15' }}>
+                    <span className="dk-mono" style={{ fontSize: 9.5, fontWeight: 700, color: c.color, textTransform: 'uppercase', letterSpacing: '.05em', marginRight: 6 }}>{c.label}</span>
+                    {a.text}{a.measure && <span className="dk-mono" style={{ fontSize: 10, color: 'var(--dk-accent)', marginLeft: 6 }}>{a.measure}</span>}
+                    {a.area && <span className="dk-mono" style={{ fontSize: 10, color: 'var(--dk-ink3)', marginLeft: 6 }}>· {a.area}</span>}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: 'repeat(' + cols + ',1fr)', gridAutoRows: '1fr', gap: 16 }}>
           {items.map(it => (
             <div key={it.id} style={{ border: '2px solid ' + accent, borderRadius: 12, overflow: 'hidden', background: 'var(--dk-card)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
               <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 10, background: '#ece4d2' }}>
@@ -351,32 +371,35 @@ function Deck({ entries, scheduleName, opts, onClose }) {
       }
     }
     const gal = edit.galleries || {};
+    const catAdjs = edit.categoryAdjustments || {};
     const galCats = edit.galCategories && edit.galCategories.length
       ? edit.galCategories
       : [{ id: 'photos', label: 'Photos', colorId: 'slate' }];
     const CAT_COLORS_MAP = { slate:'#6b7a8d', rust:'#9e3b2e', forest:'#3d6b4f', gold:'#a07020', ocean:'#2c5f8a', plum:'#6b3d7a', terra:'#8a5a35', steel:'#3d5a6b' };
     // Custom photo categories
     galCats
-      .filter(cat => o[cat.id] !== false && (gal[cat.id] || []).length > 0)
+      .filter(cat => o[cat.id] !== false && ((gal[cat.id] || []).length > 0 || (catAdjs[cat.id] || []).length > 0))
       .forEach(cat => {
-        const imgs = gal[cat.id];
+        const imgs = gal[cat.id] || [];
         const color = CAT_COLORS_MAP[cat.colorId] || '#6b7a8d';
         const aParts = Math.ceil(imgs.length / PER_APPENDIX) || 1;
         for (let p = 0; p < aParts; p++) {
           pages.push(<AppendixPage key={loc.id + '-' + cat.id + p} name={name} scheduleName={scheduleName}
             label={cat.label} color={color}
+            adjItems={catAdjs[cat.id] || []}
             items={imgs.slice(p * PER_APPENDIX, (p + 1) * PER_APPENDIX)} part={p + 1} parts={aParts} />);
         }
       });
     // Fixed sections — only shown when non-empty and not turned off in export opts
     [['sketches', 'Sketches'], ['measurements', 'Measurements'], ['designs', 'Designs'], ['moodboard', 'Moodboard']]
-      .filter(([k]) => o[k] !== false && (gal[k] || []).length > 0)
+      .filter(([k]) => o[k] !== false && ((gal[k] || []).length > 0 || (catAdjs[k] || []).length > 0))
       .forEach(([k, label]) => {
-        const imgs = gal[k];
+        const imgs = gal[k] || [];
         const aParts = Math.ceil(imgs.length / PER_APPENDIX) || 1;
         for (let p = 0; p < aParts; p++) {
           pages.push(<AppendixPage key={loc.id + '-' + k + p} name={name} scheduleName={scheduleName}
             label={label} color={null}
+            adjItems={catAdjs[k] || []}
             items={imgs.slice(p * PER_APPENDIX, (p + 1) * PER_APPENDIX)} part={p + 1} parts={aParts} />);
         }
       });

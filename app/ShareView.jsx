@@ -32,6 +32,26 @@ function SV_Section({ title, count, color, children }) {
   );
 }
 
+function SV_AdjRow({ adj, onLightbox }) {
+  return (
+    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '11px 14px', background: 'var(--card)', borderRadius: 9, border: '1px solid var(--line)', opacity: adj.done ? 0.5 : 1 }}>
+      <span style={{ width: 8, height: 8, borderRadius: 2, background: ADJ_COLORS[adj.cat] || ADJ_COLORS.other, marginTop: 5, flexShrink: 0 }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, fontWeight: 600, color: ADJ_COLORS[adj.cat] || ADJ_COLORS.other, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 2 }}>
+          {ADJ_LABELS[adj.cat] || adj.cat}{adj.done ? '  ·  Done' : ''}
+        </div>
+        <div style={{ fontSize: 13, textDecoration: adj.done ? 'line-through' : 'none', color: adj.done ? 'var(--ink-3)' : 'var(--ink)' }}>{adj.text}</div>
+        {adj.area && <div style={{ fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--ink-3)', marginTop: 2 }}>{adj.area}</div>}
+        {adj.measure && <div style={{ fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--ink-3)', marginTop: 1 }}>{adj.measure}</div>}
+      </div>
+      {adj.thumbUrl && (
+        <img src={adj.thumbUrl} alt="" style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 7, cursor: 'zoom-in', flexShrink: 0, border: '1px solid var(--line)' }}
+          onClick={() => onLightbox(adj.thumbUrl)} />
+      )}
+    </div>
+  );
+}
+
 function ShareView({ shareId, onBack }) {
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
@@ -253,64 +273,57 @@ function ShareView({ shareId, onBack }) {
           </SV_Section>
         )}
 
-        {/* Adjustments */}
-        {(data.adjustments || []).length > 0 && (
+        {/* Legacy adjustments block — only shown if no categoryAdjustments yet */}
+        {!(data.categoryAdjustments && Object.keys(data.categoryAdjustments).length > 0) && (data.adjustments || []).length > 0 && (
           <SV_Section title="Adjustments" count={(data.adjustments || []).length}>
             {Object.entries(adjByArea).map(([area, adjs]) => (
               <div key={area} style={{ marginBottom: 20 }}>
                 <div style={{ fontFamily: 'var(--mono)', fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 8 }}>{area}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {adjs.map(adj => (
-                    <div key={adj.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '11px 14px', background: 'var(--card)', borderRadius: 9, border: '1px solid var(--line)', opacity: adj.done ? 0.5 : 1 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: 2, background: ADJ_COLORS[adj.cat] || ADJ_COLORS.other, marginTop: 5, flexShrink: 0 }} />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, fontWeight: 600, color: ADJ_COLORS[adj.cat] || ADJ_COLORS.other, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 2 }}>
-                          {ADJ_LABELS[adj.cat] || adj.cat}{adj.done ? '  ·  Done' : ''}
-                        </div>
-                        <div style={{ fontSize: 13, textDecoration: adj.done ? 'line-through' : 'none', color: adj.done ? 'var(--ink-3)' : 'var(--ink)' }}>{adj.text}</div>
-                        {adj.measure && <div style={{ fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--ink-3)', marginTop: 2 }}>{adj.measure}</div>}
-                      </div>
-                      {adj.thumbUrl && (
-                        <img src={adj.thumbUrl} alt="" style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 7, cursor: 'zoom-in', flexShrink: 0, border: '1px solid var(--line)' }}
-                          onClick={() => setLightbox({ images: [{ url: adj.thumbUrl }], idx: 0 })} />
-                      )}
-                    </div>
-                  ))}
+                  {adjs.map(adj => <SV_AdjRow key={adj.id} adj={adj} onLightbox={url => setLightbox({ images: [{ url }], idx: 0 })} />)}
                 </div>
               </div>
             ))}
           </SV_Section>
         )}
 
-        {/* Gallery sections — one per category with category color */}
+        {/* Gallery sections — adjustments above photos per category */}
         {galCats.map(cat => {
           const imgs = data.galleries && data.galleries[cat.id];
-          if (!imgs || imgs.length === 0) return null;
+          const catAdjs = (data.categoryAdjustments && data.categoryAdjustments[cat.id]) || [];
+          if ((!imgs || imgs.length === 0) && catAdjs.length === 0) return null;
           const color = SV_CAT_COLORS[cat.colorId] || SV_CAT_COLORS.slate;
-          const cols = Math.min(imgs.length, 3);
+          const cols = Math.min((imgs || []).length, 3);
           return (
-            <SV_Section key={cat.id} title={cat.label} count={imgs.length + ' image' + (imgs.length !== 1 ? 's' : '')} color={color}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(' + cols + ', 1fr)', gap: 14 }}>
-                {imgs.map((it, i) => (
-                  <div key={i} style={{ border: '2px solid ' + color, borderRadius: 12, overflow: 'hidden', background: 'var(--card)', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ aspectRatio: '4/3', overflow: 'hidden', cursor: 'zoom-in', background: 'var(--card-2)' }}
-                      onClick={() => openLightbox(it.url)}>
-                      <img src={it.url} alt={it.cap || ''} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                    </div>
-                    {(it.cap || it.note) && (
-                      <div style={{ padding: '10px 13px', borderTop: '2px solid ' + color }}>
-                        {it.cap && <div style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 600, color: 'var(--ink)' }}>{it.cap}</div>}
-                        {it.note && <div style={{ fontSize: 12, lineHeight: 1.45, color: 'var(--ink-2)', marginTop: it.cap ? 3 : 0, whiteSpace: 'pre-wrap' }}>{it.note}</div>}
+            <SV_Section key={cat.id} title={cat.label} count={(imgs || []).length + ' image' + ((imgs || []).length !== 1 ? 's' : '')} color={color}>
+              {catAdjs.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: (imgs && imgs.length) ? 16 : 0 }}>
+                  {catAdjs.map(adj => <SV_AdjRow key={adj.id} adj={adj} onLightbox={url => setLightbox({ images: [{ url }], idx: 0 })} />)}
+                </div>
+              )}
+              {imgs && imgs.length > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(' + cols + ', 1fr)', gap: 14 }}>
+                  {imgs.map((it, i) => (
+                    <div key={i} style={{ border: '2px solid ' + color, borderRadius: 12, overflow: 'hidden', background: 'var(--card)', display: 'flex', flexDirection: 'column' }}>
+                      <div style={{ aspectRatio: '4/3', overflow: 'hidden', cursor: 'zoom-in', background: 'var(--card-2)' }}
+                        onClick={() => openLightbox(it.url)}>
+                        <img src={it.url} alt={it.cap || ''} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                       </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                      {(it.cap || it.note) && (
+                        <div style={{ padding: '10px 13px', borderTop: '2px solid ' + color }}>
+                          {it.cap && <div style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 600, color: 'var(--ink)' }}>{it.cap}</div>}
+                          {it.note && <div style={{ fontSize: 12, lineHeight: 1.45, color: 'var(--ink-2)', marginTop: it.cap ? 3 : 0, whiteSpace: 'pre-wrap' }}>{it.note}</div>}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </SV_Section>
           );
         })}
 
-        {/* Fixed sections — only shown when non-empty */}
+        {/* Fixed sections — adjustments above photos */}
         {[
           { id: 'sketches',     label: 'Sketches' },
           { id: 'measurements', label: 'Measurements' },
@@ -318,26 +331,34 @@ function ShareView({ shareId, onBack }) {
           { id: 'moodboard',    label: 'Moodboard' },
         ].map(sec => {
           const imgs = data.galleries && data.galleries[sec.id];
-          if (!imgs || imgs.length === 0) return null;
-          const cols = Math.min(imgs.length, 3);
+          const catAdjs = (data.categoryAdjustments && data.categoryAdjustments[sec.id]) || [];
+          if ((!imgs || imgs.length === 0) && catAdjs.length === 0) return null;
+          const cols = Math.min((imgs || []).length, 3);
           return (
-            <SV_Section key={sec.id} title={sec.label} count={imgs.length + ' image' + (imgs.length !== 1 ? 's' : '')}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(' + cols + ', 1fr)', gap: 14 }}>
-                {imgs.map((it, i) => (
-                  <div key={i} style={{ border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden', background: 'var(--card)', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ aspectRatio: '4/3', overflow: 'hidden', cursor: 'zoom-in', background: 'var(--card-2)' }}
-                      onClick={() => setLightbox({ images: imgs, idx: i })}>
-                      <img src={it.url} alt={it.cap || ''} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                    </div>
-                    {(it.cap || it.note) && (
-                      <div style={{ padding: '10px 13px', borderTop: '1px solid var(--line)' }}>
-                        {it.cap && <div style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 600 }}>{it.cap}</div>}
-                        {it.note && <div style={{ fontSize: 12, lineHeight: 1.45, color: 'var(--ink-2)', marginTop: it.cap ? 3 : 0, whiteSpace: 'pre-wrap' }}>{it.note}</div>}
+            <SV_Section key={sec.id} title={sec.label} count={(imgs || []).length + ' image' + ((imgs || []).length !== 1 ? 's' : '')}>
+              {catAdjs.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: (imgs && imgs.length) ? 16 : 0 }}>
+                  {catAdjs.map(adj => <SV_AdjRow key={adj.id} adj={adj} onLightbox={url => setLightbox({ images: [{ url }], idx: 0 })} />)}
+                </div>
+              )}
+              {imgs && imgs.length > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(' + cols + ', 1fr)', gap: 14 }}>
+                  {imgs.map((it, i) => (
+                    <div key={i} style={{ border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden', background: 'var(--card)', display: 'flex', flexDirection: 'column' }}>
+                      <div style={{ aspectRatio: '4/3', overflow: 'hidden', cursor: 'zoom-in', background: 'var(--card-2)' }}
+                        onClick={() => setLightbox({ images: imgs, idx: i })}>
+                        <img src={it.url} alt={it.cap || ''} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                       </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                      {(it.cap || it.note) && (
+                        <div style={{ padding: '10px 13px', borderTop: '1px solid var(--line)' }}>
+                          {it.cap && <div style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 600 }}>{it.cap}</div>}
+                          {it.note && <div style={{ fontSize: 12, lineHeight: 1.45, color: 'var(--ink-2)', marginTop: it.cap ? 3 : 0, whiteSpace: 'pre-wrap' }}>{it.note}</div>}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </SV_Section>
           );
         })}

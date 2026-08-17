@@ -53,6 +53,11 @@
   .adj { grid-template-columns: 26px 1fr auto; }
   .adj-cat { display: none; }
   .adj-tools { flex-shrink: 0; }
+  .cat-picker { gap: 3px; }
+  .cat-opt { font-size: 9px; padding: 3px 7px; }
+  .adj-add { gap: 6px; }
+  .adj-add input.input { font-size: 13px; }
+  .adj-sub { flex-wrap: wrap; gap: 4px; }
 
   /* ---- buttons ---- */
   .btn.sm { padding: 7px 11px; }

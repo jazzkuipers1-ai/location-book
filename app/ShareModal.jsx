@@ -24,6 +24,11 @@ function ShareModal({ loc, edit, name, scheduleName, onClose, onShareIdSaved }) 
     if (edit.adjustments) {
       edit.adjustments.forEach(adj => { if (adj.thumb) ids.add(adj.thumb); });
     }
+    if (edit.categoryAdjustments) {
+      Object.values(edit.categoryAdjustments).forEach(arr => {
+        (arr || []).forEach(adj => { if (adj.thumb) ids.add(adj.thumb); });
+      });
+    }
     return [...ids];
   }
 
@@ -80,6 +85,12 @@ function ShareModal({ loc, edit, name, scheduleName, onClose, onShareIdSaved }) 
         shootDates.push({ dayNumber: null, date: d.date });
       });
 
+      const serializeAdjs = adjs => (adjs || []).map(adj => ({
+        id: adj.id, cat: adj.cat, text: adj.text, area: adj.area || '',
+        done: !!adj.done, measure: adj.measure || '',
+        thumbUrl: adj.thumb ? (urlMap[adj.thumb] || null) : null,
+      }));
+
       const shareData = {
         version: 1,
         name,
@@ -88,15 +99,14 @@ function ShareModal({ loc, edit, name, scheduleName, onClose, onShareIdSaved }) 
         mapsUrl: (edit && edit.mapsUrl) || '',
         access: (edit && edit.access) || '',
         shootDates,
-        adjustments: (edit && edit.adjustments || []).map(adj => ({
-          id: adj.id,
-          cat: adj.cat,
-          text: adj.text,
-          area: adj.area || '',
-          done: !!adj.done,
-          measure: adj.measure || '',
-          thumbUrl: adj.thumb ? (urlMap[adj.thumb] || null) : null,
-        })),
+        adjustments: serializeAdjs(edit && edit.adjustments),
+        categoryAdjustments: (() => {
+          const res = {};
+          Object.entries((edit && edit.categoryAdjustments) || {}).forEach(([k, v]) => {
+            res[k] = serializeAdjs(v);
+          });
+          return res;
+        })(),
         galleries: gals,
         galCategories: (edit && edit.galCategories) || null,
         coverUrl: edit && edit.cover ? (urlMap[edit.cover] || null) : null,

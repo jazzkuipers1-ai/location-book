@@ -273,8 +273,8 @@ function ShareView({ shareId, onBack }) {
           </SV_Section>
         )}
 
-        {/* Legacy adjustments block — only shown if no categoryAdjustments yet */}
-        {!(data.categoryAdjustments && Object.keys(data.categoryAdjustments).length > 0) && (data.adjustments || []).length > 0 && (
+        {/* Legacy adjustments block — only shown if share was published before categoryAdjustments existed */}
+        {!data.categoryAdjustments && (data.adjustments || []).length > 0 && (
           <SV_Section title="Adjustments" count={(data.adjustments || []).length}>
             {Object.entries(adjByArea).map(([area, adjs]) => (
               <div key={area} style={{ marginBottom: 20 }}>
@@ -297,8 +297,11 @@ function ShareView({ shareId, onBack }) {
           return (
             <SV_Section key={cat.id} title={cat.label} count={(imgs || []).length + ' image' + ((imgs || []).length !== 1 ? 's' : '')} color={color}>
               {catAdjs.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: (imgs && imgs.length) ? 16 : 0 }}>
-                  {catAdjs.map(adj => <SV_AdjRow key={adj.id} adj={adj} onLightbox={url => setLightbox({ images: [{ url }], idx: 0 })} />)}
+                <div style={{ marginBottom: (imgs && imgs.length) ? 20 : 0 }}>
+                  <div style={{ fontFamily: 'var(--mono)', fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 8 }}>Adjustments</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {catAdjs.map(adj => <SV_AdjRow key={adj.id} adj={adj} onLightbox={url => setLightbox({ images: [{ url }], idx: 0 })} />)}
+                  </div>
                 </div>
               )}
               {imgs && imgs.length > 0 && (

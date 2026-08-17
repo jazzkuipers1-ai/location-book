@@ -45,7 +45,8 @@ function AdjThumb({ id, onSet, onClear }) {
   );
 }
 
-function AdjRow({ a, onPatch, onDelete, catId }) {
+function AdjRow({ a, onPatch, onDelete, catId, otherCats, onMoveTo }) {
+  const [moveOpen, setMoveOpen] = useState(false);
   return (
     <div className={'adj' + (a.done ? ' done' : '')}
       draggable
@@ -54,7 +55,7 @@ function AdjRow({ a, onPatch, onDelete, catId }) {
         e.dataTransfer.effectAllowed = 'move';
       }}
       onDragEnd={() => { window._dragAdj = null; }}
-      style={{ cursor: 'grab' }}>
+      style={{ cursor: 'grab', position: 'relative' }}>
       <button type="button" className={'adj-check' + (a.done ? ' on' : '')}
         onClick={() => onPatch({ done: !a.done })} title="Mark done">
         <Icon name="check" size={13} sw={2.4} />
@@ -76,6 +77,22 @@ function AdjRow({ a, onPatch, onDelete, catId }) {
       </div>
       <div className="adj-tools">
         <AdjThumb id={a.thumb} onSet={id => onPatch({ thumb: id })} onClear={() => onPatch({ thumb: null })} />
+        {otherCats && otherCats.length > 0 && (
+          <span style={{ position: 'relative' }}>
+            <IconBtn name="move" title="Move to category" onClick={() => setMoveOpen(o => !o)} />
+            {moveOpen && (
+              <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, background: 'var(--card)', border: '1px solid var(--line-2)', borderRadius: 9, padding: 5, boxShadow: 'var(--shadow)', zIndex: 30, display: 'flex', flexDirection: 'column', gap: 2, minWidth: 140, whiteSpace: 'nowrap' }}>
+                <div style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--ink-3)', padding: '2px 8px 4px', letterSpacing: '.06em', textTransform: 'uppercase' }}>Move to</div>
+                {otherCats.map(c => (
+                  <button key={c.id} type="button" className="cat-opt" style={{ border: 'none', justifyContent: 'flex-start' }}
+                    onClick={() => { setMoveOpen(false); onMoveTo(c.id); }}>
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </span>
+        )}
         <IconBtn name="trash" title="Delete" danger onClick={onDelete} />
       </div>
     </div>
@@ -111,7 +128,7 @@ function AddComposer({ onAdd }) {
   );
 }
 
-function Adjustments({ loc, items, onChange, showSummary = true, catId, onMoveIn }) {
+function Adjustments({ loc, items, onChange, showSummary = true, catId, onMoveIn, otherCats, onMoveAdj }) {
   const patch = (id, p) => onChange(items.map(i => i.id === id ? { ...i, ...p } : i));
   const del = id => onChange(items.filter(i => i.id !== id));
   const add = a => onChange([...items, a]);
@@ -162,7 +179,8 @@ function Adjustments({ loc, items, onChange, showSummary = true, catId, onMoveIn
               <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--ink-3)', marginBottom: 4 }}>
                 adjustment #{i + 1}
               </div>
-              <AdjRow a={a} onPatch={p => patch(a.id, p)} onDelete={() => del(a.id)} catId={catId} />
+              <AdjRow a={a} onPatch={p => patch(a.id, p)} onDelete={() => del(a.id)} catId={catId}
+                otherCats={otherCats} onMoveTo={toCatId => onMoveAdj && onMoveAdj(a, toCatId)} />
             </div>
           ))}
         </div>

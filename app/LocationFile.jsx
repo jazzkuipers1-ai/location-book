@@ -617,7 +617,16 @@ function VisualSection({ edit, loc, onPatch, onDraw, onSketch }) {
               )}
             </div>
             <div style={{ marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid var(--line-2)' }}>
-              <Adjustments loc={loc} items={adjItems} onChange={setAdjItems} showSummary={false} />
+              <Adjustments loc={loc} items={adjItems} onChange={setAdjItems} showSummary={false}
+                catId={cat.id}
+                onMoveIn={adj => onPatch(cur => {
+                  const ca = { ...(cur.categoryAdjustments || {}) };
+                  const srcId = window._dragAdj?.catId;
+                  if (srcId) ca[srcId] = (ca[srcId] || []).filter(a => a.id !== adj.id);
+                  ca[cat.id] = [...(ca[cat.id] || adjItems), adj];
+                  return { categoryAdjustments: ca };
+                })}
+              />
             </div>
             <Gallery
               catId={cat.id}

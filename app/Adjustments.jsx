@@ -45,9 +45,16 @@ function AdjThumb({ id, onSet, onClear }) {
   );
 }
 
-function AdjRow({ a, onPatch, onDelete }) {
+function AdjRow({ a, onPatch, onDelete, catId }) {
   return (
-    <div className={'adj' + (a.done ? ' done' : '')}>
+    <div className={'adj' + (a.done ? ' done' : '')}
+      draggable
+      onDragStart={e => {
+        window._dragAdj = { adj: a, catId };
+        e.dataTransfer.effectAllowed = 'move';
+      }}
+      onDragEnd={() => { window._dragAdj = null; }}
+      style={{ cursor: 'grab' }}>
       <button type="button" className={'adj-check' + (a.done ? ' on' : '')}
         onClick={() => onPatch({ done: !a.done })} title="Mark done">
         <Icon name="check" size={13} sw={2.4} />
@@ -104,10 +111,11 @@ function AddComposer({ onAdd }) {
   );
 }
 
-function Adjustments({ loc, items, onChange, showSummary = true }) {
+function Adjustments({ loc, items, onChange, showSummary = true, catId, onMoveIn }) {
   const patch = (id, p) => onChange(items.map(i => i.id === id ? { ...i, ...p } : i));
   const del = id => onChange(items.filter(i => i.id !== id));
   const add = a => onChange([...items, a]);
+  const [dropOver, setDropOver] = useState(false);
 
   const done = items.filter(i => i.done).length;
   const byCat = CATS.map(c => ({ ...c, n: items.filter(i => i.cat === c.id).length })).filter(c => c.n);
@@ -140,13 +148,21 @@ function Adjustments({ loc, items, onChange, showSummary = true }) {
           No adjustments yet — add the first change above.
         </div>
       ) : (
-        <div className="adj-list">
+        <div className="adj-list"
+          onDragOver={e => { if (window._dragAdj && window._dragAdj.catId !== catId) { e.preventDefault(); setDropOver(true); } }}
+          onDragLeave={() => setDropOver(false)}
+          onDrop={e => {
+            e.preventDefault(); setDropOver(false);
+            const d = window._dragAdj;
+            if (d && d.catId !== catId && onMoveIn) onMoveIn(d.adj);
+          }}
+          style={dropOver ? { outline: '2px dashed var(--accent)', borderRadius: 8, padding: 4 } : {}}>
           {items.map((a, i) => (
             <div key={a.id}>
               <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--ink-3)', marginBottom: 4 }}>
                 adjustment #{i + 1}
               </div>
-              <AdjRow a={a} onPatch={p => patch(a.id, p)} onDelete={() => del(a.id)} />
+              <AdjRow a={a} onPatch={p => patch(a.id, p)} onDelete={() => del(a.id)} catId={catId} />
             </div>
           ))}
         </div>

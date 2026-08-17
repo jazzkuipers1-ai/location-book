@@ -637,39 +637,30 @@ function VisualSection({ edit, loc, onPatch, onDraw, onSketch }) {
         { id: 'measurements', label: 'Measurements', icon: 'ruler',  canSketch: true  },
         { id: 'designs',      label: 'Designs',      icon: 'layers', canSketch: false },
         { id: 'moodboard',    label: 'Moodboard',    icon: 'grid',   canSketch: false },
-      ].map(g => {
-        const adjItems = catAdjs[g.id] || [];
-        const setAdjItems = arr => onPatch(cur => ({
-          categoryAdjustments: { ...(cur.categoryAdjustments || {}), [g.id]: arr },
-        }));
-        return (
-          <div className="vis-block" key={g.id}>
-            <div className="vis-block-h">
-              <Icon name={g.icon} size={15} style={{ color: 'var(--ink-2)' }} />
-              <span className="vn">{g.label}</span>
-              <span className="vc">{(gal[g.id] || []).length}</span>
-              <span className="ln" />
-              {g.canSketch && onSketch && (
-                <button className="btn sm ghost" onClick={() => onSketch(g.id)}
-                  style={{ marginLeft: 6, flexShrink: 0, gap: 4 }}>
-                  <Icon name="edit" size={12} />Sketch
-                </button>
-              )}
-            </div>
-            <div style={{ marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid var(--line-2)' }}>
-              <Adjustments loc={loc} items={adjItems} onChange={setAdjItems} showSummary={false} />
-            </div>
-            <Gallery
-              catId={g.id}
-              catColor={null}
-              items={gal[g.id] || []}
-              onChange={arr => setGal(g.id, arr)}
-              onDraw={it => onDraw(g.id, it)}
-              onDropFromOther={() => {}}
-            />
+      ].map(g => (
+        <div className="vis-block" key={g.id}>
+          <div className="vis-block-h">
+            <Icon name={g.icon} size={15} style={{ color: 'var(--ink-2)' }} />
+            <span className="vn">{g.label}</span>
+            <span className="vc">{(gal[g.id] || []).length}</span>
+            <span className="ln" />
+            {g.canSketch && onSketch && (
+              <button className="btn sm ghost" onClick={() => onSketch(g.id)}
+                style={{ marginLeft: 6, flexShrink: 0, gap: 4 }}>
+                <Icon name="edit" size={12} />Sketch
+              </button>
+            )}
           </div>
-        );
-      })}
+          <Gallery
+            catId={g.id}
+            catColor={null}
+            items={gal[g.id] || []}
+            onChange={arr => setGal(g.id, arr)}
+            onDraw={it => onDraw(g.id, it)}
+            onDropFromOther={() => {}}
+          />
+        </div>
+      ))}
     </div>
   );
 }

@@ -150,7 +150,7 @@
 /* ====================================================== STACKED GALLERIES */
 .vis-block { margin-bottom: 22px; }
 .vis-block-h { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; border-radius: 4px; }
-.vis-block-h .vn { font-weight: 700; font-size: 14px; min-width: 20px; }
+.vis-block-h .vn { font-weight: 700; font-size: 24px; min-width: 20px; }
 .vis-block-h .vn:focus { outline: none; }
 .vis-block-h .vc { font-family: var(--mono); font-size: 10px; color: var(--ink-3); }
 .vis-block-h .ln { flex: 1; height: 1px; background: var(--line); }

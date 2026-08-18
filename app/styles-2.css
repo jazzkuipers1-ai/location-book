@@ -184,7 +184,7 @@
 .annot-bar { display: flex; align-items: center; gap: 5px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--card); flex-shrink: 0; overflow-x: auto; scrollbar-width: none; }
 .annot-bar::-webkit-scrollbar { display: none; }
 .annot-bar-sep { width: 1px; height: 22px; background: var(--line); flex-shrink: 0; margin: 0 3px; }
-.annot-stage { flex: 1; min-height: 0; background: #1c1813; display: grid; place-items: center; padding: 16px; overflow: hidden; }
+.annot-stage { flex: 1; min-height: 0; background: #1c1813; display: grid; place-items: center; padding: 16px; overflow: hidden; touch-action: none; }
 .annot-imgwrap { position: relative; display: inline-block; max-width: 100%; max-height: 100%; line-height: 0; }
 .annot-img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; user-select: none; -webkit-user-drag: none; }
 .annot-canvas { position: absolute; inset: 0; touch-action: none; cursor: crosshair; }

@@ -228,12 +228,17 @@ async function syncPhotosToCloud(state, onProgress) {
 }
 window.syncPhotosToCloud = syncPhotosToCloud;
 
+// Safari on iOS/macOS displays HEIC natively — skip the expensive JS conversion there
+const _nativeHEIC = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (/^((?!chrome|android).)*safari/i.test(navigator.userAgent) && navigator.userAgent.includes('Mac'));
+
 async function filesToIds(fileList) {
-  const raw = Array.from(fileList).filter(f => f.type.startsWith('image/') || /\.heic$/i.test(f.name) || /\.heif$/i.test(f.name));
+  const raw = Array.from(fileList).filter(f => f.type.startsWith('image/') || /\.(heic|heif)$/i.test(f.name));
   if (!raw.length) return [];
-  // Converteer HEIC naar JPEG
+  // Converteer HEIC naar JPEG — alleen op browsers die HEIC niet native ondersteunen
   const files = await Promise.all(raw.map(async f => {
-    if (/\.heic$/i.test(f.name) || /\.heif$/i.test(f.name) || f.type === 'image/heic' || f.type === 'image/heif') {
+    const isHEIC = /\.(heic|heif)$/i.test(f.name) || f.type === 'image/heic' || f.type === 'image/heif';
+    if (isHEIC && !_nativeHEIC && window.heic2any) {
       try {
         const blob = await heic2any({ blob: f, toType: 'image/jpeg', quality: 0.85 });
         return new File([Array.isArray(blob) ? blob[0] : blob], f.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
@@ -357,7 +362,7 @@ function CoverDrop({ id, onSet, onClear, height = 210, radius = 14, label = 'Add
           <div className="s mono">drag &amp; drop or click to browse</div>
         </div>
       )}
-      <input ref={inp} type="file" accept="image/*,.heic,.heif,.HEIC,.HEIF" hidden onChange={async e => {
+      <input ref={inp} type="file" accept="image/*" hidden onChange={async e => {
         const ids = await filesToIds(e.target.files); if (ids[0]) onSet(ids[0]); e.target.value = '';
       }} />
     </div>

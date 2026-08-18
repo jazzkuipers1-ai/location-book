@@ -45,8 +45,10 @@
     if (_urls.has(id)) return _urls.get(id);
     let blob = await getBlob(id);
     if (blob) {
-      // Converteer HEIC naar JPEG als de browser het niet kan tonen
-      if (blob.type === 'image/heic' || blob.type === 'image/heif') {
+      // Converteer HEIC naar JPEG — alleen op browsers zonder native HEIC-ondersteuning
+      const nativeHEIC = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (/^((?!chrome|android).)*safari/i.test(navigator.userAgent) && navigator.userAgent.includes('Mac'));
+      if (!nativeHEIC && (blob.type === 'image/heic' || blob.type === 'image/heif')) {
         try {
           if (window.heic2any) {
             const converted = await heic2any({ blob, toType: 'image/jpeg', quality: 0.85 });

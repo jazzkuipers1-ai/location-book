@@ -401,7 +401,7 @@ function Dropzone({ onFiles }) {
         <div className="t">Drop images</div>
         <div className="s mono">or click to browse</div>
       </div>
-      <input ref={inp} type="file" accept="image/*,.heic,.heif,.HEIC,.HEIF" multiple hidden onChange={async e => {
+      <input ref={inp} type="file" accept="image/*" multiple hidden onChange={async e => {
         await onFiles(e.target.files); e.target.value = '';
       }} />
     </div>

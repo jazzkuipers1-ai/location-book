@@ -102,9 +102,15 @@ function ShareModal({ loc, edit, name, scheduleName, onClose, onShareIdSaved }) 
         adjustments: serializeAdjs(edit && edit.adjustments),
         categoryAdjustments: (() => {
           const res = {};
+          const cats = (edit && edit.galCategories) || [{ id: 'photos' }];
           Object.entries((edit && edit.categoryAdjustments) || {}).forEach(([k, v]) => {
             res[k] = serializeAdjs(v);
           });
+          // Backward-compat: migrate legacy flat adjustments into first category
+          const firstCatId = cats[0] && cats[0].id;
+          if (firstCatId && !res[firstCatId] && edit && (edit.adjustments || []).length > 0) {
+            res[firstCatId] = serializeAdjs(edit.adjustments);
+          }
           return res;
         })(),
         galleries: gals,

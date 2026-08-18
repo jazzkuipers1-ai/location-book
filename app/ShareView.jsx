@@ -274,7 +274,7 @@ function ShareView({ shareId, onBack }) {
         )}
 
         {/* Legacy adjustments block — only shown if share was published before categoryAdjustments existed */}
-        {!data.categoryAdjustments && (data.adjustments || []).length > 0 && (
+        {!(data.categoryAdjustments && Object.values(data.categoryAdjustments).some(a => a && a.length > 0)) && (data.adjustments || []).length > 0 && (
           <SV_Section title="Adjustments" count={(data.adjustments || []).length}>
             {Object.entries(adjByArea).map(([area, adjs]) => (
               <div key={area} style={{ marginBottom: 20 }}>

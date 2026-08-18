@@ -232,20 +232,37 @@ window.syncPhotosToCloud = syncPhotosToCloud;
 const _nativeHEIC = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
   (/^((?!chrome|android).)*safari/i.test(navigator.userAgent) && navigator.userAgent.includes('Mac'));
 
+// Read a File into a Blob immediately — iOS PWA invalidates File references after async gaps
+async function fileToBlob(f) {
+  if (f instanceof Blob && !(f instanceof File)) return f;
+  return new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = e => res(new Blob([e.target.result], { type: f.type || 'image/jpeg' }));
+    fr.onerror = () => rej(fr.error);
+    fr.readAsArrayBuffer(f);
+  });
+}
+
 async function filesToIds(fileList) {
   const raw = Array.from(fileList).filter(f => f.type.startsWith('image/') || /\.(heic|heif)$/i.test(f.name));
   if (!raw.length) return [];
+
+  // Read all files to blobs immediately — before any async gap that could invalidate iOS PWA file refs
+  const blobs = await Promise.all(raw.map(f => fileToBlob(f).catch(() => f)));
+
   // Converteer HEIC naar JPEG — alleen op browsers die HEIC niet native ondersteunen
-  const files = await Promise.all(raw.map(async f => {
-    const isHEIC = /\.(heic|heif)$/i.test(f.name) || f.type === 'image/heic' || f.type === 'image/heif';
+  const files = await Promise.all(blobs.map(async (b, i) => {
+    const orig = raw[i];
+    const isHEIC = /\.(heic|heif)$/i.test(orig.name) || b.type === 'image/heic' || b.type === 'image/heif';
     if (isHEIC && !_nativeHEIC && window.heic2any) {
       try {
-        const blob = await heic2any({ blob: f, toType: 'image/jpeg', quality: 0.85 });
-        return new File([Array.isArray(blob) ? blob[0] : blob], f.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
-      } catch(e) { return f; }
+        const converted = await heic2any({ blob: b, toType: 'image/jpeg', quality: 0.85 });
+        return Array.isArray(converted) ? converted[0] : converted;
+      } catch(e) { return b; }
     }
-    return f;
+    return b;
   }));
+
   // Write to IndexedDB and immediately cache a preview URL — photo shows before IndexedDB read completes
   const ids = await Promise.all(files.map(async f => {
     const previewUrl = URL.createObjectURL(f);

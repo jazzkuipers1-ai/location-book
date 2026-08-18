@@ -85,12 +85,22 @@ function Stepper({ value, onChange, min = 0, max = 99 }) {
 function Img({ imgId, alt, className, style, thumb }) {
   const [url, setUrl] = useState(null);
   const [broken, setBroken] = useState(false);
+  const retryRef = useRef(null);
 
   const load = (id, live) => {
     setBroken(false);
     setUrl(null);
     const fn = thumb ? LB.db.getThumbnailURL : LB.db.getURL;
-    fn(id).then(u => { if (live.ok) setUrl(u); });
+    fn(id).then(u => {
+      if (!live.ok) return;
+      if (u) { setUrl(u); }
+      else {
+        // Retry after 3s — upload may still be in progress
+        retryRef.current = setTimeout(() => {
+          fn(id).then(u2 => { if (live.ok && u2) setUrl(u2); });
+        }, 3000);
+      }
+    });
   };
 
   useEffect(() => {
@@ -99,7 +109,11 @@ function Img({ imgId, alt, className, style, thumb }) {
     load(imgId, live);
     const onUpdate = e => { if (e.detail === imgId) load(imgId, live); };
     window.addEventListener('lb_blob_updated', onUpdate);
-    return () => { live.ok = false; window.removeEventListener('lb_blob_updated', onUpdate); };
+    return () => {
+      live.ok = false;
+      clearTimeout(retryRef.current);
+      window.removeEventListener('lb_blob_updated', onUpdate);
+    };
   }, [imgId, thumb]);
 
   if (!url || broken) return <div className={className} style={{ ...style, background: 'var(--card-2)' }} />;
@@ -263,11 +277,19 @@ async function filesToIds(fileList) {
     return b;
   }));
 
-  // Write to IndexedDB and immediately cache a preview URL — photo shows before IndexedDB read completes
+  // Write to IndexedDB and immediately cache preview + thumbnail URLs
   const ids = await Promise.all(files.map(async f => {
     const previewUrl = URL.createObjectURL(f);
     const id = await LB.db.putImage(f);
-    LB.db.cacheURL(id, previewUrl); // instant: getURL() returns this without hitting IndexedDB
+    LB.db.cacheURL(id, previewUrl); // instant full-size URL
+    // Generate thumbnail immediately so gallery cells don't need to do it on-demand
+    LB.db.makeThumbBlob(f).then(async thumbBlob => {
+      const thumbUrl = URL.createObjectURL(thumbBlob);
+      LB.db.cacheURL(id + '_thumb', thumbUrl);
+      await LB.db.putThumb(id, thumbBlob);
+    }).catch(() => {
+      LB.db.cacheURL(id + '_thumb', previewUrl); // fallback: use full URL as thumb
+    });
     return id;
   }));
   // Compress + thumbnail in background, yielding to the browser between each photo

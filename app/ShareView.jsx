@@ -273,8 +273,8 @@ function ShareView({ shareId, onBack }) {
           </SV_Section>
         )}
 
-        {/* Legacy adjustments block — only shown if share was published before categoryAdjustments existed */}
-        {!(data.categoryAdjustments && Object.values(data.categoryAdjustments).some(a => a && a.length > 0)) && (data.adjustments || []).length > 0 && (
+        {/* Legacy standalone block — only if there are NO galCategories to display them under */}
+        {false && (data.adjustments || []).length > 0 && (
           <SV_Section title="Adjustments" count={(data.adjustments || []).length}>
             {Object.entries(adjByArea).map(([area, adjs]) => (
               <div key={area} style={{ marginBottom: 20 }}>
@@ -288,9 +288,13 @@ function ShareView({ shareId, onBack }) {
         )}
 
         {/* Gallery sections — adjustments above photos per category */}
-        {galCats.map(cat => {
+        {galCats.map((cat, catIdx) => {
           const imgs = data.galleries && data.galleries[cat.id];
-          const catAdjs = (data.categoryAdjustments && data.categoryAdjustments[cat.id]) || [];
+          // Per-category adjustments; first category falls back to legacy flat list
+          const hasCatAdjs = data.categoryAdjustments && Object.keys(data.categoryAdjustments).length > 0;
+          const catAdjs = hasCatAdjs
+            ? ((data.categoryAdjustments[cat.id]) || [])
+            : (catIdx === 0 ? (data.adjustments || []) : []);
           if ((!imgs || imgs.length === 0) && catAdjs.length === 0) return null;
           const color = SV_CAT_COLORS[cat.colorId] || SV_CAT_COLORS.slate;
           const cols = Math.min((imgs || []).length, 3);

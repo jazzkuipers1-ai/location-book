@@ -2,7 +2,7 @@
    Caches the full app shell (local + CDN) so it loads offline.
    Supabase API calls are never intercepted — they go to network only.        */
 
-const CACHE = 'lb-v8';
+const CACHE = 'lb-v9';
 
 const LOCAL = [
   '/',
@@ -14,15 +14,18 @@ const LOCAL = [
   '/app/supabase.js',
   '/app/seed.js',
   '/app/parser.js',
+  '/app/Auth.jsx',
   '/app/Home.jsx',
   '/app/tweaks-panel.jsx',
   '/app/components.jsx',
   '/app/CropModal.jsx',
   '/app/ShareView.jsx',
   '/app/ShareModal.jsx',
+  '/app/ShareProjectModal.jsx',
   '/app/ScheduleDiff.jsx',
   '/app/PasswordModal.jsx',
   '/app/MobileNav.jsx',
+  '/app/CalendarView.jsx',
   '/app/Annotator.jsx',
   '/app/SketchPad.jsx',
   '/app/Adjustments.jsx',
@@ -78,28 +81,25 @@ self.addEventListener('fetch', e => {
   // Never intercept non-GET requests
   if (e.request.method !== 'GET') return;
 
-  e.respondWith(
-    caches.match(e.request).then(cached => {
-      // Cache hit — serve immediately, revalidate in background for local files
-      if (cached) {
-        if (url.origin === self.location.origin) {
-          // Stale-while-revalidate for local app files
-          fetch(e.request).then(fresh => {
-            if (fresh.ok) caches.open(CACHE).then(c => c.put(e.request, fresh));
-          }).catch(() => {});
-        }
-        return cached;
-      }
-      // Cache miss — fetch from network and cache it
-      return fetch(e.request, url.origin !== self.location.origin ? { mode: 'cors', credentials: 'omit' } : {})
+  // Local app files: network-first (always fresh), fall back to cache when offline
+  // CDN files: cache-first (they're versioned and don't change)
+  if (url.origin === self.location.origin) {
+    e.respondWith(
+      fetch(e.request)
         .then(r => {
-          if (r.ok) {
-            const clone = r.clone();
-            caches.open(CACHE).then(c => c.put(e.request, clone));
-          }
+          if (r.ok) caches.open(CACHE).then(c => c.put(e.request, r.clone()));
           return r;
         })
-        .catch(() => cached || new Response('Offline', { status: 503 }));
-    })
-  );
+        .catch(() => caches.match(e.request).then(c => c || new Response('Offline', { status: 503 })))
+    );
+  } else {
+    e.respondWith(
+      caches.match(e.request).then(cached => cached || fetch(e.request, { mode: 'cors', credentials: 'omit' })
+        .then(r => {
+          if (r.ok || r.type === 'opaque') caches.open(CACHE).then(c => c.put(e.request, r.clone()));
+          return r;
+        })
+      )
+    );
+  }
 });

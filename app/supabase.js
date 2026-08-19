@@ -119,10 +119,34 @@
   }
 
   /* ---- storage: images --------------------------------------------------- */
+
+  // Convert HEIC/HEIF to JPEG via canvas — works on iOS because browser decodes HEIC natively.
+  // This ensures photos uploaded to Supabase are always JPEG, displayable in all browsers.
+  function heicToJpeg(blob) {
+    return new Promise((res, rej) => {
+      const img = new Image();
+      const burl = URL.createObjectURL(blob);
+      img.onload = () => {
+        URL.revokeObjectURL(burl);
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        canvas.toBlob(b => b ? res(b) : rej(new Error('convert failed')), 'image/jpeg', 0.88);
+      };
+      img.onerror = () => { URL.revokeObjectURL(burl); rej(new Error('decode failed')); };
+      img.src = burl;
+    });
+  }
+
   async function uploadImage(blob, imageId) {
-    const contentType = blob.type || 'image/jpeg';
+    let uploadBlob = blob;
+    // Always convert HEIC/HEIF to JPEG before upload — Supabase serves to all browsers including Chrome
+    if (blob.type === 'image/heic' || blob.type === 'image/heif') {
+      try { uploadBlob = await heicToJpeg(blob); } catch(e) { /* upload original as fallback */ }
+    }
+    const contentType = uploadBlob.type || 'image/jpeg';
     const path = 'images/' + imageId;
-    const { error } = await sb.storage.from('project-images').upload(path, blob, { upsert: true, contentType });
+    const { error } = await sb.storage.from('project-images').upload(path, uploadBlob, { upsert: true, contentType });
     if (error) throw error;
     const { data } = sb.storage.from('project-images').getPublicUrl(path);
     return data.publicUrl;
@@ -179,16 +203,28 @@
 
   /* ---- offline upload queue ---------------------------------------------- */
   const QUEUE_KEY = 'lb_upload_queue';
+  const UPLOADED_KEY = 'lb_uploaded_ids'; // IDs confirmed uploaded to Supabase
+
+  function markUploaded(id) {
+    try {
+      const uploaded = JSON.parse(localStorage.getItem(UPLOADED_KEY) || '[]');
+      if (!uploaded.includes(id)) { uploaded.push(id); localStorage.setItem(UPLOADED_KEY, JSON.stringify(uploaded)); }
+    } catch(e) {}
+  }
+  function isUploaded(id) {
+    try { return JSON.parse(localStorage.getItem(UPLOADED_KEY) || '[]').includes(id); } catch(e) { return false; }
+  }
 
   function queueUpload(id) {
     try {
+      if (isUploaded(id)) return; // already uploaded — skip
       const q = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
       if (!q.includes(id)) { q.push(id); localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); }
       window.dispatchEvent(new CustomEvent('lb_upload_state'));
     } catch (e) {}
   }
 
-  // Sequential upload processor — one upload at a time, no connection flooding
+  // Sequential upload processor — one at a time, skips permanently failed items
   let _queueRunning = false;
   async function startQueue() {
     if (_queueRunning || !navigator.onLine) return;
@@ -198,18 +234,25 @@
         const q = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
         if (!q.length) break;
         const id = q[0];
-        try {
-          const blob = await LB.db.getBlob(id);
-          if (blob) await uploadImage(blob, id);
-          // Success — remove from queue and notify Img components to reload
+        const removeFromQueue = () => {
           const curr = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
           const updated = curr.filter(i => i !== id);
           if (updated.length === 0) localStorage.removeItem(QUEUE_KEY);
           else localStorage.setItem(QUEUE_KEY, JSON.stringify(updated));
           window.dispatchEvent(new CustomEvent('lb_upload_state'));
+        };
+        try {
+          const blob = await LB.db.getBlob(id);
+          if (!blob) { removeFromQueue(); continue; } // no local copy, skip
+          await uploadImage(blob, id);
+          markUploaded(id);
+          removeFromQueue();
           window.dispatchEvent(new CustomEvent('lb_blob_updated', { detail: id }));
         } catch (e) {
-          break; // offline or upload error — stop and retry on reconnect
+          // Network/upload error — move to end of queue and stop for now (retry on reconnect)
+          removeFromQueue();
+          queueUpload(id);
+          break;
         }
       }
     } finally {
@@ -217,28 +260,20 @@
     }
   }
 
-  async function flushUploadQueue() {
-    startQueue();
-  }
+  async function flushUploadQueue() { startQueue(); }
 
-  // On reconnect: flush queued uploads and notify app to retry state save
   window.addEventListener('online', () => {
     startQueue();
     window.dispatchEvent(new CustomEvent('lb_reconnect'));
   });
 
-  // On startup: scan all local blobs and queue any that aren't already queued
-  // This recovers photos that were saved locally but never uploaded (e.g. app closed early)
+  // On startup: queue any local blobs not yet uploaded to Supabase
   async function scanAndQueueAll() {
     try {
       const allIds = await LB.db.getAllBlobIds();
-      const q = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
-      const qSet = new Set(q);
-      let added = false;
       for (const id of allIds) {
-        if (!qSet.has(id)) { q.push(id); qSet.add(id); added = true; }
+        if (!isUploaded(id)) queueUpload(id);
       }
-      if (added) localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
     } catch (e) {}
     startQueue();
   }

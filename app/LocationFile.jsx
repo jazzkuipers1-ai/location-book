@@ -1202,6 +1202,12 @@ function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine,
         <BulletNotes key={'notes' + loc.id} value={edit.notes || ''} onChange={v => onPatch({ notes: v })} />
       </div>
 
+      {/* prop lists */}
+      <PropListSection
+        lists={edit.propLists || []}
+        onChange={lists => onPatch({ propLists: lists })}
+      />
+
       {annot && <Annotator originalId={annot.item.id} init={{ strokes: annot.item.strokes, note: annot.item.note }}
         onSave={saveAnnot} onClose={() => setAnnot(null)} />}
       {sketch && <SketchPad
@@ -1214,6 +1220,96 @@ function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine,
           setSketch(null);
         }}
         onClose={() => setSketch(null)} />}
+    </div>
+  );
+}
+
+/* ---- prop list section -------------------------------------------------- */
+function PropListSection({ lists, onChange }) {
+  const newCat = () => {
+    const id = 'pl_' + Date.now().toString(36);
+    onChange([...lists, { id, name: 'New list', items: [] }]);
+  };
+  const patchList = (id, patch) => onChange(lists.map(l => l.id === id ? { ...l, ...patch } : l));
+  const deleteList = id => onChange(lists.filter(l => l.id !== id));
+
+  return (
+    <div className="sec">
+      <div className="sec-h">
+        <span className="num">05</span>
+        <h2>Prop lists</h2>
+        <span className="ln" />
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {lists.map(list => (
+          <PropList key={list.id} list={list}
+            onPatch={p => patchList(list.id, p)}
+            onDelete={() => deleteList(list.id)} />
+        ))}
+        <button className="btn sm ghost" onClick={newCat} style={{ alignSelf: 'flex-start' }}>
+          <Icon name="plus" size={14} /> Add list
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PropList({ list, onPatch, onDelete }) {
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState(list.name);
+  const [newText, setNewText] = useState('');
+  const inputRef = useRef();
+
+  const commitName = () => { setEditingName(false); if (nameDraft.trim()) onPatch({ name: nameDraft.trim() }); else setNameDraft(list.name); };
+  const addItem = () => {
+    const text = newText.trim();
+    if (!text) return;
+    const id = 'pi_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 5);
+    onPatch({ items: [...list.items, { id, text, done: false }] });
+    setNewText('');
+    setTimeout(() => inputRef.current && inputRef.current.focus(), 0);
+  };
+  const patchItem = (id, patch) => onPatch({ items: list.items.map(it => it.id === id ? { ...it, ...patch } : it) });
+  const deleteItem = id => onPatch({ items: list.items.filter(it => it.id !== id) });
+
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 10, background: 'var(--card)', overflow: 'hidden' }}>
+      {/* header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: '1px solid var(--border)', background: 'var(--card-2)' }}>
+        {editingName ? (
+          <input autoFocus value={nameDraft} onChange={e => setNameDraft(e.target.value)}
+            onBlur={commitName} onKeyDown={e => { if (e.key === 'Enter') commitName(); if (e.key === 'Escape') { setEditingName(false); setNameDraft(list.name); } }}
+            style={{ flex: 1, fontSize: 13, fontWeight: 600, fontFamily: 'var(--sans)', background: 'none', border: 'none', borderBottom: '1px solid var(--accent)', outline: 'none', color: 'var(--ink)', padding: '2px 0' }} />
+        ) : (
+          <span style={{ flex: 1, fontSize: 13, fontWeight: 600, cursor: 'text', color: 'var(--ink)' }}
+            onClick={() => { setNameDraft(list.name); setEditingName(true); }}>{list.name}</span>
+        )}
+        <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--ink-3)' }}>{list.items.filter(i => i.done).length}/{list.items.length}</span>
+        <IconBtn name="trash" size={13} danger onClick={onDelete} title="Delete list" />
+      </div>
+      {/* items */}
+      <div style={{ padding: '4px 0' }}>
+        {list.items.map(item => (
+          <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 14px' }}
+            className={item.done ? 'prop-item done' : 'prop-item'}>
+            <input type="checkbox" checked={!!item.done} onChange={e => patchItem(item.id, { done: e.target.checked })}
+              style={{ accentColor: 'var(--accent)', width: 15, height: 15, flexShrink: 0, cursor: 'pointer' }} />
+            <span style={{ flex: 1, fontSize: 13.5, color: item.done ? 'var(--ink-3)' : 'var(--ink)', textDecoration: item.done ? 'line-through' : 'none', lineHeight: 1.4 }}>{item.text}</span>
+            <IconBtn name="x" size={12} onClick={() => deleteItem(item.id)} title="Remove item" />
+          </div>
+        ))}
+        {/* add item row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 14px' }}>
+          <div style={{ width: 15, height: 15, border: '1.5px solid var(--border)', borderRadius: 3, flexShrink: 0 }} />
+          <input ref={inputRef} value={newText} onChange={e => setNewText(e.target.value)}
+            placeholder="Add item…"
+            onKeyDown={e => { if (e.key === 'Enter') addItem(); }}
+            style={{ flex: 1, fontSize: 13.5, background: 'none', border: 'none', outline: 'none', color: 'var(--ink)', fontFamily: 'var(--sans)', padding: '2px 0' }} />
+          {newText.trim() && (
+            <button className="btn sm ghost" onClick={addItem} style={{ padding: '2px 8px', fontSize: 12 }}>Add</button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

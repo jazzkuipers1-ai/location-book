@@ -226,3 +226,8 @@
 .cat-color-dot { width: 13px; height: 13px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; flex-shrink: 0; transition: transform .1s; }
 .cat-color-dot:hover { transform: scale(1.25); }
 .cat-color-dot.on { border-color: var(--ink); transform: scale(1.15); }
+
+
+/* prop list */
+.prop-item { transition: background .12s; border-radius: 4px; }
+.prop-item:hover { background: var(--card-2); }

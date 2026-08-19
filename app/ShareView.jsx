@@ -379,6 +379,11 @@ function ShareView({ shareId, onBack }) {
           </SV_Section>
         )}
 
+        {/* Prop lists */}
+        {(data.propLists || []).length > 0 && (
+          <SV_PropLists lists={data.propLists} shareId={shareId} />
+        )}
+
         {/* Footer */}
         <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink-3)', textAlign: 'center', paddingTop: 24, borderTop: '1px solid var(--line)' }}>
           {data.scheduleName} — {data.name}
@@ -418,6 +423,53 @@ function ShareView({ shareId, onBack }) {
         </div>
       )}
     </div>
+  );
+}
+
+function SV_PropLists({ lists, shareId }) {
+  // Viewer's checked state is stored per share in localStorage
+  const storageKey = 'sv_props_' + shareId;
+  const loadChecked = () => {
+    try { return JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch { return {}; }
+  };
+  const [checked, setChecked] = useState(loadChecked);
+
+  const toggle = (itemId) => {
+    setChecked(prev => {
+      const next = { ...prev, [itemId]: !prev[itemId] };
+      try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  return (
+    <SV_Section title="Prop lists">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {lists.map(list => {
+          const doneCount = list.items.filter(it => checked[it.id] || it.done).length;
+          return (
+            <div key={list.id} style={{ border: '1px solid var(--line)', borderRadius: 10, background: 'var(--card)', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderBottom: '1px solid var(--line)', background: 'var(--card-2)' }}>
+                <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{list.name}</span>
+                <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--ink-3)' }}>{doneCount}/{list.items.length}</span>
+              </div>
+              <div style={{ padding: '4px 0' }}>
+                {list.items.map(item => {
+                  const isDone = checked[item.id] !== undefined ? checked[item.id] : item.done;
+                  return (
+                    <label key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 16px', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={isDone} onChange={() => toggle(item.id)}
+                        style={{ accentColor: 'var(--accent)', width: 16, height: 16, flexShrink: 0, cursor: 'pointer' }} />
+                      <span style={{ fontSize: 14, color: isDone ? 'var(--ink-3)' : 'var(--ink)', textDecoration: isDone ? 'line-through' : 'none', lineHeight: 1.5 }}>{item.text}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </SV_Section>
   );
 }
 

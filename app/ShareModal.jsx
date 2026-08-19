@@ -5,8 +5,10 @@ function ShareModal({ loc, edit, name, scheduleName, onClose, onShareIdSaved }) 
   const [progress, setProgress] = useState('');
   const [shareUrl, setShareUrl] = useState('');
   const [copied, setCopied] = useState(false);
+  const [includeProps, setIncludeProps] = useState(true);
 
   const existingShareId = edit && edit.shareId;
+  const hasPropLists = (edit && edit.propLists && edit.propLists.length > 0);
 
   // Collect every image ID referenced in the location edit
   function collectImageIds() {
@@ -117,6 +119,7 @@ function ShareModal({ loc, edit, name, scheduleName, onClose, onShareIdSaved }) 
         galCategories: (edit && edit.galCategories) || null,
         coverUrl: edit && edit.cover ? (urlMap[edit.cover] || null) : null,
         notes: (edit && edit.notes) || '',
+        propLists: includeProps ? (edit && edit.propLists || []) : [],
         regions: (loc && loc.regions) || [],
         sets: (loc && loc.sets) || [],
         sceneCount: (loc && loc.sceneCount) || 0,
@@ -182,6 +185,21 @@ function ShareModal({ loc, edit, name, scheduleName, onClose, onShareIdSaved }) 
                     {copied ? '✓' : 'Copy'}
                   </button>
                 </div>
+              </div>
+            )}
+
+            {hasPropLists && (
+              <div style={{ marginBottom: 16, padding: '10px 12px', background: 'var(--card-2)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={includeProps} onChange={e => setIncludeProps(e.target.checked)}
+                    style={{ accentColor: 'var(--accent)', width: 15, height: 15 }} />
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink)' }}>Include prop lists</div>
+                    <div style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--ink-3)', marginTop: 2 }}>
+                      Viewers can check items off in the link
+                    </div>
+                  </div>
+                </label>
               </div>
             )}
 

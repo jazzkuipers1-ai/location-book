@@ -302,5 +302,25 @@
     return sb.auth.onAuthStateChange(callback);
   }
 
-  window.LB_SYNC = { CLIENT_ID, loadState, saveState, subscribe, loadProjects, createProject, updateProject, deleteProject, getProjectByCode, uploadImage, getImageUrl, queueUpload, startQueue, flushUploadQueue, publishShare, loadShare, getShareUrl, publishProjectShare, loadProjectShare, getProjectShareUrl, setProjectPassword, removeProjectPassword, getProjectPassword, signUp, signIn, signOut, getSession, onAuthChange };
+  async function publishAgendaShare(agendaId, data) {
+    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+    const path = 'shares/agenda_' + agendaId + '.json';
+    const { error } = await sb.storage.from('project-images').upload(path, blob, { upsert: true, contentType: 'application/json' });
+    if (error) throw error;
+  }
+
+  async function loadAgendaShare(agendaId) {
+    const url = SUPABASE_URL + '/storage/v1/object/public/project-images/shares/agenda_' + agendaId + '.json?t=' + Date.now();
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      return await res.json();
+    } catch { return null; }
+  }
+
+  function getAgendaShareUrl(agendaId) {
+    return window.location.origin + window.location.pathname + '?agenda=' + agendaId;
+  }
+
+  window.LB_SYNC = { CLIENT_ID, loadState, saveState, subscribe, loadProjects, createProject, updateProject, deleteProject, getProjectByCode, uploadImage, getImageUrl, queueUpload, startQueue, flushUploadQueue, publishShare, loadShare, getShareUrl, publishProjectShare, loadProjectShare, getProjectShareUrl, publishAgendaShare, loadAgendaShare, getAgendaShareUrl, setProjectPassword, removeProjectPassword, getProjectPassword, signUp, signIn, signOut, getSession, onAuthChange };
 })();

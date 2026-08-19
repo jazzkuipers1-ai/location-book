@@ -25,7 +25,9 @@ function calDateKey(d) {
     String(d.getDate()).padStart(2, '0');
 }
 
-function CalendarView({ model, edits, removed, onOpenLoc }) {
+function CalendarView({ model, edits, removed, onOpenLoc, agendaShareId, onCreateAgendaShare }) {
+  const [sharePopup, setSharePopup] = useState(false);
+  const [copiedAgenda, setCopiedAgenda] = useState(false);
   const visibleLocs = useMemo(
     () => model.locations.filter(l => !removed.includes(l.id)),
     [model.locations, removed]
@@ -124,7 +126,7 @@ function CalendarView({ model, edits, removed, onOpenLoc }) {
           <div className="kicker">{model.scheduleName} · agenda</div>
           <h1 style={{ margin: 0 }}>{CAL_MONTH_NAMES[month]} {year}</h1>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6, flexWrap: 'wrap' }}>
           <button className="btn" onClick={prevMonth}>
             <Icon name="arrow" size={14} style={{ transform: 'rotate(180deg)' }} />
           </button>
@@ -132,6 +134,35 @@ function CalendarView({ model, edits, removed, onOpenLoc }) {
           <button className="btn" onClick={nextMonth}>
             <Icon name="arrow" size={14} />
           </button>
+          <button className="btn" onClick={() => window.print()} title="Print / save as PDF">
+            <Icon name="download" size={14} />PDF
+          </button>
+          <div style={{ position: 'relative' }}>
+            <button className="btn primary" onClick={() => {
+              if (!agendaShareId && onCreateAgendaShare) onCreateAgendaShare();
+              setSharePopup(v => !v);
+            }}>
+              <Icon name="arrow" size={14} />Deel agenda
+            </button>
+            {sharePopup && agendaShareId && (
+              <div style={{ position: 'absolute', right: 0, top: '110%', zIndex: 200, background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: 14, minWidth: 320, boxShadow: '0 4px 24px rgba(0,0,0,.12)' }}>
+                <div className="mono" style={{ fontSize: 10.5, color: 'var(--ink-3)', marginBottom: 8 }}>Live agenda link — altijd up to date</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input readOnly value={LB_SYNC.getAgendaShareUrl(agendaShareId)}
+                    style={{ flex: 1, fontSize: 11, padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--card-2)', color: 'var(--ink)', fontFamily: 'var(--mono)' }}
+                    onClick={e => e.target.select()} />
+                  <button className="btn sm primary" onClick={() => {
+                    navigator.clipboard.writeText(LB_SYNC.getAgendaShareUrl(agendaShareId)).catch(() => {});
+                    setCopiedAgenda(true); setTimeout(() => setCopiedAgenda(false), 2000);
+                  }}>{copiedAgenda ? '✓' : 'Copy'}</button>
+                </div>
+                <div className="mono" style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 8, lineHeight: 1.5 }}>
+                  Elke wijziging wordt automatisch bijgewerkt in de link.
+                </div>
+                <button style={{ position: 'absolute', top: 8, right: 10, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-3)', fontSize: 16 }} onClick={() => setSharePopup(false)}>×</button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

@@ -450,6 +450,26 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
   const stateRef = useRef(state);
   useEffect(() => { stateRef.current = state; }, [state]);
 
+  // Auto-publish agenda share whenever state changes, if an agendaShareId exists
+  const agendaPublishTimer = useRef(null);
+  const publishAgendaIfNeeded = useCallback((s) => {
+    const agendaShareId = s && s.agendaShareId;
+    if (!agendaShareId || !window.LB_SYNC) return;
+    clearTimeout(agendaPublishTimer.current);
+    agendaPublishTimer.current = setTimeout(() => {
+      const cur = stateRef.current;
+      if (!cur) return;
+      const visibleLocs = (cur.model && cur.model.locations || []).filter(l => !(cur.removed || []).includes(l.id));
+      LB_SYNC.publishAgendaShare(agendaShareId, {
+        scheduleName: cur.model && cur.model.scheduleName || '',
+        locations: visibleLocs.map(l => ({ ...l })),
+        edits: cur.edits || {},
+        removed: cur.removed || [],
+        updatedAt: Date.now(),
+      }).catch(() => {});
+    }, 3000); // debounce 3s
+  }, []);
+
   // Merge only new gallery images from remote into local state — preserves local edits
   const mergeRemoteImages = (local, remote) => {
     if (!local || !remote) return local || remote;
@@ -520,6 +540,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
         lastSeenSavedAt.current = savedAt;
         LB_SYNC.saveState(projectId, { ...shared, _clientId: LB_SYNC.CLIENT_ID, _savedAt: savedAt })
           .catch(e => console.warn('[LB] Supabase save failed', e));
+        publishAgendaIfNeeded(state);
         if (onProjectUpdated) onProjectUpdated({
           scheduleName: state.model && state.model.scheduleName || '',
           locationCount: (state.model && state.model.locations || []).filter(l => !(state.removed || []).includes(l.id)).length,
@@ -785,7 +806,12 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
 
       <main className="main">
         {(view === 'calendar' && mobileTab !== 'list') ? (
-          <CalendarView model={model} edits={state.edits} removed={removed} onOpenLoc={openLoc} />
+          <CalendarView model={model} edits={state.edits} removed={removed} onOpenLoc={openLoc}
+            agendaShareId={state.agendaShareId}
+            onCreateAgendaShare={() => {
+              const id = 'ag_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+              setState(s => ({ ...s, agendaShareId: id }));
+            }} />
         ) : (view === 'board' && mobileTab !== 'list') ? (
           <Board model={model} edits={state.edits} removed={removed} onOpen={openLoc}
             onPatchLoc={patchById} onRename={renameLoc} onRemove={removeLoc} onCombine={openCombine}
@@ -1137,8 +1163,10 @@ function App() {
   const params = new URLSearchParams(window.location.search);
   const shareId = params.get('share');
   const projectId = params.get('project');
+  const agendaId = params.get('agenda');
   if (shareId) return <ShareView shareId={shareId} />;
   if (projectId) return <ProjectShareView projId={projectId} />;
+  if (agendaId) return <AgendaShareView agendaId={agendaId} />;
   return (
     <AuthWrapper>
       {user => <HomeRouter user={user} />}

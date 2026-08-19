@@ -86,38 +86,51 @@ function Img({ imgId, alt, className, style, thumb }) {
   const [url, setUrl] = useState(null);
   const [broken, setBroken] = useState(false);
   const retryRef = useRef(null);
+  const retryCount = useRef(0);
+  const mountedRef = useRef(true);
 
-  const load = (id, live) => {
-    setBroken(false);
-    setUrl(null);
-    const fn = thumb ? LB.db.getThumbnailURL : LB.db.getURL;
-    fn(id).then(u => {
-      if (!live.ok) return;
-      if (u) { setUrl(u); }
-      else {
-        // Retry after 3s — upload may still be in progress
-        retryRef.current = setTimeout(() => {
-          fn(id).then(u2 => { if (live.ok && u2) setUrl(u2); });
-        }, 3000);
-      }
-    });
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; clearTimeout(retryRef.current); };
+  }, []);
+
+  const scheduleRetry = (id) => {
+    const delays = [3000, 8000, 20000];
+    const delay = delays[retryCount.current] ?? null;
+    if (delay == null) return;
+    retryCount.current++;
+    clearTimeout(retryRef.current);
+    retryRef.current = setTimeout(() => {
+      if (!mountedRef.current) return;
+      const fn = thumb ? LB.db.getThumbnailURL : LB.db.getURL;
+      fn(id).then(u => {
+        if (!mountedRef.current) return;
+        if (u) { setBroken(false); setUrl(u); }
+        else scheduleRetry(id);
+      });
+    }, delay);
   };
 
   useEffect(() => {
-    const live = { ok: true };
-    if (!imgId) { setUrl(null); return () => { live.ok = false; }; }
-    load(imgId, live);
-    const onUpdate = e => { if (e.detail === imgId) load(imgId, live); };
-    window.addEventListener('lb_blob_updated', onUpdate);
-    return () => {
-      live.ok = false;
-      clearTimeout(retryRef.current);
-      window.removeEventListener('lb_blob_updated', onUpdate);
+    if (!imgId) { setUrl(null); return; }
+    setBroken(false);
+    setUrl(null);
+    retryCount.current = 0;
+    clearTimeout(retryRef.current);
+    const fn = thumb ? LB.db.getThumbnailURL : LB.db.getURL;
+    fn(imgId).then(u => { if (mountedRef.current && u) setUrl(u); });
+    const onUpdate = e => {
+      if (e.detail !== imgId) return;
+      setBroken(false); setUrl(null); retryCount.current = 0; clearTimeout(retryRef.current);
+      fn(imgId).then(u => { if (mountedRef.current && u) setUrl(u); });
     };
+    window.addEventListener('lb_blob_updated', onUpdate);
+    return () => window.removeEventListener('lb_blob_updated', onUpdate);
   }, [imgId, thumb]);
 
   if (!url || broken) return <div className={className} style={{ ...style, background: 'var(--card-2)' }} />;
-  return <img src={url} alt={alt || ''} className={className} style={style} onError={() => setBroken(true)} />;
+  return <img src={url} alt={alt || ''} className={className} style={style}
+    onError={() => { setBroken(true); scheduleRetry(imgId); }} />;
 }
 
 function useIsUploading(id) {

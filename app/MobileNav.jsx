@@ -1,6 +1,6 @@
 /* MobileNav — bottom tab bar shown only on mobile */
 
-function MobileNav({ tabs, active, onSelect }) {
+function MobileNav({ tabs, active, onSelect, onSync, syncProgress }) {
   return (
     <nav className="mobile-nav">
       {tabs.map(tab => (
@@ -9,6 +9,12 @@ function MobileNav({ tabs, active, onSelect }) {
           {tab.label}
         </button>
       ))}
+      {onSync && (
+        <button className="mobile-nav-btn" onClick={onSync} disabled={!!syncProgress} title="Sync photos to cloud">
+          <Icon name="upload" size={20} sw={1.6} />
+          {syncProgress ? `${syncProgress.done}/${syncProgress.total}` : 'Sync'}
+        </button>
+      )}
     </nav>
   );
 }

@@ -548,6 +548,16 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
     return () => clearInterval(interval);
   }, [projectId]);
 
+  // On mount: auto-queue all local photos for cloud sync (catches missed uploads from previous sessions)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (window.syncPhotosToCloud && stateRef.current) {
+        syncPhotosToCloud(stateRef.current, () => {});
+      }
+    }, 3000); // wait 3s so the app is fully loaded first
+    return () => clearTimeout(timer);
+  }, [projectId]);
+
   // On reconnect: push current state to Supabase immediately
   useEffect(() => {
     const handle = () => {
@@ -825,7 +835,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
       </main>
 
       {/* Mobile bottom nav */}
-      <MobileNav tabs={mobileTabs} active={mobileTab} onSelect={handleMobileTab} />
+      <MobileNav tabs={mobileTabs} active={mobileTab} onSelect={handleMobileTab} onSync={handleSyncPhotos} syncProgress={syncProgress} />
       {showAddLocation && <AddLocationModal onClose={() => setShowAddLocation(false)} onAdd={addManualLoc} />}
       {showImport && <ImportModal current={false} onClose={() => setShowImport(false)} onApply={applyImport} />}
       {showUpdateSchedule && <ImportModal current={true} title="Update shooting schedule" onClose={() => setShowUpdateSchedule(false)} onApply={applyUpdateSchedule} />}

@@ -301,12 +301,16 @@ async function filesToIds(fileList) {
         const useBlob = compressed.size < files[i].size * 0.85 ? compressed : files[i];
         if (compressed.size < files[i].size * 0.85) {
           await LB.db.replaceBlob(ids[i], compressed);
-          if (window.LB_SYNC) { LB_SYNC.queueUpload(ids[i]); LB_SYNC.startQueue(); }
         }
+        // Always queue for upload regardless of compression result
+        if (window.LB_SYNC) { LB_SYNC.queueUpload(ids[i]); LB_SYNC.startQueue(); }
         // Always generate a thumbnail for fast gallery display
         const thumb = await LB.db.makeThumbBlob(useBlob);
         await LB.db.putThumb(ids[i], thumb);
-      } catch (e) { /* skip — original stays */ }
+      } catch (e) {
+        // Even if compression fails, still queue the original for upload
+        if (window.LB_SYNC) { LB_SYNC.queueUpload(ids[i]); LB_SYNC.startQueue(); }
+      }
     }
   })();
   return ids;

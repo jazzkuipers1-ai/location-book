@@ -2,7 +2,7 @@
    Caches the full app shell (local + CDN) so it loads offline.
    Supabase API calls are never intercepted — they go to network only.        */
 
-const CACHE = 'lb-v15';
+const CACHE = 'lb-v16';
 
 const LOCAL = [
   '/',
@@ -44,6 +44,7 @@ const CDN = [
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js',
   'https://cdn.jsdelivr.net/npm/cropperjs@1.5.13/dist/cropper.min.js',
   'https://cdn.jsdelivr.net/npm/cropperjs@1.5.13/dist/cropper.min.css',
+  'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js',
 ];
 
 self.addEventListener('install', e => {

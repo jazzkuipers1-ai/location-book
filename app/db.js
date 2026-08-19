@@ -62,10 +62,9 @@
       return url;
     }
     // No local blob — fall back to Supabase public URL (uploaded by another device)
+    // Don't cache this URL — it may 404 if upload is still pending; let callers retry
     if (window.LB_SYNC && window.LB_SYNC.getImageUrl) {
-      const url = window.LB_SYNC.getImageUrl(id);
-      _urls.set(id, url);
-      return url;
+      return window.LB_SYNC.getImageUrl(id);
     }
     return null;
   }
@@ -140,7 +139,17 @@
     return url;
   }
 
-  LB.db = { putImage, replaceBlob, getBlob, getURL, getThumbnailURL, putThumb, makeThumbBlob, delImage, cacheURL };
+  async function getAllBlobIds() {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(STORE, 'readonly');
+      const r = tx.objectStore(STORE).getAllKeys();
+      r.onsuccess = () => res((r.result || []).filter(k => !k.endsWith('_thumb')));
+      r.onerror = () => rej(r.error);
+    });
+  }
+
+  LB.db = { putImage, replaceBlob, getBlob, getAllBlobIds, getURL, getThumbnailURL, putThumb, makeThumbBlob, delImage, cacheURL };
 
   // ------------------------------ structured state (localStorage) --------
   const KEY = 'lb_state_v2';

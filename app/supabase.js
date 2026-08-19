@@ -201,12 +201,13 @@
         try {
           const blob = await LB.db.getBlob(id);
           if (blob) await uploadImage(blob, id);
-          // Success — remove from front of queue
+          // Success — remove from queue and notify Img components to reload
           const curr = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
           const updated = curr.filter(i => i !== id);
           if (updated.length === 0) localStorage.removeItem(QUEUE_KEY);
           else localStorage.setItem(QUEUE_KEY, JSON.stringify(updated));
           window.dispatchEvent(new CustomEvent('lb_upload_state'));
+          window.dispatchEvent(new CustomEvent('lb_blob_updated', { detail: id }));
         } catch (e) {
           break; // offline or upload error — stop and retry on reconnect
         }
@@ -226,9 +227,24 @@
     window.dispatchEvent(new CustomEvent('lb_reconnect'));
   });
 
-  // On startup: flush any uploads queued from previous sessions
-  if (navigator.onLine) setTimeout(startQueue, 1500);
-  else window.addEventListener('online', startQueue, { once: true });
+  // On startup: scan all local blobs and queue any that aren't already queued
+  // This recovers photos that were saved locally but never uploaded (e.g. app closed early)
+  async function scanAndQueueAll() {
+    try {
+      const allIds = await LB.db.getAllBlobIds();
+      const q = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
+      const qSet = new Set(q);
+      let added = false;
+      for (const id of allIds) {
+        if (!qSet.has(id)) { q.push(id); qSet.add(id); added = true; }
+      }
+      if (added) localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
+    } catch (e) {}
+    startQueue();
+  }
+
+  if (navigator.onLine) setTimeout(scanAndQueueAll, 2000);
+  else window.addEventListener('online', scanAndQueueAll, { once: true });
 
   /* ---- auth ---------------------------------------------------------------- */
   async function signUp(email, password) {

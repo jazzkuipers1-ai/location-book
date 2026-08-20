@@ -643,6 +643,13 @@ function VisualSection({ edit, loc, onPatch, onDraw, onSketch }) {
               onDraw={it => onDraw(cat.id, it)}
               onDropFromOther={(fromCatId, fromIdx) => movePhoto(fromCatId, fromIdx, cat.id)}
             />
+            <PropListSection
+              lists={(edit.categoryPropLists || {})[cat.id] || []}
+              onChange={lists => onPatch(cur => ({
+                categoryPropLists: { ...(cur.categoryPropLists || {}), [cat.id]: lists },
+              }))}
+              inline
+            />
           </div>
         );
       })}
@@ -1202,11 +1209,6 @@ function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine,
         <BulletNotes key={'notes' + loc.id} value={edit.notes || ''} onChange={v => onPatch({ notes: v })} />
       </div>
 
-      {/* prop lists */}
-      <PropListSection
-        lists={edit.propLists || []}
-        onChange={lists => onPatch({ propLists: lists })}
-      />
 
       {annot && <Annotator originalId={annot.item.id} init={{ strokes: annot.item.strokes, note: annot.item.note }}
         onSave={saveAnnot} onClose={() => setAnnot(null)} />}
@@ -1225,20 +1227,31 @@ function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine,
 }
 
 /* ---- prop list section -------------------------------------------------- */
-function PropListSection({ lists, onChange }) {
+function PropListSection({ lists, onChange, inline }) {
   const newCat = () => {
     const id = 'pl_' + Date.now().toString(36);
-    onChange([...lists, { id, name: 'New list', items: [] }]);
+    onChange([...lists, { id, name: 'Prop list', items: [] }]);
   };
   const patchList = (id, patch) => onChange(lists.map(l => l.id === id ? { ...l, ...patch } : l));
   const deleteList = id => onChange(lists.filter(l => l.id !== id));
 
+  if (inline) return (
+    <div style={{ marginTop: lists.length ? 16 : 8, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {lists.map(list => (
+        <PropList key={list.id} list={list}
+          onPatch={p => patchList(list.id, p)}
+          onDelete={() => deleteList(list.id)} />
+      ))}
+      <button className="btn sm ghost" onClick={newCat} style={{ alignSelf: 'flex-start' }}>
+        <Icon name="plus" size={13} /> Prop list toevoegen
+      </button>
+    </div>
+  );
+
   return (
     <div className="sec">
       <div className="sec-h">
-        <span className="num">05</span>
-        <h2>Prop lists</h2>
-        <span className="ln" />
+        <span className="num">05</span><h2>Prop lists</h2><span className="ln" />
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {lists.map(list => (

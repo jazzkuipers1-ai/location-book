@@ -125,7 +125,7 @@ input, textarea, select { font-family: inherit; color: inherit; }
 .hidden-restore .hr-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 9px; font-size: 12.5px; border-radius: 7px; }
 .hidden-restore .hr-item:hover { background: var(--card-2); }
 
-.side-foot { border-top: 1px solid var(--line); padding: 11px 14px; display: flex; gap: 8px; }
+.side-foot { border-top: 1px solid var(--line); padding: 11px 14px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex-shrink: 0; max-height: 45vh; }
 
 /* ============================================================ BUTTONS === */
 .btn { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--line-2); background: var(--card); color: var(--ink); padding: 7px 13px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; transition: background .12s, border-color .12s, transform .04s; white-space: nowrap; }

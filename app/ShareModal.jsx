@@ -8,7 +8,7 @@ function ShareModal({ loc, edit, name, scheduleName, onClose, onShareIdSaved }) 
   const [includeProps, setIncludeProps] = useState(true);
 
   const existingShareId = edit && edit.shareId;
-  const hasPropLists = (edit && edit.propLists && edit.propLists.length > 0);
+  const hasPropLists = edit && edit.categoryPropLists && Object.values(edit.categoryPropLists).some(l => l && l.length > 0);
 
   // Collect every image ID referenced in the location edit
   function collectImageIds() {
@@ -119,7 +119,7 @@ function ShareModal({ loc, edit, name, scheduleName, onClose, onShareIdSaved }) 
         galCategories: (edit && edit.galCategories) || null,
         coverUrl: edit && edit.cover ? (urlMap[edit.cover] || null) : null,
         notes: (edit && edit.notes) || '',
-        propLists: includeProps ? (edit && edit.propLists || []) : [],
+        categoryPropLists: includeProps ? (edit && edit.categoryPropLists || {}) : {},
         regions: (loc && loc.regions) || [],
         sets: (loc && loc.sets) || [],
         sceneCount: (loc && loc.sceneCount) || 0,

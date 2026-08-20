@@ -32,6 +32,68 @@ function SV_Section({ title, count, color, children }) {
   );
 }
 
+function SV_PropListsInline({ lists, shareId, catId }) {
+  const storageKey = 'sv_props_' + shareId + '_' + catId;
+  const [checked, setChecked] = React.useState(() => {
+    try { return JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch { return {}; }
+  });
+  const [open, setOpen] = React.useState({});
+
+  if (!lists || lists.length === 0) return null;
+
+  function toggle(listId, itemId) {
+    const next = { ...checked, [listId + '_' + itemId]: !checked[listId + '_' + itemId] };
+    setChecked(next);
+    try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch {}
+  }
+
+  return (
+    <div style={{ marginTop: 20 }}>
+      <div style={{ fontFamily: 'var(--mono)', fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 10 }}>Prop lists</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {lists.map(list => {
+          const isOpen = open[list.id] !== false; // default open
+          const doneCount = (list.items || []).filter(it => checked[list.id + '_' + it.id]).length;
+          const total = (list.items || []).length;
+          return (
+            <div key={list.id} style={{ border: '1px solid var(--line)', borderRadius: 10, overflow: 'hidden', background: 'var(--card)' }}>
+              <button
+                onClick={() => setOpen(o => ({ ...o, [list.id]: !isOpen }))}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--ink)', textAlign: 'left', gap: 8 }}>
+                <span style={{ fontWeight: 600 }}>{list.name || 'Prop list'}</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                  {total > 0 && <span style={{ fontSize: 10.5, color: 'var(--ink-3)' }}>{doneCount}/{total}</span>}
+                  <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><path d="M4 6l5 5 5-5"/></svg>
+                </span>
+              </button>
+              {isOpen && (list.items || []).length > 0 && (
+                <div style={{ borderTop: '1px solid var(--line)', padding: '8px 6px' }}>
+                  {list.items.map(item => (
+                    <label key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 8px', borderRadius: 7, cursor: 'pointer', transition: 'background .1s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--card-2)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      <input type="checkbox"
+                        checked={!!checked[list.id + '_' + item.id]}
+                        onChange={() => toggle(list.id, item.id)}
+                        style={{ accentColor: 'var(--accent)', width: 14, height: 14, flexShrink: 0 }} />
+                      <span style={{ fontSize: 13, color: checked[list.id + '_' + item.id] ? 'var(--ink-3)' : 'var(--ink)', textDecoration: checked[list.id + '_' + item.id] ? 'line-through' : 'none' }}>
+                        {item.text}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              {isOpen && (list.items || []).length === 0 && (
+                <div style={{ padding: '8px 14px 12px', fontFamily: 'var(--mono)', fontSize: 11.5, color: 'var(--ink-3)', borderTop: '1px solid var(--line)' }}>Geen items</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function SV_AdjRow({ adj, onLightbox }) {
   return (
     <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '11px 14px', background: 'var(--card)', borderRadius: 9, border: '1px solid var(--line)', opacity: adj.done ? 0.5 : 1 }}>
@@ -326,6 +388,11 @@ function ShareView({ shareId, onBack }) {
                   ))}
                 </div>
               )}
+              <SV_PropListsInline
+                lists={(data.categoryPropLists || {})[cat.id] || []}
+                shareId={shareId}
+                catId={cat.id}
+              />
             </SV_Section>
           );
         })}
@@ -379,9 +446,9 @@ function ShareView({ shareId, onBack }) {
           </SV_Section>
         )}
 
-        {/* Prop lists */}
-        {(data.propLists || []).length > 0 && (
-          <SV_PropLists lists={data.propLists} shareId={shareId} />
+        {/* Legacy global prop lists (old shares without categoryPropLists) */}
+        {!(data.categoryPropLists) && (data.propLists || []).length > 0 && (
+          <SV_PropListsInline lists={data.propLists} shareId={shareId} catId="global" />
         )}
 
         {/* Footer */}

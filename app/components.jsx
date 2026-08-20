@@ -1,6 +1,69 @@
 /* Shared atoms, icons, constants. Exports to window for other babel files. */
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
+/* ---- EXIF GPS reader (minimal pure-JS, JPEG only) ----------------------- */
+async function readExifGPS(file) {
+  try {
+    const buf = await file.slice(0, 131072).arrayBuffer();
+    const v = new DataView(buf);
+    if (v.getUint16(0) !== 0xFFD8) return null; // not JPEG
+    let off = 2;
+    while (off < buf.byteLength - 4) {
+      const marker = v.getUint16(off);
+      if (marker === 0xFFE1) {
+        if (v.getUint32(off + 4) === 0x45786966 && v.getUint16(off + 8) === 0) {
+          return _parseGPSIFD(v, off + 10);
+        }
+      }
+      if ((marker & 0xFF00) !== 0xFF00 || marker === 0xFFDA) break;
+      off += 2 + v.getUint16(off + 2);
+    }
+  } catch (e) {}
+  return null;
+}
+function _parseGPSIFD(v, tiff) {
+  const le = v.getUint16(tiff) === 0x4949;
+  const r16 = o => v.getUint16(tiff + o, le);
+  const r32 = o => v.getUint32(tiff + o, le);
+  const ifd0 = r32(4); const n0 = r16(ifd0);
+  let gpsPtr = null;
+  for (let i = 0; i < n0; i++) {
+    const e = ifd0 + 2 + i * 12;
+    if (r16(e) === 0x8825) { gpsPtr = r32(e + 8); break; }
+  }
+  if (gpsPtr == null) return null;
+  const ng = r16(gpsPtr); const gps = {};
+  for (let i = 0; i < ng; i++) {
+    const e = gpsPtr + 2 + i * 12;
+    const tag = r16(e);
+    const valOff = e + 8; // offset within tiff block
+    if (tag === 1) gps.latRef = String.fromCharCode(v.getUint8(tiff + valOff));
+    else if (tag === 3) gps.lonRef = String.fromCharCode(v.getUint8(tiff + valOff));
+    else if (tag === 2 || tag === 4) {
+      const ptr = r32(valOff); // pointer within tiff block
+      const rats = [0,1,2].map(j => {
+        const num = r32(ptr + j*8), den = r32(ptr + j*8 + 4);
+        return den ? num / den : 0;
+      });
+      if (tag === 2) gps.lat = rats; else gps.lon = rats;
+    }
+  }
+  if (!gps.lat || !gps.lon) return null;
+  const dms = ([d,m,s], ref) => ((ref==='S'||ref==='W') ? -1 : 1) * (d + m/60 + s/3600);
+  return { lat: dms(gps.lat, gps.latRef || 'N'), lon: dms(gps.lon, gps.lonRef || 'E') };
+}
+async function geoToAddress(lat, lon) {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=en`, { headers: { 'Accept': 'application/json' } });
+    const d = await r.json();
+    const a = d.address || {};
+    const parts = [a.road, a.house_number, a.city || a.town || a.village || a.municipality, a.country].filter(Boolean);
+    const address = parts.join(', ');
+    const mapsUrl = `https://www.google.com/maps?q=${lat.toFixed(6)},${lon.toFixed(6)}`;
+    return { address, mapsUrl };
+  } catch (e) { return null; }
+}
+
 /* ---- adjustment categories (art-department change types) ---------------- */
 const CATS = [
   { id: 'paint',    label: 'Paint',     color: 'oklch(0.62 0.12 40)' },
@@ -395,8 +458,12 @@ function Menu({ button, items, align = 'right' }) {
 }
 
 /* ---- cover-photo dropzone ----------------------------------------------- */
-function CoverDrop({ id, onSet, onClear, height = 210, radius = 14, label = 'Add a cover photo' }) {
-  const [drag, handlers] = useDrop(async fl => { const ids = await filesToIds(fl); if (ids[0]) onSet(ids[0]); });
+function CoverDrop({ id, onSet, onClear, onGeolocated, height = 210, radius = 14, label = 'Add a cover photo' }) {
+  const [drag, handlers] = useDrop(async fl => {
+    const file = fl[0];
+    if (file && onGeolocated) readExifGPS(file).then(gps => gps && geoToAddress(gps.lat, gps.lon).then(r => r && onGeolocated(r)));
+    const ids = await filesToIds(fl); if (ids[0]) onSet(ids[0]);
+  });
   const [cropping, setCropping] = useState(false);
   const inp = useRef();
   const pick = () => inp.current.click();
@@ -419,6 +486,8 @@ function CoverDrop({ id, onSet, onClear, height = 210, radius = 14, label = 'Add
         </div>
       )}
       <input ref={inp} type="file" accept="image/*" hidden onChange={async e => {
+        const file = e.target.files[0];
+        if (file && onGeolocated) readExifGPS(file).then(gps => gps && geoToAddress(gps.lat, gps.lon).then(r => r && onGeolocated(r)));
         const ids = await filesToIds(e.target.files); if (ids[0]) onSet(ids[0]); e.target.value = '';
       }} />
     </div>
@@ -429,7 +498,7 @@ function CoverDrop({ id, onSet, onClear, height = 210, radius = 14, label = 'Add
 function locName(loc, edits) { const e = edits && edits[loc.id]; return (e && e.name) || loc.name; }
 
 Object.assign(window, {
-  Icon, IconBtn, Stepper, Img, CATS, CAT, filesToIds, useDrop, uid, fmtDate, Menu, CoverDrop, locName,
+  Icon, IconBtn, Stepper, Img, CATS, CAT, filesToIds, useDrop, uid, fmtDate, Menu, CoverDrop, locName, readExifGPS, geoToAddress,
   useIsUploading,
   useState, useEffect, useRef, useCallback, useMemo,
 });

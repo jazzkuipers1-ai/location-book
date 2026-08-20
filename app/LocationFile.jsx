@@ -1015,7 +1015,11 @@ function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine,
       {/* cover banner */}
       <div style={{ marginBottom: 22 }}>
         <CoverDrop id={edit.cover} height={220} radius={14} label="Add a cover photo for this location"
-          onSet={id => onPatch({ cover: id })} onClear={() => onPatch({ cover: null })} />
+          onSet={id => onPatch({ cover: id })} onClear={() => onPatch({ cover: null })}
+          onGeolocated={({ address, mapsUrl }) => onPatch(cur => ({
+            address: cur.address || address,
+            mapsUrl: cur.mapsUrl || mapsUrl,
+          }))} />
       </div>
 
       <div className="loc-hero">

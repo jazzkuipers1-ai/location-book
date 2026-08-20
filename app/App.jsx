@@ -44,12 +44,19 @@ async function parsePdfText(file) {
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    // Use pdfjs hasEOL flag to reconstruct lines
+    // Reconstruct lines; insert '  ' (2 spaces) when items are far apart (column gap)
     let line = '';
     const lines = [];
+    let prevRight = null;
     for (const item of content.items) {
+      const x = item.transform[4];
+      const fontSize = Math.abs(item.transform[0]) || 12;
+      if (prevRight !== null && x - prevRight > fontSize * 1.2) {
+        line += '  '; // column gap detected → marker for parser
+      }
       line += item.str;
-      if (item.hasEOL) { lines.push(line); line = ''; }
+      if (item.hasEOL) { lines.push(line); line = ''; prevRight = null; continue; }
+      prevRight = x + (item.width || 0);
     }
     if (line) lines.push(line);
     text += lines.join('\n') + '\n';

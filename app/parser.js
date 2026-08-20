@@ -93,7 +93,14 @@
         const tm = head.match(TAIL_RE);
         if (tm) { pageLength = tm[1].trim(); cast = (tm[2] || '').trim() || null; extras = tm[3] ? +tm[3].trim() : null; setPath = head.slice(0, tm.index).trim(); }
         setPath = setPath.replace(/\/\s*$/, '').trim();
-        // Each segment may have a trailing city/commune column separated by 2+ spaces — strip it
+        // Strip trailing commune/city column (separate PDF table column, e.g. "La Chaise-Dieu").
+        // Two strategies, most→least reliable:
+        // 1) 2+ spaces: pdfjs gap detection inserts these between columns
+        setPath = setPath.replace(/\s{2,}[A-ZÀ-Ÿ][^\s/].*$/, '').trim();
+        // 2) French place-name pattern right before end (La/Le/Les/L'/Rue/Route/Saint + capital words)
+        //    Only strip multi-word geographic names — NOT single person names like "Lotte"
+        setPath = setPath.replace(/\s+(?:La|Le|Les|L'|Rue|Route|Place|Saint|Sainte|D\d+:)\s+(?:de\s+|du\s+|des\s+)?[A-ZÀ-Ÿ][^\s/]*(?:\s+[A-ZÀ-Ÿa-zà-ÿ\-]+)*$/, '').trim();
+        // Split into segments; strip any remaining column text after 2+ spaces within each segment
         const segs = setPath.split(/\/+/).map(s => s.split(/\s{2,}/)[0].trim()).filter(Boolean);
         // Always use the first segment as the main location; sub-locations are segs[1..]
         const locSegs = segs;

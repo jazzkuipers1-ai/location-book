@@ -32,7 +32,7 @@ async function parsePdfText(file) {
     await new Promise((res, rej) => {
       const s = document.createElement('script');
       s.src = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
-      s.onload = res; s.onerror = rej;
+      s.onload = res; s.onerror = () => rej(new Error('PDF reader kon niet laden — controleer je internetverbinding.'));
       document.head.appendChild(s);
     });
     window.pdfjsLib.GlobalWorkerOptions.workerSrc =

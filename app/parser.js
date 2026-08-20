@@ -93,10 +93,10 @@
         const tm = head.match(TAIL_RE);
         if (tm) { pageLength = tm[1].trim(); cast = (tm[2] || '').trim() || null; extras = tm[3] ? +tm[3].trim() : null; setPath = head.slice(0, tm.index).trim(); }
         setPath = setPath.replace(/\/\s*$/, '').trim();
-        const segs = setPath.split(/\/+/).map(s => s.trim()).filter(Boolean);
-        // When path starts with a city prefix (Le/La/Les/L'), use segs[1] as the location
-        const isCityPrefix = segs.length >= 2 && /^L[ae][s']?\s+/i.test(segs[0]);
-        const locSegs = isCityPrefix ? segs.slice(1) : segs;
+        // Each segment may have a trailing city/commune column separated by 2+ spaces — strip it
+        const segs = setPath.split(/\/+/).map(s => s.split(/\s{2,}/)[0].trim()).filter(Boolean);
+        // Always use the first segment as the main location; sub-locations are segs[1..]
+        const locSegs = segs;
         const location = locSegs[0] || setPath || '(unknown)';
         pending = {
           number, type, tod, country, setPath, segments: locSegs, location, pageLength, cast, extras,

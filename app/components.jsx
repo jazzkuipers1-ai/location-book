@@ -192,7 +192,7 @@ function Img({ imgId, alt, className, style, thumb }) {
   }, [imgId, thumb]);
 
   if (!url || broken) return <div className={className} style={{ ...style, background: 'var(--card-2)' }} />;
-  return <img src={url} alt={alt || ''} className={className} style={style}
+  return <img src={url} alt={alt || ''} className={className} style={style} loading="lazy"
     onError={() => { setBroken(true); scheduleRetry(imgId); }} />;
 }
 

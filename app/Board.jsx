@@ -46,7 +46,7 @@ function LocCard({ loc, edit, name, onOpen, onPatch, onRename, onRemove, onCombi
       {cardOver && <div className="card-droplay"><Icon name="layers" size={20} /><span>Combine into “{name}”</span></div>}
       <div className={'loc-card-cover' + (drag ? ' drag' : '')} {...handlers} onClick={onOpen}>
         {edit.cover
-          ? <Img imgId={edit.cover} className="cover-img" />
+          ? <Img imgId={edit.cover} className="cover-img" thumb />
           : <div className="loc-card-ph"><div className="ic"><Icon name="image" size={22} /><span>drop a photo</span></div></div>}
         <div className="loc-card-badges">
           {adj.length > 0 && <span className="lc-badge accent">{done}/{adj.length} adj</span>}

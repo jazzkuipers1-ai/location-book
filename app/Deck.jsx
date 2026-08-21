@@ -114,7 +114,7 @@ function OverviewPage({ loc, edit, name, scheduleName }) {
       <div className="dk-pad">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #221d15', paddingBottom: 18 }}>
           <div style={{ minWidth: 0, display: 'flex', gap: 18, alignItems: 'center' }}>
-            {edit.cover && <div style={{ width: 92, height: 92, borderRadius: 12, overflow: 'hidden', flex: '0 0 auto', border: '1px solid var(--dk-line)' }}><Img imgId={edit.cover} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></div>}
+            {edit.cover && <div style={{ width: 92, height: 92, borderRadius: 12, overflow: 'hidden', flex: '0 0 auto', border: '1px solid var(--dk-line)' }}><Img imgId={edit.cover} style={{ width: '100%', height: '100%', objectFit: 'cover' }} thumb /></div>}
             <div style={{ minWidth: 0 }}>
               <div className="dk-kick">{scheduleName}{loc.regions[0] ? '  ·  ' + loc.regions[0] : ''}</div>
               <div className="dk-serif" style={{ fontSize: sz, fontWeight: 600, lineHeight: .98, letterSpacing: '-.02em', marginTop: 8 }}>{name}</div>

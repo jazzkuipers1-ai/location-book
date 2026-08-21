@@ -128,10 +128,22 @@
     let blob = await getBlob(thumbId);
     if (!blob) {
       const full = await getBlob(id);
-      if (!full) return getURL(id); // remote image — fallback to full
+      if (!full) {
+        // Remote image — use Supabase image transform for a small resized version
+        if (window.LB_SYNC && window.LB_SYNC.getImageUrl) {
+          const base = window.LB_SYNC.getImageUrl(id);
+          // Supabase render endpoint serves resized JPEG without downloading full image
+          const thumbUrl = base
+            .replace('/object/public/', '/render/image/public/')
+            + '?width=400&quality=70&resize=contain';
+          return thumbUrl;
+        }
+        return getURL(id);
+      }
       try {
         blob = await makeThumbBlob(full);
-        await putThumb(id, blob);
+        // Store thumb in background — don't await so the URL is returned immediately
+        putThumb(id, blob).catch(() => {});
       } catch(e) { return getURL(id); }
     }
     const url = URL.createObjectURL(blob);

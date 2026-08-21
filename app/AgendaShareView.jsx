@@ -150,52 +150,54 @@ function AgendaShareViewInner({ data, events, visibleLocs, locColor, defaultMont
     return (ev.total > 1 ? `Wrap ${ev.idx}/${ev.total}` : 'Wrap') + t;
   };
 
-  const monthHasEvents = cells.some(c => c && c.evs.length > 0);
+  const numRows = totalCells / 7;
   const updatedStr = data.updatedAt ? new Date(data.updatedAt).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--ink)' }}>
-      <div className="agenda-page-root" style={{ padding: '24px 28px', maxWidth: 1200, margin: '0 auto' }}>
+    <div className="agenda-page-root" style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)', color: 'var(--ink)', overflow: 'hidden', padding: '14px 20px', boxSizing: 'border-box' }}>
 
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-          <div>
-            {data.scheduleName && <div className="kicker" style={{ marginBottom: 4 }}>{data.scheduleName} · agenda</div>}
-            <h1 style={{ margin: 0 }}>{CAL_MONTH_NAMES_SV[month]} {year}</h1>
-            {updatedStr && <div style={{ fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--ink-3)', marginTop: 6 }}>Bijgewerkt {updatedStr}</div>}
-          </div>
-          <div className="agenda-nav-bar" style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6 }}>
-            <button className="btn" onClick={() => setViewDate(new Date(year, month-1, 1))}>
-              <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'rotate(180deg)' }}><path d="M4 9h10M10 5l4 4-4 4"/></svg>
-            </button>
-            <button className="btn" onClick={() => { const n = new Date(); setViewDate(new Date(n.getFullYear(), n.getMonth(), 1)); }}>Vandaag</button>
-            <button className="btn" onClick={() => setViewDate(new Date(year, month+1, 1))}>
-              <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 9h10M10 5l4 4-4 4"/></svg>
-            </button>
-            <button className="btn" onClick={() => window.print()}>
-              <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3v9M5.5 8.5 9 12l3.5-3.5M3.5 14.5h11"/></svg>
-              PDF
-            </button>
-          </div>
+      {/* Header row: title + nav */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0, marginBottom: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+          {data.scheduleName && <span className="kicker" style={{ fontSize: 10 }}>{data.scheduleName} · agenda</span>}
+          <h1 style={{ margin: 0, fontSize: 22, lineHeight: 1 }}>{CAL_MONTH_NAMES_SV[month]} {year}</h1>
+          {updatedStr && <span style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink-3)' }}>Bijgewerkt {updatedStr}</span>}
         </div>
+        <div className="agenda-nav-bar" style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+          <button className="btn" onClick={() => setViewDate(new Date(year, month-1, 1))}>
+            <svg width="13" height="13" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'rotate(180deg)' }}><path d="M4 9h10M10 5l4 4-4 4"/></svg>
+          </button>
+          <button className="btn" onClick={() => { const n = new Date(); setViewDate(new Date(n.getFullYear(), n.getMonth(), 1)); }}>Vandaag</button>
+          <button className="btn" onClick={() => setViewDate(new Date(year, month+1, 1))}>
+            <svg width="13" height="13" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 9h10M10 5l4 4-4 4"/></svg>
+          </button>
+          <button className="btn" onClick={() => window.print()}>
+            <svg width="13" height="13" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3v9M5.5 8.5 9 12l3.5-3.5M3.5 14.5h11"/></svg>
+            PDF
+          </button>
+        </div>
+      </div>
 
+      {/* Legend + type legend row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0, marginBottom: 8, flexWrap: 'wrap' }}>
         {visibleLocs.length > 0 && (
-          <div style={{ marginBottom: 16 }}>
-            <button className="agenda-legend-toggle" onClick={() => setLegendOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: legendOpen ? '8px 8px 0 0' : 8, padding: '7px 12px', cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--ink-2)', width: '100%', textAlign: 'left' }}>
-              <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                {visibleLocs.slice(0, 5).map(loc => (
-                  <div key={loc.id} style={{ width: 8, height: 8, borderRadius: 2, background: locColor[loc.id] }} />
+          <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+            <button className="agenda-legend-toggle" onClick={() => setLegendOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 7, padding: '5px 10px', cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--ink-2)', width: '100%', textAlign: 'left' }}>
+              <div style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
+                {visibleLocs.slice(0, 7).map(loc => (
+                  <div key={loc.id} style={{ width: 7, height: 7, borderRadius: 2, background: locColor[loc.id] }} />
                 ))}
-                {visibleLocs.length > 5 && <span style={{ fontSize: 9, color: 'var(--ink-3)' }}>+{visibleLocs.length - 5}</span>}
+                {visibleLocs.length > 7 && <span style={{ fontSize: 9, color: 'var(--ink-3)' }}>+{visibleLocs.length - 7}</span>}
               </div>
               <span style={{ flex: 1 }}>{visibleLocs.length} locaties</span>
-              <svg width="13" height="13" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" style={{ transform: legendOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s', flexShrink: 0 }}><path d="M4 6l5 5 5-5"/></svg>
+              <svg width="11" height="11" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" style={{ transform: legendOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s', flexShrink: 0 }}><path d="M4 6l5 5 5-5"/></svg>
             </button>
             {legendOpen && (
-              <div className="agenda-legend-body" style={{ border: '1px solid var(--line)', borderTop: 'none', borderRadius: '0 0 8px 8px', padding: '10px 12px', background: 'var(--card)', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              <div className="agenda-legend-body" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, border: '1px solid var(--line)', borderTop: 'none', borderRadius: '0 0 7px 7px', padding: '8px 10px', background: 'var(--card)', display: 'flex', flexWrap: 'wrap', gap: 5, maxHeight: 200, overflowY: 'auto' }}>
                 {visibleLocs.map(loc => (
-                  <div key={loc.id} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '3px 8px', borderRadius: 99, border: '1px solid var(--line)', background: 'var(--card-2)' }}>
-                    <div style={{ width: 9, height: 9, borderRadius: 2, background: locColor[loc.id], flexShrink: 0 }} />
-                    <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--ink-2)' }}>
+                  <div key={loc.id} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 7px', borderRadius: 99, border: '1px solid var(--line)', background: 'var(--card-2)' }}>
+                    <div style={{ width: 8, height: 8, borderRadius: 2, background: locColor[loc.id], flexShrink: 0 }} />
+                    <span style={{ fontSize: 10.5, fontFamily: 'var(--mono)', color: 'var(--ink-2)' }}>
                       {((data.edits || {})[loc.id] || {}).name || loc.name}
                     </span>
                   </div>
@@ -204,74 +206,65 @@ function AgendaShareViewInner({ data, events, visibleLocs, locColor, defaultMont
             )}
           </div>
         )}
-
-        <div style={{ display: 'flex', gap: 14, marginBottom: 16, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexShrink: 0 }}>
           {[['Shoot dag', 'solid'], ['Prep dag', 'dashed'], ['Wrap dag', 'dotted']].map(([label, style]) => (
-            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <div style={{ width: 26, height: 12, borderRadius: 3, ...(style === 'solid' ? { background: 'var(--accent)' } : { border: `1.5px ${style} var(--accent)` }) }} />
-              <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--ink-3)' }}>{label}</span>
+            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div style={{ width: 20, height: 10, borderRadius: 2, ...(style === 'solid' ? { background: 'var(--accent)' } : { border: `1.5px ${style} var(--accent)` }) }} />
+              <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--ink-3)' }}>{label}</span>
             </div>
           ))}
         </div>
+      </div>
 
-        <div className="agenda-cal-scroll" style={{ overflowX: 'auto' }}>
-          <div className="agenda-cal-inner" style={{ minWidth: 0, width: '100%' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 2 }}>
-              {CAL_DAY_NAMES_SV.map(d => (
-                <div key={d} style={{ textAlign: 'center', fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink-3)', padding: '2px 0', fontWeight: 600, letterSpacing: '.06em' }}>{d}</div>
-              ))}
-            </div>
+      {/* Day-of-week header */}
+      <div className="agenda-cal-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 2, flexShrink: 0 }}>
+        {CAL_DAY_NAMES_SV.map(d => (
+          <div key={d} style={{ textAlign: 'center', fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink-3)', padding: '2px 0', fontWeight: 600, letterSpacing: '.06em' }}>{d}</div>
+        ))}
+      </div>
 
-            <div className="agenda-cal-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
-              {cells.map((cell, i) => (
-                <div key={i} className="agenda-cal-cell" style={{
-                  minHeight: 64, borderRadius: 6, padding: '4px 5px',
-                  background: cell ? (cell.key === todayKey ? 'color-mix(in srgb, var(--accent) 7%, var(--card))' : 'var(--card)') : 'transparent',
-                  border: cell ? (cell.key === todayKey ? '1.5px solid var(--accent)' : '1px solid var(--line)') : 'none',
-                }}>
-                  {cell && (<>
-                    <div style={{ fontFamily: 'var(--mono)', fontSize: 10, fontWeight: cell.evs.length ? 700 : 400, color: cell.key === todayKey ? 'var(--accent)' : (cell.evs.length ? 'var(--ink)' : 'var(--ink-3)'), marginBottom: 2 }}>
-                      {cell.n}
+      {/* Calendar grid — fills remaining height */}
+      <div className="agenda-cal-scroll agenda-cal-inner" style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridTemplateRows: `repeat(${numRows}, 1fr)`, gap: 2 }}>
+        {cells.map((cell, i) => (
+          <div key={i} className="agenda-cal-cell" style={{
+            minHeight: 0, borderRadius: 6, padding: '3px 4px', overflow: 'hidden',
+            background: cell ? (cell.key === todayKey ? 'color-mix(in srgb, var(--accent) 7%, var(--card))' : 'var(--card)') : 'transparent',
+            border: cell ? (cell.key === todayKey ? '1.5px solid var(--accent)' : '1px solid var(--line)') : 'none',
+          }}>
+            {cell && (<>
+              <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, fontWeight: cell.evs.length ? 700 : 400, color: cell.key === todayKey ? 'var(--accent)' : (cell.evs.length ? 'var(--ink)' : 'var(--ink-3)'), marginBottom: 2 }}>
+                {cell.n}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 1.5, overflow: 'hidden' }}>
+                {cell.evs.map((ev, j) => {
+                  const shareId = (data.edits && data.edits[ev.locId] && data.edits[ev.locId].shareId) || null;
+                  const href = shareId ? (window.location.origin + window.location.pathname + '?share=' + shareId) : null;
+                  const chip = (
+                    <div className="agenda-ev-chip" title={`${ev.name} · ${ev.type}`} style={{
+                      fontSize: 8, fontFamily: 'var(--mono)', padding: '1.5px 4px', borderRadius: 3,
+                      lineHeight: 1.25, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      cursor: href ? 'pointer' : 'default',
+                      textDecoration: href ? 'underline' : 'none',
+                      textUnderlineOffset: 2,
+                      ...(ev.type === 'shoot' ? { background: ev.color, color: '#fff' }
+                        : ev.type === 'prep' ? { background: 'transparent', color: ev.color, border: `1.5px dashed ${ev.color}` }
+                        : { background: 'transparent', color: ev.color, border: `1.5px dotted ${ev.color}` }),
+                    }}>
+                      {eventLabel(ev)} · {ev.name}{href ? ' ↗' : ''}
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      {cell.evs.map((ev, j) => {
-                        const shareId = (data.edits && data.edits[ev.locId] && data.edits[ev.locId].shareId) || null;
-                        const href = shareId ? (window.location.origin + window.location.pathname + '?share=' + shareId) : null;
-                        const chip = (
-                          <div className="agenda-ev-chip" title={`${ev.name} · ${ev.type}`} style={{
-                            fontSize: 8.5, fontFamily: 'var(--mono)', padding: '2px 4px', borderRadius: 3,
-                            lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                            cursor: href ? 'pointer' : 'default',
-                            textDecoration: href ? 'underline' : 'none',
-                            textUnderlineOffset: 2,
-                            ...(ev.type === 'shoot' ? { background: ev.color, color: '#fff' }
-                              : ev.type === 'prep' ? { background: 'transparent', color: ev.color, border: `1.5px dashed ${ev.color}` }
-                              : { background: 'transparent', color: ev.color, border: `1.5px dotted ${ev.color}` }),
-                          }}>
-                            {eventLabel(ev)} · {ev.name}{href ? ' ↗' : ''}
-                          </div>
-                        );
-                        return href
-                          ? <a key={j} href={href} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', display: 'block' }}>{chip}</a>
-                          : <div key={j}>{chip}</div>;
-                      })}
-                    </div>
-                  </>)}
-                </div>
-              ))}
-            </div>
+                  );
+                  return href
+                    ? <a key={j} href={href} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', display: 'block' }}>{chip}</a>
+                    : <div key={j}>{chip}</div>;
+                })}
+              </div>
+            </>)}
           </div>
-        </div>
+        ))}
+      </div>
 
-        {!monthHasEvents && (
-          <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--ink-3)', fontFamily: 'var(--mono)', fontSize: 12 }}>
-            Geen data voor {CAL_MONTH_NAMES_SV[month].toLowerCase()} {year}.
-          </div>
-        )}
-
-        <div className="agenda-footer" style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink-3)', textAlign: 'center', paddingTop: 24, marginTop: 16, borderTop: '1px solid var(--line)' }}>
-          {data.scheduleName} · Location Book
-        </div>
+      <div className="agenda-footer" style={{ fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink-3)', textAlign: 'center', paddingTop: 8, marginTop: 6, borderTop: '1px solid var(--line)', flexShrink: 0 }}>
+        {data.scheduleName} · Location Book
       </div>
     </div>
   );

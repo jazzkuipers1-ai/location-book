@@ -167,39 +167,52 @@ function AgendaShareViewInner({ data, events, visibleLocs, locColor, defaultMont
           ))}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, marginBottom: 3 }}>
-          {CAL_DAY_NAMES_SV.map(d => (
-            <div key={d} style={{ textAlign: 'center', fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--ink-3)', padding: '3px 0', fontWeight: 600, letterSpacing: '.06em' }}>{d}</div>
-          ))}
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3 }}>
-          {cells.map((cell, i) => (
-            <div key={i} style={{
-              minHeight: 88, borderRadius: 8, padding: '5px 7px',
-              background: cell ? (cell.key === todayKey ? 'color-mix(in srgb, var(--accent) 7%, var(--card))' : 'var(--card)') : 'transparent',
-              border: cell ? (cell.key === todayKey ? '1.5px solid var(--accent)' : '1px solid var(--line)') : 'none',
-            }}>
-              {cell && (<>
-                <div style={{ fontFamily: 'var(--mono)', fontSize: 12, fontWeight: cell.evs.length ? 700 : 400, color: cell.key === todayKey ? 'var(--accent)' : (cell.evs.length ? 'var(--ink)' : 'var(--ink-3)'), marginBottom: 3 }}>
-                  {cell.n}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {cell.evs.map((ev, j) => (
-                    <div key={j} title={`${ev.name} · ${ev.type}`} style={{
-                      fontSize: 9.5, fontFamily: 'var(--mono)', padding: '2px 5px', borderRadius: 4,
-                      lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      ...(ev.type === 'shoot' ? { background: ev.color, color: '#fff' }
-                        : ev.type === 'prep' ? { background: 'transparent', color: ev.color, border: `1.5px dashed ${ev.color}` }
-                        : { background: 'transparent', color: ev.color, border: `1.5px dotted ${ev.color}` }),
-                    }}>
-                      {eventLabel(ev)} · {ev.name}
-                    </div>
-                  ))}
-                </div>
-              </>)}
+        <div style={{ overflowX: 'auto' }}>
+          <div style={{ minWidth: 560 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 2 }}>
+              {CAL_DAY_NAMES_SV.map(d => (
+                <div key={d} style={{ textAlign: 'center', fontFamily: 'var(--mono)', fontSize: 9.5, color: 'var(--ink-3)', padding: '2px 0', fontWeight: 600, letterSpacing: '.06em' }}>{d}</div>
+              ))}
             </div>
-          ))}
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+              {cells.map((cell, i) => (
+                <div key={i} style={{
+                  minHeight: 64, borderRadius: 6, padding: '4px 5px',
+                  background: cell ? (cell.key === todayKey ? 'color-mix(in srgb, var(--accent) 7%, var(--card))' : 'var(--card)') : 'transparent',
+                  border: cell ? (cell.key === todayKey ? '1.5px solid var(--accent)' : '1px solid var(--line)') : 'none',
+                }}>
+                  {cell && (<>
+                    <div style={{ fontFamily: 'var(--mono)', fontSize: 10, fontWeight: cell.evs.length ? 700 : 400, color: cell.key === todayKey ? 'var(--accent)' : (cell.evs.length ? 'var(--ink)' : 'var(--ink-3)'), marginBottom: 2 }}>
+                      {cell.n}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {cell.evs.map((ev, j) => {
+                        const shareId = (data.edits && data.edits[ev.locId] && data.edits[ev.locId].shareId) || null;
+                        const href = shareId ? (window.location.origin + window.location.pathname + '?share=' + shareId) : null;
+                        const chip = (
+                          <div title={`${ev.name} · ${ev.type}`} style={{
+                            fontSize: 8.5, fontFamily: 'var(--mono)', padding: '2px 4px', borderRadius: 3,
+                            lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            cursor: href ? 'pointer' : 'default',
+                            textDecoration: 'none',
+                            ...(ev.type === 'shoot' ? { background: ev.color, color: '#fff' }
+                              : ev.type === 'prep' ? { background: 'transparent', color: ev.color, border: `1.5px dashed ${ev.color}` }
+                              : { background: 'transparent', color: ev.color, border: `1.5px dotted ${ev.color}` }),
+                          }}>
+                            {eventLabel(ev)} · {ev.name}
+                          </div>
+                        );
+                        return href
+                          ? <a key={j} href={href} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', display: 'block' }}>{chip}</a>
+                          : <div key={j}>{chip}</div>;
+                      })}
+                    </div>
+                  </>)}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         {!monthHasEvents && (

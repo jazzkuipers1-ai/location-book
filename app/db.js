@@ -132,10 +132,21 @@
         // Remote image — use Supabase image transform for a small resized version
         if (window.LB_SYNC && window.LB_SYNC.getImageUrl) {
           const base = window.LB_SYNC.getImageUrl(id);
-          // Supabase render endpoint serves resized JPEG without downloading full image
           const thumbUrl = base
             .replace('/object/public/', '/render/image/public/')
             + '?width=400&quality=70&resize=contain';
+          // Return the URL immediately for fast display, then cache in IndexedDB in background
+          // so next page load serves from local storage (no network round-trip on iPad)
+          fetch(thumbUrl).then(async r => {
+            if (!r.ok) return;
+            const b = await r.blob();
+            if (b && b.size > 0) {
+              await putThumb(id, b).catch(() => {});
+              const localUrl = URL.createObjectURL(b);
+              _urls.set(thumbId, localUrl);
+              window.dispatchEvent(new CustomEvent('lb_blob_updated', { detail: id + '_thumb' }));
+            }
+          }).catch(() => {});
           return thumbUrl;
         }
         return getURL(id);

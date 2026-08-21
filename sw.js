@@ -2,7 +2,7 @@
    Caches the full app shell (local + CDN) so it loads offline.
    Supabase API calls are never intercepted — they go to network only.        */
 
-const CACHE = 'lb-v18';
+const CACHE = 'lb-v19';
 
 const LOCAL = [
   '/',
@@ -76,8 +76,22 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
-  // Never intercept Supabase API / storage — always needs network
-  if (url.hostname.includes('supabase.co')) return;
+  // Cache Supabase image render responses (thumbnails) — these are immutable content
+  // All other Supabase endpoints (API, auth, realtime) still bypass the SW
+  if (url.hostname.includes('supabase.co')) {
+    const isImageRender = url.pathname.includes('/render/image/') || url.pathname.includes('/object/public/');
+    if (!isImageRender) return;
+    e.respondWith(
+      caches.match(e.request).then(cached => {
+        if (cached) return cached;
+        return fetch(e.request).then(r => {
+          if (r.ok) caches.open(CACHE).then(c => c.put(e.request, r.clone()));
+          return r;
+        });
+      })
+    );
+    return;
+  }
   // Never intercept Google Fonts (complex CSS + CORS, low benefit)
   if (url.hostname.includes('googleapis.com') || url.hostname.includes('gstatic.com')) return;
   // Never intercept non-GET requests

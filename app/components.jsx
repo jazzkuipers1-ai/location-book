@@ -485,11 +485,13 @@ function CoverDrop({ id, onSet, onClear, onGeolocated, height = 210, radius = 14
           <div className="s mono">drag &amp; drop or click to browse</div>
         </div>
       )}
-      <input ref={inp} type="file" accept="image/*" hidden onChange={async e => {
-        const file = e.target.files[0];
-        if (file && onGeolocated) readExifGPS(file).then(gps => gps && geoToAddress(gps.lat, gps.lon).then(r => r && onGeolocated(r)));
-        const ids = await filesToIds(e.target.files); if (ids[0]) onSet(ids[0]); e.target.value = '';
-      }} />
+      <input ref={inp} type="file" accept="image/*"
+        style={{ position: 'fixed', left: -9999, top: -9999, opacity: 0, pointerEvents: 'none' }}
+        onChange={async e => {
+          const file = e.target.files[0];
+          if (file && onGeolocated) readExifGPS(file).then(gps => gps && geoToAddress(gps.lat, gps.lon).then(r => r && onGeolocated(r)));
+          const ids = await filesToIds(e.target.files); if (ids[0]) onSet(ids[0]); e.target.value = '';
+        }} />
     </div>
   );
 }

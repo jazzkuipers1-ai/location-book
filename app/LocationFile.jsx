@@ -393,18 +393,19 @@ function GalleryCell({ item, allImgIds, allItems, itemIdx, onCap, onNote, onRemo
 
 function Dropzone({ onFiles }) {
   const [drag, handlers] = useDrop(onFiles);
-  const id = useRef('dz_' + Math.random().toString(36).slice(2));
+  const fileRef = useRef();
   return (
-    <label htmlFor={id.current} className={'dropzone' + (drag ? ' drag' : '')} {...handlers} style={{ cursor: 'pointer' }}>
+    <div className={'dropzone' + (drag ? ' drag' : '')} {...handlers}
+      style={{ cursor: 'pointer' }} onClick={() => fileRef.current && fileRef.current.click()}>
       <div>
         <div className="ic"><Icon name="upload" size={20} /></div>
         <div className="t">Drop images</div>
-        <div className="s mono">or click to browse</div>
+        <div className="s mono">or tap to browse</div>
       </div>
-      <input id={id.current} type="file" accept="image/*" multiple hidden onChange={async e => {
-        await onFiles(e.target.files); e.target.value = '';
-      }} />
-    </label>
+      <input ref={fileRef} type="file" accept="image/*" multiple
+        style={{ position: 'fixed', left: -9999, top: -9999, opacity: 0, pointerEvents: 'none' }}
+        onChange={async e => { await onFiles(e.target.files); e.target.value = ''; }} />
+    </div>
   );
 }
 

@@ -55,9 +55,9 @@ function LocCard({ loc, edit, name, onOpen, onPatch, onRename, onRemove, onCombi
         <button className="loc-card-cam" title="Add / replace cover" onClick={e => { e.stopPropagation(); fileInp.current.click(); }}>
           <Icon name="image" size={15} />
         </button>
-        <input ref={fileInp} type="file" accept="image/*" hidden onChange={async e => {
-          const ids = await filesToIds(e.target.files); if (ids[0]) onPatch({ cover: ids[0] }); e.target.value = '';
-        }} />
+        <input ref={fileInp} type="file" accept="image/*"
+          style={{ position: 'fixed', left: -9999, top: -9999, opacity: 0, pointerEvents: 'none' }}
+          onChange={async e => { const ids = await filesToIds(e.target.files); if (ids[0]) onPatch({ cover: ids[0] }); e.target.value = ''; }} />
       </div>
       <div className="loc-card-body">
         <div className="loc-card-h">

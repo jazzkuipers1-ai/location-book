@@ -1192,9 +1192,11 @@ function App() {
   const shareId = params.get('share');
   const projectId = params.get('project');
   const agendaId = params.get('agenda');
+  const recoverId = params.get('recover');
   if (shareId) return <ShareView shareId={shareId} />;
   if (projectId) return <ProjectShareView projId={projectId} />;
   if (agendaId) return <AgendaShareView agendaId={agendaId} />;
+  if (recoverId) return <PhotoRecovery projectId={recoverId} />;
   return (
     <AuthWrapper>
       {user => <HomeRouter user={user} />}

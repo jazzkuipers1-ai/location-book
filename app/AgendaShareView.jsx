@@ -25,14 +25,20 @@
 
       /* Reset overflow so full grid prints */
       .agenda-cal-scroll { overflow: visible !important; }
-      .agenda-cal-inner  { min-width: 0 !important; }
+      .agenda-cal-inner  { min-width: 0 !important; width: 100% !important; }
+
+      /* Scale entire content to fit on one page */
+      .agenda-page-root { zoom: 0.68; }
 
       /* Calendar grid fills the page width */
       .agenda-cal-grid  { display: grid !important; grid-template-columns: repeat(7, 1fr) !important; gap: 2px !important; }
-      .agenda-cal-cell  { min-height: 52px !important; page-break-inside: avoid; break-inside: avoid; }
+      .agenda-cal-cell  { min-height: 44px !important; page-break-inside: avoid; break-inside: avoid; }
 
       /* Event chips: keep colors, allow text to wrap slightly */
-      .agenda-ev-chip   { font-size: 7.5pt !important; white-space: normal !important; overflow: visible !important; }
+      .agenda-ev-chip   { font-size: 7pt !important; white-space: normal !important; overflow: visible !important; padding: 1px 3px !important; }
+
+      /* No page breaks inside the whole calendar */
+      .agenda-cal-scroll { page-break-inside: avoid; break-inside: avoid; }
 
       /* Links look normal */
       a { color: inherit !important; text-decoration: none !important; }
@@ -149,7 +155,7 @@ function AgendaShareViewInner({ data, events, visibleLocs, locColor, defaultMont
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--ink)' }}>
-      <div style={{ padding: '24px 28px', maxWidth: 1200, margin: '0 auto' }}>
+      <div className="agenda-page-root" style={{ padding: '24px 28px', maxWidth: 1200, margin: '0 auto' }}>
 
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
           <div>

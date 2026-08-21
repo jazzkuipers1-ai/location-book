@@ -511,11 +511,16 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
     if (incoming._savedAt && incoming._savedAt <= lastSeenSavedAt.current) return;
     if (incoming._savedAt) lastSeenSavedAt.current = incoming._savedAt;
     applyingRemote.current = true;
+    // Always merge galleries (never drop photos uploaded by another device).
+    // For non-gallery fields, take remote when idle; keep local when actively editing.
     if (Date.now() - lastLocalEditAt.current < 10000) {
-      // During active local editing: only merge new images — don't overwrite local changes
       setState(cur => mergeRemoteImages(cur, incoming));
     } else {
-      setState(cur => ({ ...incoming, _clientId: undefined, _savedAt: undefined, activeId: cur ? cur.activeId : incoming.activeId }));
+      setState(cur => {
+        // Take the full remote state, but union galleries so no photos are lost
+        const withGalleries = mergeRemoteImages(incoming, cur);
+        return { ...incoming, edits: withGalleries.edits, _clientId: undefined, _savedAt: undefined, activeId: cur ? cur.activeId : incoming.activeId };
+      });
     }
   }, []);
 
@@ -530,7 +535,11 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
       LB_SYNC.loadState(projectId).then(remote => {
         if (remote && remote._savedAt && remote._savedAt > lastSeenSavedAt.current) {
           applyingRemote.current = true;
-          setState(cur => ({ ...remote, _clientId: undefined, _savedAt: undefined, activeId: cur ? cur.activeId : remote.activeId }));
+          setState(cur => {
+            // On initial load: take remote as base, but union galleries with any local state
+            const withGalleries = mergeRemoteImages(remote, cur);
+            return { ...remote, edits: withGalleries.edits, _clientId: undefined, _savedAt: undefined, activeId: cur ? cur.activeId : remote.activeId };
+          });
           lastSeenSavedAt.current = remote._savedAt;
         }
       }).catch(() => {});
@@ -545,8 +554,20 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
         const { activeId: _a, ...shared } = state;
         const savedAt = Date.now();
         lastSeenSavedAt.current = savedAt;
-        LB_SYNC.saveState(projectId, { ...shared, _clientId: LB_SYNC.CLIENT_ID, _savedAt: savedAt })
-          .catch(e => console.warn('[LB] Supabase save failed', e));
+        // Merge galleries with current server state before saving to prevent overwriting
+        // photos that another device uploaded since our last sync
+        const doSave = (stateToSave) => {
+          LB_SYNC.saveState(projectId, { ...stateToSave, _clientId: LB_SYNC.CLIENT_ID, _savedAt: savedAt })
+            .catch(e => console.warn('[LB] Supabase save failed', e));
+        };
+        LB_SYNC.loadState(projectId).then(serverState => {
+          if (serverState && serverState._savedAt && serverState._savedAt > (lastSeenSavedAt.current - 30000)) {
+            // Server has state we may not have fully merged — union galleries before saving
+            doSave(mergeRemoteImages(shared, serverState));
+          } else {
+            doSave(shared);
+          }
+        }).catch(() => doSave(shared));
         publishAgendaIfNeeded(state);
         if (onProjectUpdated) onProjectUpdated({
           scheduleName: state.model && state.model.scheduleName || '',

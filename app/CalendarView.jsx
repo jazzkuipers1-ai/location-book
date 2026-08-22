@@ -156,7 +156,7 @@ function AgendaPrintModal({ events, visibleLocs, locColor, scheduleName, onClose
     }).join('');
 
     return `
-      <div style="height:100vh;display:flex;flex-direction:column;background:#fff;padding:14px 20px;box-sizing:border-box;page-break-after:always;break-after:page">
+      <div class="month-page" style="display:flex;flex-direction:column;background:#fff;padding:14px 20px;box-sizing:border-box;overflow:hidden">
         <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:6px;flex-shrink:0">
           ${scheduleName ? `<span style="font-family:monospace;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#999">${scheduleName} · agenda</span>` : ''}
           <h2 style="margin:0;font-size:22px;font-weight:600">${MONTH_NAMES[month]} ${year}</h2>
@@ -177,8 +177,11 @@ function AgendaPrintModal({ events, visibleLocs, locColor, scheduleName, onClose
     win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        @page { size: A4 landscape; margin: 12mm 14mm; }
-        body { background: #fff; }
+        @page { size: A4 landscape; margin: 8mm 10mm; }
+        html, body { background: #fff; width: 100%; height: 100%; }
+        body { zoom: 0.62; }
+        .month-page { height: calc(100vh / 0.62); page-break-after: always; break-after: page; page-break-inside: avoid; break-inside: avoid; }
+        .month-page:last-child { page-break-after: auto; break-after: auto; }
         @media print { body > div:last-child { page-break-after: auto !important; break-after: auto !important; } }
       </style>
     </head><body>${pagesHTML}<script>window.onload=function(){window.print();}<\/script></body></html>`);

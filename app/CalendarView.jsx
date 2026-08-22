@@ -161,7 +161,6 @@ function AgendaPrintModal({ events, visibleLocs, locColor, scheduleName, onClose
           ${scheduleName ? `<span style="font-family:monospace;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#999">${scheduleName} · agenda</span>` : ''}
           <h2 style="margin:0;font-size:22px;font-weight:600">${MONTH_NAMES[month]} ${year}</h2>
         </div>
-        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;flex-shrink:0">${legendHTML}</div>
         <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:2px;flex-shrink:0">
           ${DAY_NAMES.map(d => `<div style="text-align:center;font-family:monospace;font-size:10px;color:#aaa;font-weight:600;letter-spacing:.06em">${d}</div>`).join('')}
         </div>

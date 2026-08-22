@@ -1,6 +1,6 @@
 /* ShareModal — publish a location file as a public shareable link */
 
-function ShareModal({ loc, edit, name, scheduleName, onClose, onShareIdSaved }) {
+function ShareModal({ loc, edit, deletedPhotoIds, name, scheduleName, onClose, onShareIdSaved }) {
   const [stage, setStage] = useState('idle'); // idle | publishing | done | error
   const [progress, setProgress] = useState('');
   const [shareUrl, setShareUrl] = useState('');
@@ -59,9 +59,11 @@ function ShareModal({ loc, edit, name, scheduleName, onClose, onShareIdSaved }) 
       const sid = existingShareId || ('s' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6));
 
       // Build galleries with public URLs — prefer annotated (drawn-on) version over original
+      const deleted = new Set(deletedPhotoIds || []);
       const gals = {};
       Object.entries(edit.galleries || {}).forEach(([k, arr]) => {
         gals[k] = (arr || [])
+          .filter(it => !deleted.has(it.id))
           .map(it => ({
             cap: it.cap || '',
             note: it.note || '',

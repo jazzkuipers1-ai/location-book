@@ -954,7 +954,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
         onClose={() => setShowExport(false)} onExport={(e, opts) => { setDeck({ entries: e, opts }); setShowExport(false); }} />}
       {combineBase && <CombineModal model={model} edits={state.edits} removed={removed} baseId={combineBase}
         onClose={() => setCombineBase(null)} onConfirm={ids => { mergeLocations(combineBase, ids); setCombineBase(null); }} />}
-      {showShare && activeLoc && <ShareModal loc={activeLoc} edit={edit} name={locName(activeLoc, state.edits)} scheduleName={model.scheduleName}
+      {showShare && activeLoc && <ShareModal loc={activeLoc} edit={edit} deletedPhotoIds={state.deletedPhotoIds || []} name={locName(activeLoc, state.edits)} scheduleName={model.scheduleName}
         onClose={() => setShowShare(false)}
         onShareIdSaved={sid => patchActive({ shareId: sid })} />}
       {showProjectShare && <ShareProjectModal

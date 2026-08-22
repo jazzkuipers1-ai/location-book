@@ -265,9 +265,7 @@ function CalendarView({ model, edits, removed, onOpenLoc, agendaShareId, onCreat
                           border: `1.5px dotted ${ev.color}`,
                         }),
                       }}>
-                      <span style={{ opacity: 0.65, fontSize: 8.5, letterSpacing: '.04em' }}>{eventLabel(ev)}</span>
-                      <br />
-                      <span style={{ fontWeight: 600 }}>{ev.name}</span>
+                      <span style={{ opacity: 0.65, fontSize: 8.5, letterSpacing: '.04em' }}>{eventLabel(ev)} · </span><span style={{ fontWeight: 600 }}>{ev.name}</span>
                     </div>
                   ))}
                 </div>

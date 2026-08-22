@@ -61,7 +61,10 @@ function ShareModal({ loc, edit, deletedPhotoIds, name, scheduleName, onClose, o
       // Build galleries with public URLs — prefer annotated (drawn-on) version over original
       const deleted = new Set(deletedPhotoIds || []);
       const FIXED_GAL_IDS = new Set(['photos', 'designs', 'sketches', 'moodboard', 'measurements']);
-      const activeCatIds = new Set((edit.galCategories || []).map(c => c.id));
+      const activeCatIds = new Set([
+        ...(edit.galCategories || []).map(c => c.id),
+        ...(edit.measCategories || []).map(c => c.id),
+      ]);
       const gals = {};
       Object.entries(edit.galleries || {}).forEach(([k, arr]) => {
         if (!FIXED_GAL_IDS.has(k) && !activeCatIds.has(k)) return; // skip deleted categories
@@ -141,6 +144,7 @@ function ShareModal({ loc, edit, deletedPhotoIds, name, scheduleName, onClose, o
         wrapDays: (edit && edit.wrapDays) || 0,
         wrapTiming: (edit && edit.wrapTiming) || null,
         wrapDates: (edit && edit.wrapDates) || [],
+        measCategories: (edit && edit.measCategories) || null,
         updatedAt: Date.now(),
       };
 

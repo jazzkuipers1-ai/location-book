@@ -657,10 +657,9 @@ function VisualSection({ edit, loc, onPatch, onDraw, onSketch }) {
 
       {/* Fixed sections — always present below custom photo categories */}
       {[
-        { id: 'sketches',     label: 'Sketches',     icon: 'edit',   canSketch: true  },
-        { id: 'measurements', label: 'Measurements', icon: 'ruler',  canSketch: true  },
-        { id: 'designs',      label: 'Designs',      icon: 'layers', canSketch: false },
-        { id: 'moodboard',    label: 'Moodboard',    icon: 'grid',   canSketch: false },
+        { id: 'sketches', label: 'Sketches', icon: 'edit',   canSketch: true  },
+        { id: 'designs',  label: 'Designs',  icon: 'layers', canSketch: false },
+        { id: 'moodboard',label: 'Moodboard',icon: 'grid',   canSketch: false },
       ].map(g => (
         <div className="vis-block" key={g.id}>
           <div className="vis-block-h">
@@ -685,6 +684,84 @@ function VisualSection({ edit, loc, onPatch, onDraw, onSketch }) {
           />
         </div>
       ))}
+
+      {/* Measurements — with its own sub-categories */}
+      {(() => {
+        const measCats = edit.measCategories && edit.measCategories.length
+          ? edit.measCategories
+          : [{ id: 'measurements', label: 'General' }];
+        const totalMeas = measCats.reduce((n, c) => n + (gal[c.id] || []).length, 0);
+
+        const addMeasCat = () => {
+          const id = 'meas_' + Date.now().toString(36);
+          const newCats = [...measCats, { id, label: 'New category' }];
+          onPatch({ measCategories: newCats });
+        };
+        const removeMeasCat = catId => {
+          const remaining = measCats.filter(c => c.id !== catId);
+          if (remaining.length === 0) return;
+          const firstId = remaining[0].id;
+          onPatch(cur => {
+            const g = cur.galleries || {};
+            const orphans = g[catId] || [];
+            const merged = { ...g, [firstId]: [...(g[firstId] || []), ...orphans] };
+            delete merged[catId];
+            return { measCategories: remaining, galleries: merged };
+          });
+        };
+        const renameMeasCat = (catId, label) =>
+          onPatch({ measCategories: measCats.map(c => c.id === catId ? { ...c, label } : c) });
+
+        return (
+          <div className="vis-block">
+            <div className="vis-block-h">
+              <Icon name="ruler" size={15} style={{ color: 'var(--ink-2)' }} />
+              <span className="vn">Measurements</span>
+              <span className="vc">{totalMeas}</span>
+              <span className="ln" />
+              {onSketch && (
+                <button className="btn sm ghost" onClick={() => onSketch(measCats[0].id)}
+                  style={{ marginLeft: 6, flexShrink: 0, gap: 4 }}>
+                  <Icon name="edit" size={12} />Sketch
+                </button>
+              )}
+              <button className="btn sm ghost" onClick={addMeasCat}
+                style={{ marginLeft: 4, flexShrink: 0 }}>
+                <Icon name="plus" size={12} />Category
+              </button>
+            </div>
+            {measCats.map((mc, mci) => (
+              <div key={mc.id} style={{ marginBottom: mci < measCats.length - 1 ? 12 : 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, paddingBottom: 4, borderBottom: '1px solid var(--line-2)' }}>
+                  <span
+                    contentEditable suppressContentEditableWarning
+                    onBlur={e => renameMeasCat(mc.id, e.currentTarget.textContent.trim() || mc.label)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}
+                    style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', cursor: 'text', outline: 'none', textTransform: 'uppercase', letterSpacing: '.04em' }}>
+                    {mc.label}
+                  </span>
+                  <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>{(gal[mc.id] || []).length}</span>
+                  <span style={{ flex: 1 }} />
+                  {measCats.length > 1 && (
+                    <button className="btn sm ghost" style={{ padding: '2px 6px', color: 'var(--ink-3)' }}
+                      onClick={() => removeMeasCat(mc.id)}>
+                      <Icon name="trash" size={12} />
+                    </button>
+                  )}
+                </div>
+                <Gallery
+                  catId={mc.id}
+                  catColor={null}
+                  items={gal[mc.id] || []}
+                  onChange={arr => setGal(mc.id, arr)}
+                  onDraw={it => onDraw(mc.id, it)}
+                  onDropFromOther={() => {}}
+                />
+              </div>
+            ))}
+          </div>
+        );
+      })()}
     </div>
   );
 }

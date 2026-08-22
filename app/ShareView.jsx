@@ -397,12 +397,11 @@ function ShareView({ shareId, onBack }) {
           );
         })}
 
-        {/* Fixed sections — adjustments above photos */}
+        {/* Fixed sections — sketches, designs, moodboard */}
         {[
-          { id: 'sketches',     label: 'Sketches' },
-          { id: 'measurements', label: 'Measurements' },
-          { id: 'designs',      label: 'Designs' },
-          { id: 'moodboard',    label: 'Moodboard' },
+          { id: 'sketches',  label: 'Sketches' },
+          { id: 'designs',   label: 'Designs' },
+          { id: 'moodboard', label: 'Moodboard' },
         ].map(sec => {
           const imgs = data.galleries && data.galleries[sec.id];
           const catAdjs = (data.categoryAdjustments && data.categoryAdjustments[sec.id]) || [];
@@ -436,6 +435,50 @@ function ShareView({ shareId, onBack }) {
             </SV_Section>
           );
         })}
+
+        {/* Measurements — with sub-categories */}
+        {(() => {
+          const measCats = data.measCategories && data.measCategories.length
+            ? data.measCategories
+            : [{ id: 'measurements', label: 'General' }];
+          const totalMeas = measCats.reduce((n, c) => n + ((data.galleries && data.galleries[c.id]) || []).length, 0);
+          if (totalMeas === 0) return null;
+          return (
+            <SV_Section title="Measurements" count={totalMeas + ' image' + (totalMeas !== 1 ? 's' : '')}>
+              {measCats.map((mc, mci) => {
+                const imgs = (data.galleries && data.galleries[mc.id]) || [];
+                if (imgs.length === 0) return null;
+                const cols = Math.min(imgs.length, 3);
+                const showLabel = measCats.length > 1 || mc.label !== 'General';
+                return (
+                  <div key={mc.id} style={{ marginBottom: mci < measCats.length - 1 ? 20 : 0 }}>
+                    {showLabel && (
+                      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--ink-3)', marginBottom: 8 }}>
+                        {mc.label}
+                      </div>
+                    )}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(' + cols + ', 1fr)', gap: 14 }}>
+                      {imgs.map((it, i) => (
+                        <div key={i} style={{ border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden', background: 'var(--card)', display: 'flex', flexDirection: 'column' }}>
+                          <div style={{ cursor: 'zoom-in', background: 'var(--card-2)' }}
+                            onClick={() => setLightbox({ images: imgs, idx: i })}>
+                            <img src={it.url} alt={it.cap || ''} style={{ width: '100%', height: 'auto', display: 'block' }} />
+                          </div>
+                          {(it.cap || it.note) && (
+                            <div style={{ padding: '10px 13px', borderTop: '1px solid var(--line)' }}>
+                              {it.cap && <div style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 600 }}>{it.cap}</div>}
+                              {it.note && <div style={{ fontSize: 12, lineHeight: 1.45, color: 'var(--ink-2)', marginTop: it.cap ? 3 : 0, whiteSpace: 'pre-wrap' }}>{it.note}</div>}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </SV_Section>
+          );
+        })()}
 
         {/* Notes */}
         {data.notes && data.notes.trim() && (

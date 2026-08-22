@@ -84,6 +84,7 @@ function CalendarView({ model, edits, removed, onOpenLoc, agendaShareId, onCreat
   }, []);
 
   const [viewDate, setViewDate] = useState(defaultMonth);
+  const [legendOpen, setLegendOpen] = useState(false);
 
   const year  = viewDate.getFullYear();
   const month = viewDate.getMonth();
@@ -168,17 +169,31 @@ function CalendarView({ model, edits, removed, onOpenLoc, agendaShareId, onCreat
 
       {/* ── Location legend ── */}
       {visibleLocs.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-          {visibleLocs.map(loc => (
-            <div key={loc.id}
-              onClick={() => onOpenLoc && onOpenLoc(loc.id)}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', padding: '3px 8px', borderRadius: 99, border: '1px solid var(--line)', background: 'var(--card)' }}>
-              <div style={{ width: 9, height: 9, borderRadius: 2, background: locColor[loc.id], flexShrink: 0 }} />
-              <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--ink-2)' }}>
-                {(edits[loc.id] || {}).name || loc.name}
-              </span>
+        <div style={{ marginBottom: 10 }}>
+          <button onClick={() => setLegendOpen(o => !o)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 7, padding: '5px 10px', cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--ink-2)' }}>
+            <div style={{ display: 'flex', gap: 3 }}>
+              {visibleLocs.slice(0, 7).map(loc => (
+                <div key={loc.id} style={{ width: 7, height: 7, borderRadius: 2, background: locColor[loc.id] }} />
+              ))}
+              {visibleLocs.length > 7 && <span style={{ fontSize: 9, color: 'var(--ink-3)' }}>+{visibleLocs.length - 7}</span>}
             </div>
-          ))}
+            <span>{visibleLocs.length} locaties</span>
+            <svg width="11" height="11" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" style={{ transform: legendOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><path d="M4 6l5 5 5-5"/></svg>
+          </button>
+          {legendOpen && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+              {visibleLocs.map(loc => (
+                <div key={loc.id}
+                  onClick={() => onOpenLoc && onOpenLoc(loc.id)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', padding: '3px 8px', borderRadius: 99, border: '1px solid var(--line)', background: 'var(--card)' }}>
+                  <div style={{ width: 9, height: 9, borderRadius: 2, background: locColor[loc.id], flexShrink: 0 }} />
+                  <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--ink-2)' }}>
+                    {(edits[loc.id] || {}).name || loc.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

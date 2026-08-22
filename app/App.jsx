@@ -543,7 +543,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
             const bItems = baseGal[cat] || [];
             const cItems = curGal[cat] || [];
             const seen = new Set(bItems.map(i => i.id));
-            const extra = cItems.filter(i => !seen.has(i.id) && !localDeleted.has(i.id));
+            const extra = cItems.filter(i => !seen.has(i.id) && !localDeleted.has(i.id) && !remoteDeleted.has(i.id));
             if (extra.length) mergedGal[cat] = [...bItems, ...extra];
           }
           mergedEdits[locId] = { ...baseEdit, galleries: mergedGal };

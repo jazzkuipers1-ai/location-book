@@ -1,5 +1,159 @@
 /* CalendarView — agenda overzicht van alle shoot/prep/wrap-dagen */
 
+/* Inject print-modal styles once */
+(function() {
+  if (document.getElementById('cal-print-styles')) return;
+  const s = document.createElement('style');
+  s.id = 'cal-print-styles';
+  s.textContent = `
+    @media print {
+      @page { size: A4 landscape; margin: 12mm 14mm; }
+      body { background: #fff !important; }
+      body > * { display: none !important; }
+      #root { display: block !important; }
+      .cal-print-modal-overlay { display: block !important; position: static !important; background: none !important; padding: 0 !important; }
+      .cal-print-modal-box { display: none !important; }
+      .cal-print-pages { display: block !important; }
+      .cal-print-month-page { zoom: 0.68; page-break-after: always; break-after: page; page-break-inside: avoid; break-inside: avoid; }
+      .cal-print-month-page:last-child { page-break-after: auto; break-after: auto; }
+      .cal-print-no-print { display: none !important; }
+      .cal-print-legend-chips { display: flex !important; }
+    }
+  `;
+  document.head.appendChild(s);
+})();
+
+function AgendaPrintPage({ month, year, events, visibleLocs, locColor, scheduleName }) {
+  const TIMING_SHORT = { before_shooting: 'BS', after_wrap: 'AW' };
+  const eventLabel = ev => {
+    const t = ev.timing ? ` ${TIMING_SHORT[ev.timing] || ''}` : '';
+    if (ev.type === 'shoot') return ev.dayNum ? `Dag ${ev.dayNum}` : 'Shoot';
+    if (ev.type === 'prep') return (ev.total > 1 ? `Prep ${ev.idx}/${ev.total}` : 'Prep') + t;
+    return (ev.total > 1 ? `Wrap ${ev.idx}/${ev.total}` : 'Wrap') + t;
+  };
+  const firstDow = (new Date(year, month, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const totalCells = Math.ceil((firstDow + daysInMonth) / 7) * 7;
+  const numRows = totalCells / 7;
+  const todayKey = calDateKey(new Date());
+  const cells = Array.from({ length: totalCells }, (_, i) => {
+    const n = i - firstDow + 1;
+    if (n < 1 || n > daysInMonth) return null;
+    const d = new Date(year, month, n);
+    const key = calDateKey(d);
+    return { n, key, evs: events[key] || [] };
+  });
+
+  return (
+    <div className="cal-print-month-page" style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#fff', padding: '14px 20px', boxSizing: 'border-box', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 6, flexShrink: 0 }}>
+        {scheduleName && <span style={{ fontFamily: 'var(--mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '.08em', color: '#999' }}>{scheduleName} · agenda</span>}
+        <h2 style={{ margin: 0, fontSize: 22, fontFamily: 'var(--serif)', fontWeight: 600 }}>{CAL_MONTH_NAMES[month]} {year}</h2>
+      </div>
+      {/* Legend */}
+      <div className="cal-print-legend-chips" style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6, flexShrink: 0 }}>
+        {visibleLocs.map(loc => (
+          <div key={loc.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '1px 6px', borderRadius: 99, border: '1px solid #ddd', fontSize: 9 }}>
+            <div style={{ width: 7, height: 7, borderRadius: 2, background: locColor[loc.id], flexShrink: 0 }} />
+            <span style={{ fontFamily: 'var(--mono)', color: '#555' }}>{loc.name}</span>
+          </div>
+        ))}
+      </div>
+      {/* Day headers */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 2, flexShrink: 0 }}>
+        {CAL_DAY_NAMES.map(d => (
+          <div key={d} style={{ textAlign: 'center', fontFamily: 'var(--mono)', fontSize: 10, color: '#aaa', fontWeight: 600, letterSpacing: '.06em' }}>{d}</div>
+        ))}
+      </div>
+      {/* Grid */}
+      <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridTemplateRows: `repeat(${numRows}, 1fr)`, gap: 2 }}>
+        {cells.map((cell, i) => (
+          <div key={i} style={{ border: '1px solid #e8e4dc', borderRadius: 5, padding: '3px 4px', background: '#fafaf8', overflow: 'hidden' }}>
+            {cell && <>
+              <div style={{ fontFamily: 'var(--mono)', fontSize: 10, fontWeight: cell.evs.length ? 700 : 400, color: cell.key === todayKey ? '#9e3b2e' : (cell.evs.length ? '#222' : '#ccc'), marginBottom: 2 }}>{cell.n}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {cell.evs.map((ev, j) => (
+                  <div key={j} style={{ fontSize: 8, fontFamily: 'var(--mono)', padding: '1px 3px', borderRadius: 3, lineHeight: 1.3, ...(ev.type === 'shoot' ? { background: ev.color, color: '#fff' } : ev.type === 'prep' ? { color: ev.color, border: `1.5px dashed ${ev.color}`, background: 'transparent' } : { color: ev.color, border: `1.5px dotted ${ev.color}`, background: 'transparent' }) }}>
+                    <span style={{ opacity: 0.7, fontSize: 7 }}>{eventLabel(ev)} · </span><span style={{ fontWeight: 600 }}>{ev.name}</span>
+                  </div>
+                ))}
+              </div>
+            </>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AgendaPrintModal({ events, visibleLocs, locColor, scheduleName, onClose }) {
+  // Find all months that have events
+  const allMonths = useMemo(() => {
+    const keys = Object.keys(events).sort();
+    const seen = new Set();
+    const result = [];
+    for (const k of keys) {
+      const [y, m] = k.split('-').map(Number);
+      const key = `${y}-${m}`;
+      if (!seen.has(key)) { seen.add(key); result.push({ year: y, month: m - 1 }); }
+    }
+    if (!result.length) {
+      const n = new Date(); result.push({ year: n.getFullYear(), month: n.getMonth() });
+    }
+    return result;
+  }, [events]);
+
+  const [selected, setSelected] = useState(() => new Set(allMonths.map(m => `${m.year}-${m.month}`)));
+  const toggle = key => setSelected(s => { const n = new Set(s); n.has(key) ? n.delete(key) : n.add(key); return n; });
+  const allOn = selected.size === allMonths.length;
+
+  const doPrint = () => {
+    document.body.classList.add('cal-printing');
+    window.print();
+    setTimeout(() => document.body.classList.remove('cal-printing'), 500);
+  };
+
+  const selectedPages = allMonths.filter(m => selected.has(`${m.year}-${m.month}`));
+
+  return (
+    <div className="cal-print-modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 9999, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: 60, overflowY: 'auto' }}>
+      {/* Hidden print pages */}
+      <div style={{ display: 'none' }} className="cal-print-pages">
+        {selectedPages.map(({ year, month }) => (
+          <AgendaPrintPage key={`${year}-${month}`} year={year} month={month} events={events} visibleLocs={visibleLocs} locColor={locColor} scheduleName={scheduleName} />
+        ))}
+      </div>
+      {/* Modal UI */}
+      <div className="cal-print-modal-box cal-print-no-print" style={{ background: 'var(--card)', borderRadius: 12, boxShadow: '0 8px 40px rgba(0,0,0,.18)', padding: '28px 32px', width: 420, maxWidth: '90vw' }}>
+        <h2 style={{ margin: '0 0 6px', fontSize: 18 }}>PDF exporteren</h2>
+        <p style={{ margin: '0 0 20px', fontFamily: 'var(--mono)', fontSize: 11.5, color: 'var(--ink-3)' }}>Selecteer de maanden die je wilt exporteren</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--ink-3)' }}>{selected.size} van {allMonths.length} geselecteerd</span>
+          <button className="btn sm" onClick={() => setSelected(allOn ? new Set() : new Set(allMonths.map(m => `${m.year}-${m.month}`)))}>{allOn ? 'Alles deselecteren' : 'Alles selecteren'}</button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 300, overflowY: 'auto', marginBottom: 24 }}>
+          {allMonths.map(({ year, month }) => {
+            const key = `${year}-${month}`;
+            const on = selected.has(key);
+            return (
+              <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 8, background: on ? 'color-mix(in srgb, var(--accent) 8%, var(--card))' : 'var(--card-2)', border: `1px solid ${on ? 'color-mix(in srgb, var(--accent) 30%, transparent)' : 'var(--line)'}`, cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 12 }}>
+                <input type="checkbox" checked={on} onChange={() => toggle(key)} style={{ accentColor: 'var(--accent)', width: 14, height: 14 }} />
+                {CAL_MONTH_NAMES[month]} {year}
+              </label>
+            );
+          })}
+        </div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button className="btn" onClick={onClose}>Annuleren</button>
+          <button className="btn primary" onClick={doPrint} disabled={selected.size === 0}>
+            <Icon name="download" size={14} />PDF downloaden ({selected.size} {selected.size === 1 ? 'maand' : 'maanden'})
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const CAL_LOC_COLORS = [
   '#9e3b2e', '#2c5f8a', '#3d6b4f', '#a07020',
   '#7b4d9e', '#c87040', '#2a7a8a', '#6b3d7a',
@@ -85,6 +239,7 @@ function CalendarView({ model, edits, removed, onOpenLoc, agendaShareId, onCreat
 
   const [viewDate, setViewDate] = useState(defaultMonth);
   const [legendOpen, setLegendOpen] = useState(false);
+  const [showPrint, setShowPrint] = useState(false);
 
   const year  = viewDate.getFullYear();
   const month = viewDate.getMonth();
@@ -135,7 +290,7 @@ function CalendarView({ model, edits, removed, onOpenLoc, agendaShareId, onCreat
           <button className="btn" onClick={nextMonth}>
             <Icon name="arrow" size={14} />
           </button>
-          <button className="btn" onClick={() => window.print()} title="Print / save as PDF">
+          <button className="btn" onClick={() => setShowPrint(true)} title="Exporteer als PDF">
             <Icon name="download" size={14} />PDF
           </button>
           <div style={{ position: 'relative' }}>
@@ -280,6 +435,15 @@ function CalendarView({ model, edits, removed, onOpenLoc, agendaShareId, onCreat
           Geen data ingevuld voor {CAL_MONTH_NAMES[month].toLowerCase()} {year}.
           Voeg shoot-, prep- of wrap-data toe in de locatiedocumenten.
         </div>
+      )}
+      {showPrint && (
+        <AgendaPrintModal
+          events={events}
+          visibleLocs={visibleLocs}
+          locColor={locColor}
+          scheduleName={model.scheduleName}
+          onClose={() => setShowPrint(false)}
+        />
       )}
     </div>
   );

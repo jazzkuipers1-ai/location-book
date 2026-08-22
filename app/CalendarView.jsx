@@ -156,7 +156,7 @@ function AgendaPrintModal({ events, visibleLocs, locColor, scheduleName, onClose
     }).join('');
 
     return `
-      <div class="month-page" style="display:flex;flex-direction:column;background:#fff;padding:14px 20px;box-sizing:border-box;overflow:hidden">
+      <div class="month-page" style="width:1122px;height:794px;display:flex;flex-direction:column;background:#fff;padding:14px 20px;box-sizing:border-box;overflow:hidden">
         <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:6px;flex-shrink:0">
           ${scheduleName ? `<span style="font-family:monospace;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#999">${scheduleName} · agenda</span>` : ''}
           <h2 style="margin:0;font-size:22px;font-weight:600">${MONTH_NAMES[month]} ${year}</h2>
@@ -170,22 +170,37 @@ function AgendaPrintModal({ events, visibleLocs, locColor, scheduleName, onClose
       </div>`;
   };
 
-  const doPrint = () => {
-    const selectedPages = allMonths.filter(m => selected.has(`${m.year}-${m.month}`));
-    const pagesHTML = selectedPages.map(buildMonthHTML).join('');
-    const win = window.open('', '_blank');
-    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-      <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        @page { size: A4 landscape; margin: 8mm 10mm; }
-        html, body { background: #fff; width: 100%; height: 100%; }
-        body { zoom: 0.62; }
-        .month-page { height: calc(100vh / 0.62); page-break-after: always; break-after: page; page-break-inside: avoid; break-inside: avoid; }
-        .month-page:last-child { page-break-after: auto; break-after: auto; }
-        @media print { body > div:last-child { page-break-after: auto !important; break-after: auto !important; } }
-      </style>
-    </head><body>${pagesHTML}<script>window.onload=function(){window.print();}<\/script></body></html>`);
-    win.document.close();
+  const [exporting, setExporting] = useState(false);
+
+  const doPrint = async () => {
+    const pages = allMonths.filter(m => selected.has(`${m.year}-${m.month}`));
+    if (!pages.length) return;
+    setExporting(true);
+
+    // A4 landscape in pixels at 96dpi: 1122 x 794
+    const W = 1122, H = 794;
+
+    const container = document.createElement('div');
+    container.style.cssText = `position:fixed;left:-9999px;top:0;width:${W}px;height:${H}px;background:#fff;overflow:hidden;z-index:-1`;
+    document.body.appendChild(container);
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+    for (let i = 0; i < pages.length; i++) {
+      container.innerHTML = buildMonthHTML(pages[i]);
+      // Wait for layout
+      await new Promise(r => setTimeout(r, 80));
+      const canvas = await html2canvas(container, { scale: 2, useCORS: true, backgroundColor: '#fff', logging: false });
+      const img = canvas.toDataURL('image/jpeg', 0.92);
+      if (i > 0) pdf.addPage('a4', 'landscape');
+      pdf.addImage(img, 'JPEG', 0, 0, 297, 210);
+    }
+
+    document.body.removeChild(container);
+    const name = (scheduleName || 'agenda').replace(/[^a-z0-9]/gi, '-').toLowerCase();
+    pdf.save(`${name}.pdf`);
+    setExporting(false);
   };
 
   const selectedPages = allMonths.filter(m => selected.has(`${m.year}-${m.month}`));
@@ -215,8 +230,8 @@ function AgendaPrintModal({ events, visibleLocs, locColor, scheduleName, onClose
         </div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button className="btn" onClick={onClose}>Annuleren</button>
-          <button className="btn primary" onClick={doPrint} disabled={selected.size === 0}>
-            <Icon name="download" size={14} />PDF downloaden ({selected.size} {selected.size === 1 ? 'maand' : 'maanden'})
+          <button className="btn primary" onClick={doPrint} disabled={selected.size === 0 || exporting}>
+            <Icon name="download" size={14} />{exporting ? 'Exporteren…' : `PDF downloaden (${selected.size} ${selected.size === 1 ? 'maand' : 'maanden'})`}
           </button>
         </div>
       </div>

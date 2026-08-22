@@ -107,22 +107,90 @@ function AgendaPrintModal({ events, visibleLocs, locColor, scheduleName, onClose
   const toggle = key => setSelected(s => { const n = new Set(s); n.has(key) ? n.delete(key) : n.add(key); return n; });
   const allOn = selected.size === allMonths.length;
 
+  const buildMonthHTML = ({ year, month }) => {
+    const MONTH_NAMES = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
+    const DAY_NAMES = ['Ma','Di','Wo','Do','Vr','Za','Zo'];
+    const TIMING_SHORT = { before_shooting: 'BS', after_wrap: 'AW' };
+    const evLabel = ev => {
+      const t = ev.timing ? ` ${TIMING_SHORT[ev.timing] || ''}` : '';
+      if (ev.type === 'shoot') return ev.dayNum ? `Dag ${ev.dayNum}` : 'Shoot';
+      if (ev.type === 'prep') return (ev.total > 1 ? `Prep ${ev.idx}/${ev.total}` : 'Prep') + t;
+      return (ev.total > 1 ? `Wrap ${ev.idx}/${ev.total}` : 'Wrap') + t;
+    };
+    const firstDow = (new Date(year, month, 1).getDay() + 6) % 7;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const totalCells = Math.ceil((firstDow + daysInMonth) / 7) * 7;
+    const numRows = totalCells / 7;
+    const todayKey = calDateKey(new Date());
+    const cells = Array.from({ length: totalCells }, (_, i) => {
+      const n = i - firstDow + 1;
+      if (n < 1 || n > daysInMonth) return null;
+      const key = calDateKey(new Date(year, month, n));
+      return { n, key, evs: events[key] || [] };
+    });
+
+    const legendHTML = visibleLocs.map(loc =>
+      `<div style="display:inline-flex;align-items:center;gap:4px;padding:1px 6px;border-radius:99px;border:1px solid #ddd;font-size:9px;font-family:monospace">
+        <div style="width:7px;height:7px;border-radius:2px;background:${locColor[loc.id]};flex-shrink:0"></div>
+        <span style="color:#555">${loc.name.replace(/</g,'&lt;')}</span>
+      </div>`
+    ).join('');
+
+    const cellsHTML = cells.map(cell => {
+      if (!cell) return `<div style="border:1px solid #e8e4dc;border-radius:5px;background:#fafaf8"></div>`;
+      const numStyle = `font-family:monospace;font-size:10px;font-weight:${cell.evs.length ? 700 : 400};color:${cell.key === todayKey ? '#9e3b2e' : (cell.evs.length ? '#222' : '#ccc')};margin-bottom:2px`;
+      const chipsHTML = cell.evs.map(ev => {
+        const style = ev.type === 'shoot'
+          ? `background:${ev.color};color:#fff`
+          : ev.type === 'prep'
+          ? `color:${ev.color};border:1.5px dashed ${ev.color};background:transparent`
+          : `color:${ev.color};border:1.5px dotted ${ev.color};background:transparent`;
+        return `<div style="font-size:8px;font-family:monospace;padding:1px 3px;border-radius:3px;line-height:1.3;${style}">
+          <span style="opacity:.7;font-size:7px">${evLabel(ev)} · </span><strong>${ev.name.replace(/</g,'&lt;')}</strong>
+        </div>`;
+      }).join('');
+      return `<div style="border:1px solid #e8e4dc;border-radius:5px;padding:3px 4px;background:#fafaf8;overflow:hidden">
+        <div style="${numStyle}">${cell.n}</div>
+        <div style="display:flex;flex-direction:column;gap:1px">${chipsHTML}</div>
+      </div>`;
+    }).join('');
+
+    return `
+      <div style="height:100vh;display:flex;flex-direction:column;background:#fff;padding:14px 20px;box-sizing:border-box;page-break-after:always;break-after:page">
+        <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:6px;flex-shrink:0">
+          ${scheduleName ? `<span style="font-family:monospace;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#999">${scheduleName} · agenda</span>` : ''}
+          <h2 style="margin:0;font-size:22px;font-weight:600">${MONTH_NAMES[month]} ${year}</h2>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;flex-shrink:0">${legendHTML}</div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:2px;flex-shrink:0">
+          ${DAY_NAMES.map(d => `<div style="text-align:center;font-family:monospace;font-size:10px;color:#aaa;font-weight:600;letter-spacing:.06em">${d}</div>`).join('')}
+        </div>
+        <div style="flex:1;min-height:0;display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:repeat(${numRows},1fr);gap:2px">
+          ${cellsHTML}
+        </div>
+      </div>`;
+  };
+
   const doPrint = () => {
-    document.body.classList.add('cal-printing');
-    window.print();
-    setTimeout(() => document.body.classList.remove('cal-printing'), 500);
+    const selectedPages = allMonths.filter(m => selected.has(`${m.year}-${m.month}`));
+    const pagesHTML = selectedPages.map(buildMonthHTML).join('');
+    const win = window.open('', '_blank');
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        @page { size: A4 landscape; margin: 12mm 14mm; }
+        body { background: #fff; }
+        @media print { body > div:last-child { page-break-after: auto !important; break-after: auto !important; } }
+      </style>
+    </head><body>${pagesHTML}<script>window.onload=function(){window.print();}<\/script></body></html>`);
+    win.document.close();
   };
 
   const selectedPages = allMonths.filter(m => selected.has(`${m.year}-${m.month}`));
 
   return (
     <div className="cal-print-modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 9999, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: 60, overflowY: 'auto' }}>
-      {/* Hidden print pages */}
-      <div style={{ display: 'none' }} className="cal-print-pages">
-        {selectedPages.map(({ year, month }) => (
-          <AgendaPrintPage key={`${year}-${month}`} year={year} month={month} events={events} visibleLocs={visibleLocs} locColor={locColor} scheduleName={scheduleName} />
-        ))}
-      </div>
+      <div style={{ display: 'none' }} />
       {/* Modal UI */}
       <div className="cal-print-modal-box cal-print-no-print" style={{ background: 'var(--card)', borderRadius: 12, boxShadow: '0 8px 40px rgba(0,0,0,.18)', padding: '28px 32px', width: 420, maxWidth: '90vw' }}>
         <h2 style={{ margin: '0 0 6px', fontSize: 18 }}>PDF exporteren</h2>

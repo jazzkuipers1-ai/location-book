@@ -250,9 +250,6 @@ function CalendarView({ model, edits, removed, onOpenLoc, agendaShareId, onCreat
                         padding: '2px 5px',
                         borderRadius: 4,
                         lineHeight: 1.35,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
                         cursor: 'pointer',
                         ...(ev.type === 'shoot' ? {
                           background: ev.color,

@@ -438,6 +438,14 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
 
   // ---- Offline status ------------------------------------------------------
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [others, setOthers] = useState([]);
+  const [myPresence, setMyPresence] = useState(null);
+  useEffect(() => {
+    if (!projectId || !window.LB_SYNC || !LB_SYNC.subscribePresence) return;
+    const { name, color, unsubscribe } = LB_SYNC.subscribePresence(projectId, setOthers);
+    setMyPresence({ name, color });
+    return unsubscribe;
+  }, [projectId]);
   useEffect(() => {
     const up   = () => setIsOnline(true);
     const down = () => setIsOnline(false);
@@ -900,6 +908,16 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--ink-2)', background: 'var(--card-2)', border: '1px solid var(--line)', borderRadius: 99, padding: '3px 12px', flexShrink: 0 }}>
                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0, animation: 'pulse 1s infinite' }} />
                   Comprimeren {compressProgress.done}/{compressProgress.total}
+                </span>
+              )}
+              {others.length > 0 && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                  {others.map((o, i) => (
+                    <span key={i} title={o.name + ' is ook actief'} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'var(--mono)', fontSize: 10.5, color: o.color, background: 'color-mix(in srgb, ' + o.color + ' 12%, var(--card))', border: '1px solid color-mix(in srgb, ' + o.color + ' 30%, transparent)', borderRadius: 99, padding: '3px 10px', flexShrink: 0 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: o.color, flexShrink: 0 }} />
+                      {o.name}
+                    </span>
+                  ))}
                 </span>
               )}
               {!isOnline && (

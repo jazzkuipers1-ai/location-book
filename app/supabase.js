@@ -322,5 +322,51 @@
     return window.location.origin + window.location.pathname + '?agenda=' + agendaId;
   }
 
-  window.LB_SYNC = { CLIENT_ID, loadState, saveState, subscribe, loadProjects, createProject, updateProject, deleteProject, getProjectByCode, uploadImage, getImageUrl, queueUpload, startQueue, flushUploadQueue, publishShare, loadShare, getShareUrl, publishProjectShare, loadProjectShare, getProjectShareUrl, publishAgendaShare, loadAgendaShare, getAgendaShareUrl, setProjectPassword, removeProjectPassword, getProjectPassword, signUp, signIn, signOut, getSession, onAuthChange };
+  /* ---- presence --------------------------------------------------------- */
+  const PRESENCE_COLORS = ['#e07b54','#5b8dd9','#6bbf7a','#c97cb8','#e0b84a','#5bbfbf','#d96b6b','#8b7fd4'];
+  const PRESENCE_NAMES = ['Kat','Hond','Vos','Beer','Uil','Haas','Wolf','Eland'];
+
+  function getOrCreateDisplayName() {
+    let stored = localStorage.getItem('lb_display_name');
+    if (stored) return stored;
+    const idx = Math.floor(Math.random() * PRESENCE_NAMES.length);
+    const name = PRESENCE_NAMES[idx];
+    localStorage.setItem('lb_display_name', name);
+    return name;
+  }
+
+  function getOrCreateDisplayColor() {
+    let stored = localStorage.getItem('lb_display_color');
+    if (stored) return stored;
+    const idx = Math.floor(Math.random() * PRESENCE_COLORS.length);
+    const color = PRESENCE_COLORS[idx];
+    localStorage.setItem('lb_display_color', color);
+    return color;
+  }
+
+  let presenceChannel = null;
+
+  function subscribePresence(projectId, onPresenceChange) {
+    if (presenceChannel) { sb.removeChannel(presenceChannel); presenceChannel = null; }
+    const name = getOrCreateDisplayName();
+    const color = getOrCreateDisplayColor();
+    const ch = sb.channel('presence:' + projectId, { config: { presence: { key: CLIENT_ID } } });
+    ch.on('presence', { event: 'sync' }, () => {
+      const raw = ch.presenceState();
+      const others = Object.entries(raw)
+        .filter(([key]) => key !== CLIENT_ID)
+        .map(([, metas]) => metas[0])
+        .filter(Boolean);
+      onPresenceChange(others);
+    });
+    ch.subscribe(async status => {
+      if (status === 'SUBSCRIBED') {
+        await ch.track({ name, color, clientId: CLIENT_ID });
+      }
+    });
+    presenceChannel = ch;
+    return { name, color, unsubscribe: () => { sb.removeChannel(ch); presenceChannel = null; } };
+  }
+
+  window.LB_SYNC = { CLIENT_ID, loadState, saveState, subscribe, loadProjects, createProject, updateProject, deleteProject, getProjectByCode, uploadImage, getImageUrl, queueUpload, startQueue, flushUploadQueue, publishShare, loadShare, getShareUrl, publishProjectShare, loadProjectShare, getProjectShareUrl, publishAgendaShare, loadAgendaShare, getAgendaShareUrl, setProjectPassword, removeProjectPassword, getProjectPassword, signUp, signIn, signOut, getSession, onAuthChange, subscribePresence };
 })();

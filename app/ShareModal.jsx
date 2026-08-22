@@ -60,9 +60,12 @@ function ShareModal({ loc, edit, deletedPhotoIds, name, scheduleName, onClose, o
 
       // Build galleries with public URLs — prefer annotated (drawn-on) version over original
       const deleted = new Set(deletedPhotoIds || []);
-      const FIXED_GAL_IDS = new Set(['photos', 'designs', 'sketches', 'moodboard', 'measurements']);
+      const FIXED_GAL_IDS = new Set(['designs', 'sketches', 'moodboard', 'measurements']);
       const activeCatIds = new Set([
-        ...(edit.galCategories || []).map(c => c.id),
+        ...(edit.galCategories && edit.galCategories.length
+          ? edit.galCategories
+          : [{ id: 'photos' }]
+        ).map(c => c.id),
         ...(edit.measCategories || []).map(c => c.id),
       ]);
       const gals = {};

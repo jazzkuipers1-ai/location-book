@@ -512,8 +512,10 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
     if (incoming._savedAt) lastSeenSavedAt.current = incoming._savedAt;
     applyingRemote.current = true;
     if (Date.now() - lastLocalEditAt.current < 10000) {
-      // Actively editing: keep local changes, only pull in new gallery items from remote
-      setState(cur => mergeRemoteImages(cur, incoming));
+      // Actively editing: ignore remote — our own saves (every 250ms) are authoritative.
+      // Applying remote here would re-add photos the user just deleted.
+      applyingRemote.current = false;
+      return;
     } else {
       // Idle: incoming state is authoritative. Take it fully, but also
       // rescue any local gallery items not yet present in incoming (uploaded

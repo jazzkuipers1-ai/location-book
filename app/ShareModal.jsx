@@ -132,8 +132,10 @@ function ShareModal({ loc, edit, name, scheduleName, onClose, onShareIdSaved }) 
         })(),
         prepDays: (edit && edit.prepDays) || 0,
         prepTiming: (edit && edit.prepTiming) || null,
+        prepDates: (edit && edit.prepDates) || [],
         wrapDays: (edit && edit.wrapDays) || 0,
         wrapTiming: (edit && edit.wrapTiming) || null,
+        wrapDates: (edit && edit.wrapDates) || [],
         updatedAt: Date.now(),
       };
 

@@ -480,6 +480,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
   // Merge only new gallery images from remote into local state — preserves local edits
   const mergeRemoteImages = (local, remote) => {
     if (!local || !remote) return local || remote;
+    const deleted = new Set(local.deletedPhotoIds || []);
     const localEdits = local.edits || {};
     const remoteEdits = remote.edits || {};
     const allLocIds = new Set([...Object.keys(localEdits), ...Object.keys(remoteEdits)]);
@@ -490,6 +491,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
       if (!rEdit) continue;
       if (!lEdit) { mergedEdits[locId] = rEdit; continue; }
       // Merge galleries: union items by image ID, local order preserved, remote-only items appended
+      // Never re-add IDs in deletedPhotoIds (tombstones for explicitly deleted photos)
       const lGal = lEdit.galleries || {};
       const rGal = rEdit.galleries || {};
       const allCats = new Set([...Object.keys(lGal), ...Object.keys(rGal)]);
@@ -498,7 +500,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
         const lItems = lGal[cat] || [];
         const rItems = rGal[cat] || [];
         const seen = new Set(lItems.map(i => i.id));
-        mergedGal[cat] = [...lItems, ...rItems.filter(i => !seen.has(i.id))];
+        mergedGal[cat] = [...lItems, ...rItems.filter(i => !seen.has(i.id) && !deleted.has(i.id))];
       }
       mergedEdits[locId] = { ...lEdit, galleries: mergedGal };
     }
@@ -521,7 +523,12 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
       // rescue any local gallery items not yet present in incoming (uploaded
       // on this device but not yet seen by the saving device).
       setState(cur => {
-        const base = { ...incoming, _clientId: undefined, _savedAt: undefined, activeId: cur ? cur.activeId : incoming.activeId };
+        // Merge tombstones: union of both devices' deleted IDs
+        const localDeleted = new Set(cur ? (cur.deletedPhotoIds || []) : []);
+        const remoteDeleted = new Set(incoming.deletedPhotoIds || []);
+        const allDeleted = [...new Set([...localDeleted, ...remoteDeleted])];
+
+        const base = { ...incoming, _clientId: undefined, _savedAt: undefined, activeId: cur ? cur.activeId : incoming.activeId, deletedPhotoIds: allDeleted };
         if (!cur) return base;
         const curEdits = cur.edits || {};
         const baseEdits = base.edits || {};
@@ -536,10 +543,19 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
             const bItems = baseGal[cat] || [];
             const cItems = curGal[cat] || [];
             const seen = new Set(bItems.map(i => i.id));
-            const extra = cItems.filter(i => !seen.has(i.id));
+            const extra = cItems.filter(i => !seen.has(i.id) && !localDeleted.has(i.id));
             if (extra.length) mergedGal[cat] = [...bItems, ...extra];
           }
           mergedEdits[locId] = { ...baseEdit, galleries: mergedGal };
+        }
+        // Also filter deleted IDs out of the incoming base galleries
+        for (const [locId, edit] of Object.entries(mergedEdits)) {
+          if (!edit.galleries) continue;
+          const filtered = {};
+          for (const [cat, items] of Object.entries(edit.galleries)) {
+            filtered[cat] = items.filter(i => !localDeleted.has(i.id) && !remoteDeleted.has(i.id));
+          }
+          mergedEdits[locId] = { ...edit, galleries: filtered };
         }
         return { ...base, edits: mergedEdits };
       });
@@ -665,9 +681,26 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
 
   const patchById = useCallback((id, p) => setStateWithHistory(s => {
     const cur = s.edits[id] || defaultEdit();
-    // p can be a plain object or a function (edit) => patch — use function form to avoid stale closures
     const patch = typeof p === 'function' ? p(cur) : p;
-    return { ...s, edits: { ...s.edits, [id]: { ...cur, ...patch } } };
+    const next = { ...s, edits: { ...s.edits, [id]: { ...cur, ...patch } } };
+
+    // Track deleted photo IDs as tombstones so sync never re-adds them
+    if (patch.galleries) {
+      const prevGal = cur.galleries || {};
+      const nextGal = patch.galleries;
+      const deleted = new Set(s.deletedPhotoIds || []);
+      for (const cat of Object.keys(prevGal)) {
+        const prevIds = new Set((prevGal[cat] || []).map(i => i.id));
+        const nextIds = new Set((nextGal[cat] || []).map(i => i.id));
+        for (const pid of prevIds) if (!nextIds.has(pid)) deleted.add(pid);
+      }
+      // If a photo is re-added intentionally, remove from tombstones
+      for (const cat of Object.keys(nextGal)) {
+        for (const item of (nextGal[cat] || [])) deleted.delete(item.id);
+      }
+      next.deletedPhotoIds = [...deleted];
+    }
+    return next;
   }), [setStateWithHistory]);
   const patchActive = useCallback(p => { if (activeLoc) patchById(activeLoc.id, p); }, [activeLoc, patchById]);
 

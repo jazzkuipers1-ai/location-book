@@ -294,20 +294,7 @@ function ShareView({ shareId, onBack }) {
         })())}
 
         {/* Shoot days */}
-        {(data.shootDates || []).length > 0 && (
-          <SV_Section title="Shoot days" count={(data.shootDates || []).length + ' days'}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-              {data.shootDates.map((d, i) => (
-                <div key={i} style={{ textAlign: 'center', background: 'var(--card)', borderRadius: 10, padding: '12px 18px', border: '1px solid var(--line)', minWidth: 72 }}>
-                  {d.dayNumber != null && <div style={{ fontFamily: 'var(--serif)', fontSize: 24, fontWeight: 600, color: 'var(--accent)', lineHeight: 1 }}>{d.dayNumber}</div>}
-                  {d.date && <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink-2)', marginTop: 4 }}>{fmtD(d.date)}</div>}
-                </div>
-              ))}
-            </div>
-          </SV_Section>
-        )}
-
-        {/* Prep dates */}
+        {/* Prep dates — above shoot days */}
         {(data.prepDates || []).some(Boolean) && (
           <SV_Section title="Prep" count={(data.prepDates || []).filter(Boolean).length + ' dag' + ((data.prepDates || []).filter(Boolean).length !== 1 ? 'en' : '')}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
@@ -321,7 +308,20 @@ function ShareView({ shareId, onBack }) {
           </SV_Section>
         )}
 
-        {/* Wrap dates */}
+        {(data.shootDates || []).length > 0 && (
+          <SV_Section title="Shoot days" count={(data.shootDates || []).length + ' days'}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+              {data.shootDates.map((d, i) => (
+                <div key={i} style={{ textAlign: 'center', background: 'var(--card)', borderRadius: 10, padding: '12px 18px', border: '1px solid var(--line)', minWidth: 72 }}>
+                  {d.dayNumber != null && <div style={{ fontFamily: 'var(--serif)', fontSize: 24, fontWeight: 600, color: 'var(--accent)', lineHeight: 1 }}>{d.dayNumber}</div>}
+                  {d.date && <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink-2)', marginTop: 4 }}>{fmtD(d.date)}</div>}
+                </div>
+              ))}
+            </div>
+          </SV_Section>
+        )}
+
+        {/* Wrap dates — below shoot days */}
         {(data.wrapDates || []).some(Boolean) && (
           <SV_Section title="Wrap" count={(data.wrapDates || []).filter(Boolean).length + ' dag' + ((data.wrapDates || []).filter(Boolean).length !== 1 ? 'en' : '')}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>

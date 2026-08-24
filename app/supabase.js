@@ -70,6 +70,7 @@
       ...(patch.sceneCount !== undefined && { scene_count: patch.sceneCount }),
       ...(patch.regions !== undefined && { regions: patch.regions }),
       ...(patch.passwordHash !== undefined && { password_hash: patch.passwordHash }),
+      ...(patch.accessCode !== undefined && { access_code: patch.accessCode }),
       updated_at: new Date().toISOString(),
     }).eq('id', id);
     return !error;

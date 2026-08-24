@@ -114,6 +114,9 @@ function ShareProjectModal({ locations, edits, scheduleName, projectShareId, pro
       })(),
       prepDays: edit.prepDays || 0, prepTiming: edit.prepTiming || null, prepDates: edit.prepDates || [],
       wrapDays: edit.wrapDays || 0, wrapTiming: edit.wrapTiming || null, wrapDates: edit.wrapDates || [],
+      categoryPropLists: edit.categoryPropLists || {},
+      measCategories: edit.measCategories || null,
+      galCategories: edit.galCategories || null,
       updatedAt: Date.now(),
     };
 

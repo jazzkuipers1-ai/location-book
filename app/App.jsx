@@ -1090,6 +1090,14 @@ function HomeRouter({ user }) {
             if (idx >= 0 && r.updatedAt > merged[idx].updatedAt) merged[idx] = r;
           }
         }
+        // Generate access codes for any project that doesn't have one yet
+        for (let i = 0; i < merged.length; i++) {
+          if (!merged[i].accessCode) {
+            const code = Math.random().toString(36).slice(2, 8).toUpperCase();
+            merged[i] = { ...merged[i], accessCode: code };
+            LB_SYNC.updateProject(merged[i].id, { accessCode: code }).catch(() => {});
+          }
+        }
         saveProjectList(merged);
         return merged;
       });
@@ -1103,6 +1111,7 @@ function HomeRouter({ user }) {
       const m = buildFromText(text);
       if (!m.locations.length) throw new Error('No scenes found — is this a supported shooting schedule PDF?');
       const id = 'proj_' + Date.now().toString(36);
+      const accessCode = Math.random().toString(36).slice(2, 8).toUpperCase();
       const initialState = { model: m, edits: {}, removed: [], activeId: m.locations[0] ? m.locations[0].id : null };
       saveProjectState(id, initialState);
       const meta = {
@@ -1111,6 +1120,7 @@ function HomeRouter({ user }) {
         locationCount: m.locations.length,
         sceneCount: m.sceneTotal,
         regions: [...new Set(m.locations.flatMap(l => l.regions))],
+        accessCode,
         userId: user ? user.id : null,
         createdAt: Date.now(), updatedAt: Date.now(),
       };
@@ -1132,6 +1142,30 @@ function HomeRouter({ user }) {
     const newList = projects.filter(p => p.id !== id);
     saveProjectList(newList);
     setProjects(newList);
+  };
+
+  const [joinError, setJoinError] = useState('');
+  const [joining, setJoining] = useState(false);
+  const handleJoinProject = async code => {
+    setJoining(true); setJoinError('');
+    try {
+      const proj = await LB_SYNC.getProjectByCode(code.trim().toUpperCase());
+      if (!proj) { setJoinError('Geen project gevonden met deze code.'); return; }
+      if (projects.some(p => p.id === proj.id)) {
+        setActiveProjectId(proj.id); return;
+      }
+      const remote = await LB_SYNC.loadState(proj.id);
+      if (!remote) { setJoinError('Project gevonden maar kan de data niet laden. Vraag de eigenaar of de toegangscode klopt.'); return; }
+      const meta = { ...proj, createdAt: Date.now(), updatedAt: proj.updatedAt || Date.now() };
+      const newList = [...projects, meta];
+      saveProjectList(newList);
+      setProjects(newList);
+      setActiveProjectId(proj.id);
+    } catch (e) {
+      setJoinError('Fout bij inladen: ' + (e.message || String(e)));
+    } finally {
+      setJoining(false);
+    }
   };
 
   const handleProjectUpdated = (id, patch) => {
@@ -1207,6 +1241,9 @@ function HomeRouter({ user }) {
       onNew={handleNewProject}
       onDelete={handleDeleteProject}
       onRename={(id, name) => { handleProjectUpdated(id, { name }); }}
+      onJoin={handleJoinProject}
+      joining={joining}
+      joinError={joinError}
       user={user}
       onSignOut={() => LB_SYNC.signOut()}
     />

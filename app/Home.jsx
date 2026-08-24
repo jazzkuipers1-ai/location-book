@@ -44,7 +44,7 @@ function ProjectCard({ project, onOpen, onDelete, onRename }) {
           ))}
           {(project.regions || []).length > 3 && <span className="mono" style={{ fontSize: 10, color: 'var(--ink-3)', padding: '2px 4px' }}>+{project.regions.length - 3} more</span>}
         </div>
-        <div style={{ display: 'flex', gap: 18, paddingTop: 10, borderTop: '1px solid var(--line)' }}>
+        <div style={{ display: 'flex', gap: 18, paddingTop: 10, borderTop: '1px solid var(--line)', alignItems: 'flex-end' }}>
           <div>
             <div className="serif" style={{ fontSize: 22, fontWeight: 600, color: 'var(--accent)', lineHeight: 1 }}>{project.locationCount}</div>
             <div className="mono" style={{ fontSize: 9.5, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--ink-3)', marginTop: 3 }}>locations</div>
@@ -53,6 +53,12 @@ function ProjectCard({ project, onOpen, onDelete, onRename }) {
             <div className="serif" style={{ fontSize: 22, fontWeight: 600, lineHeight: 1, color: 'var(--ink)' }}>{project.sceneCount}</div>
             <div className="mono" style={{ fontSize: 9.5, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--ink-3)', marginTop: 3 }}>scenes</div>
           </div>
+          {project.accessCode && (
+            <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+              <div className="mono" style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.12em', color: 'var(--ink)', lineHeight: 1 }}>{project.accessCode}</div>
+              <div className="mono" style={{ fontSize: 9.5, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--ink-3)', marginTop: 3 }}>toegangscode</div>
+            </div>
+          )}
         </div>
       </div>
       <div style={{ padding: '8px 20px 14px', display: 'flex', justifyContent: 'space-between' }}>
@@ -75,9 +81,11 @@ function ProjectCard({ project, onOpen, onDelete, onRename }) {
   );
 }
 
-function LB_Home({ projects, importing, importErr, onOpen, onNew, onDelete, onRename, user, onSignOut }) {
+function LB_Home({ projects, importing, importErr, onOpen, onNew, onDelete, onRename, onJoin, joining, joinError, user, onSignOut }) {
   const [drag, setDrag] = useState(false);
   const inp = useRef(null);
+  const [joinCode, setJoinCode] = useState('');
+  const [showJoin, setShowJoin] = useState(false);
 
   const handleFiles = files => { if (files && files[0]) onNew(files[0]); };
 
@@ -130,6 +138,33 @@ function LB_Home({ projects, importing, importErr, onOpen, onNew, onDelete, onRe
             {importErr}
           </div>
         )}
+
+        {/* Join a project by access code */}
+        <div style={{ marginBottom: 40 }}>
+          {!showJoin ? (
+            <button className="btn sm ghost" onClick={() => setShowJoin(true)} style={{ color: 'var(--ink-3)', fontSize: 12 }}>
+              <Icon name="link" size={13} /> Join project via toegangscode
+            </button>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <input
+                autoFocus
+                value={joinCode}
+                onChange={e => setJoinCode(e.target.value.toUpperCase())}
+                onKeyDown={e => { if (e.key === 'Enter' && joinCode.trim()) onJoin(joinCode); if (e.key === 'Escape') { setShowJoin(false); setJoinCode(''); }}}
+                placeholder="Toegangscode (bv. A3BF9K)"
+                maxLength={8}
+                style={{ fontFamily: 'var(--mono)', fontSize: 13, letterSpacing: '.1em', padding: '7px 12px', borderRadius: 8, border: '1.5px solid var(--line-2)', background: 'var(--card)', color: 'var(--ink)', width: 180, outline: 'none' }}
+              />
+              <button className="btn sm primary" disabled={!joinCode.trim() || joining}
+                onClick={() => onJoin(joinCode)}>
+                {joining ? 'Laden…' : 'Project openen'}
+              </button>
+              <button className="btn sm ghost" onClick={() => { setShowJoin(false); setJoinCode(''); }}>Annuleer</button>
+              {joinError && <span style={{ fontSize: 12, color: 'var(--accent)', fontFamily: 'var(--mono)' }}>{joinError}</span>}
+            </div>
+          )}
+        </div>
 
         {projects.length > 0 && (
           <>

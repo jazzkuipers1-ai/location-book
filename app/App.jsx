@@ -458,6 +458,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
   const isFirstStateRender = useRef(true);
   const applyingRemote = useRef(false);
   const lastLocalEditAt = useRef(0);
+  const pendingRemote = useRef(null);
   const lastSeenSavedAt = useRef((() => {
     const s = loadProjectState(projectId); return (s && s._savedAt) ? s._savedAt : 0;
   })());
@@ -522,8 +523,8 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
     if (incoming._savedAt) lastSeenSavedAt.current = incoming._savedAt;
     applyingRemote.current = true;
     if (Date.now() - lastLocalEditAt.current < 10000) {
-      // Actively editing: ignore remote — our own saves (every 250ms) are authoritative.
-      // Applying remote here would re-add photos the user just deleted.
+      // Actively editing: buffer remote update and apply after idle
+      pendingRemote.current = incoming;
       applyingRemote.current = false;
       return;
     } else {
@@ -543,8 +544,10 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
         const mergedEdits = { ...baseEdits };
         for (const [locId, curEdit] of Object.entries(curEdits)) {
           const baseEdit = baseEdits[locId];
-          if (!baseEdit || !curEdit.galleries) continue;
-          const curGal = curEdit.galleries;
+          if (!baseEdit) { mergedEdits[locId] = curEdit; continue; }
+          // If local edit is newer than when remote was saved, keep local text fields
+          const localNewer = curEdit._editedAt && incoming._savedAt && curEdit._editedAt > incoming._savedAt;
+          const curGal = curEdit.galleries || {};
           const baseGal = baseEdit.galleries || {};
           const mergedGal = { ...baseGal };
           for (const cat of Object.keys(curGal)) {
@@ -554,7 +557,13 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
             const extra = cItems.filter(i => !seen.has(i.id) && !localDeleted.has(i.id) && !remoteDeleted.has(i.id));
             if (extra.length) mergedGal[cat] = [...bItems, ...extra];
           }
-          mergedEdits[locId] = { ...baseEdit, galleries: mergedGal };
+          if (localNewer) {
+            // Local text fields win; merge galleries from both
+            const { galleries: _cg, _editedAt, ...localText } = curEdit;
+            mergedEdits[locId] = { ...baseEdit, ...localText, galleries: mergedGal, _editedAt };
+          } else {
+            mergedEdits[locId] = { ...baseEdit, galleries: mergedGal };
+          }
         }
         // Also filter deleted IDs out of the incoming base galleries
         for (const [locId, edit] of Object.entries(mergedEdits)) {
@@ -590,6 +599,13 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
     if (!fromRemote) lastLocalEditAt.current = Date.now();
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
+      // Apply any buffered remote update that arrived while we were editing
+      if (!fromRemote && pendingRemote.current && Date.now() - lastLocalEditAt.current >= 10000) {
+        const pending = pendingRemote.current;
+        pendingRemote.current = null;
+        applyRemoteState(pending);
+        return;
+      }
       saveProjectState(projectId, state);
       if (!fromRemote) {
         const { activeId: _a, ...shared } = state;
@@ -690,7 +706,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
   const patchById = useCallback((id, p) => setStateWithHistory(s => {
     const cur = s.edits[id] || defaultEdit();
     const patch = typeof p === 'function' ? p(cur) : p;
-    const next = { ...s, edits: { ...s.edits, [id]: { ...cur, ...patch } } };
+    const next = { ...s, edits: { ...s.edits, [id]: { ...cur, ...patch, _editedAt: Date.now() } } };
 
     // Track deleted photo IDs as tombstones so sync never re-adds them
     if (patch.galleries) {

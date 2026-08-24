@@ -429,6 +429,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
   // Keyboard shortcuts
   useEffect(() => {
     const h = e => {
+      if (e.target.closest('input, textarea, [contenteditable]')) return;
       if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
       if ((e.metaKey || e.ctrlKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); redo(); }
     };

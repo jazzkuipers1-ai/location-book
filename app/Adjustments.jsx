@@ -51,6 +51,7 @@ function AdjRow({ a, onPatch, onDelete, catId, otherCats, onMoveTo }) {
     <div className={'adj' + (a.done ? ' done' : '')}
       draggable
       onDragStart={e => {
+        if (e.target.closest('input, textarea, [contenteditable]')) { e.preventDefault(); return; }
         window._dragAdj = { adj: a, catId };
         e.dataTransfer.effectAllowed = 'move';
       }}

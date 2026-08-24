@@ -936,7 +936,7 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
             </div>
             <LocationFile loc={activeLoc} edit={edit} name={locName(activeLoc, state.edits)} onPatch={patchActive}
               onRename={n => renameLoc(activeLoc.id, n)} onRemove={() => removeLoc(activeLoc.id)} onCombine={() => openCombine(activeLoc.id)}
-              sceneView={t.sceneView} onExport={quickExport} />
+              sceneView={t.sceneView} onExport={quickExport} onToast={msg => setToast({ msg })} />
           </>
         ) : mobileTab !== 'list' ? (
           <div className="empty"><div className="serif">No locations</div>

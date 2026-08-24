@@ -25,6 +25,8 @@
       tx.objectStore(STORE).put(blob, id);
       tx.oncomplete = res; tx.onerror = () => rej(tx.error);
     });
+    // Notify Img components immediately so thumbnails update before Supabase upload
+    window.dispatchEvent(new CustomEvent('lb_blob_updated', { detail: id }));
     // Queue for sequential background upload — prevents flooding the connection
     if (window.LB_SYNC) {
       if (window.LB_SYNC.queueUpload) window.LB_SYNC.queueUpload(id);

@@ -1068,7 +1068,7 @@ function AddDayButton({ onAdd }) {
   );
 }
 
-function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine, sceneView, onExport }) {
+function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine, sceneView, onExport, onToast }) {
   const allCatAdjs = edit.categoryAdjustments || {};
   const adj = Object.values(allCatAdjs).flat().concat(
     !edit.categoryAdjustments ? (edit.adjustments || []) : []
@@ -1086,6 +1086,9 @@ function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine,
       return { galleries: { ...g, [kind]: arr } };
     });
     setAnnot(null);
+    if (annotatedId && edit.shareId && onToast) {
+      onToast('Tekening opgeslagen · Update de share link om het zichtbaar te maken');
+    }
   };
 
   return (

@@ -1238,9 +1238,15 @@ function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine,
         </div>
       </div>
 
+      {/* notes */}
+      <div className="sec">
+        <div className="sec-h"><span className="num">01</span><h2>Notes</h2><span className="ln" /></div>
+        <BulletNotes key={'notes' + loc.id} value={edit.notes || ''} onChange={v => onPatch({ notes: v })} />
+      </div>
+
       {/* shoot days */}
       <div className="sec">
-        <div className="sec-h"><span className="num">01</span><h2>Shoot days</h2><span className="ln" /></div>
+        <div className="sec-h"><span className="num">02</span><h2>Shoot days</h2><span className="ln" /></div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'flex-start' }}>
           {loc.shootDates.filter(d => !(edit.removedShootDays||[]).includes(String(d.dayNumber))).map(d => {
             const ov = (edit.dayOverrides||{})[String(d.dayNumber)] || {};
@@ -1277,19 +1283,13 @@ function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine,
 
       {/* scenes */}
       <div className="sec">
-        <div className="sec-h"><span className="num">02</span><h2>Scenes here</h2>
+        <div className="sec-h"><span className="num">03</span><h2>Scenes here</h2>
           <span className="mono" style={{ fontSize: 11, color: 'var(--ink-2)' }}>from schedule</span><span className="ln" /></div>
         <ScenesTable loc={loc} view={sceneView} edit={edit} onPatch={onPatch} />
       </div>
 
       {/* visuals */}
       <VisualSection edit={edit} loc={loc} onPatch={onPatch} onDraw={openDraw} onSketch={kind => setSketch(kind)} />
-
-      {/* notes */}
-      <div className="sec">
-        <div className="sec-h"><span className="num">04</span><h2>Notes</h2><span className="ln" /></div>
-        <BulletNotes key={'notes' + loc.id} value={edit.notes || ''} onChange={v => onPatch({ notes: v })} />
-      </div>
 
 
       {annot && <Annotator originalId={annot.item.id} init={{ strokes: annot.item.strokes, note: annot.item.note }}

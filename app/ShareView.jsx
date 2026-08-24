@@ -252,6 +252,15 @@ function ShareView({ shareId, onBack }) {
           </div>
         )}
 
+        {/* Notes */}
+        {data.notes && data.notes.trim() && (
+          <SV_Section title="Notes">
+            <div style={{ background: 'var(--card)', borderRadius: 10, padding: '18px 20px', border: '1px solid var(--line)', fontSize: 14, lineHeight: 1.7, whiteSpace: 'pre-wrap', color: 'var(--ink)' }}>
+              {data.notes}
+            </div>
+          </SV_Section>
+        )}
+
         {/* Scenes */}
         {(data.scenes || []).length > 0 && React.createElement(React.Fragment, null, (() => {
           const dayMap = {};
@@ -479,15 +488,6 @@ function ShareView({ shareId, onBack }) {
             </SV_Section>
           );
         })()}
-
-        {/* Notes */}
-        {data.notes && data.notes.trim() && (
-          <SV_Section title="Notes">
-            <div style={{ background: 'var(--card)', borderRadius: 10, padding: '18px 20px', border: '1px solid var(--line)', fontSize: 14, lineHeight: 1.7, whiteSpace: 'pre-wrap', color: 'var(--ink)' }}>
-              {data.notes}
-            </div>
-          </SV_Section>
-        )}
 
         {/* Legacy global prop lists (old shares without categoryPropLists) */}
         {!(data.categoryPropLists) && (data.propLists || []).length > 0 && (

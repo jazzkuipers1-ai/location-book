@@ -599,13 +599,6 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
     if (!fromRemote) lastLocalEditAt.current = Date.now();
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      // Apply any buffered remote update that arrived while we were editing
-      if (!fromRemote && pendingRemote.current && Date.now() - lastLocalEditAt.current >= 10000) {
-        const pending = pendingRemote.current;
-        pendingRemote.current = null;
-        applyRemoteState(pending);
-        return;
-      }
       saveProjectState(projectId, state);
       if (!fromRemote) {
         const { activeId: _a, ...shared } = state;
@@ -651,6 +644,18 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
     }, 3000); // wait 3s so the app is fully loaded first
     return () => clearTimeout(timer);
   }, [projectId]);
+
+  // Flush buffered remote update after 10 s of inactivity
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (pendingRemote.current && Date.now() - lastLocalEditAt.current >= 10000) {
+        const pending = pendingRemote.current;
+        pendingRemote.current = null;
+        applyRemoteState(pending);
+      }
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [applyRemoteState]);
 
   // On reconnect: push current state to Supabase immediately
   useEffect(() => {
@@ -726,7 +731,16 @@ function ProjectApp({ projectId, onGoHome, onProjectUpdated, projectPasswordHash
     }
     return next;
   }), [setStateWithHistory]);
-  const patchActive = useCallback(p => { if (activeLoc) patchById(activeLoc.id, p); }, [activeLoc, patchById]);
+  const patchByIdSilent = useCallback((id, p) => setState(s => {
+    const cur = s.edits[id] || defaultEdit();
+    const patch = typeof p === 'function' ? p(cur) : p;
+    return { ...s, edits: { ...s.edits, [id]: { ...cur, ...patch } } };
+  }), []);
+  const patchActive = useCallback((p, skipHistory) => {
+    if (!activeLoc) return;
+    if (skipHistory) patchByIdSilent(activeLoc.id, p);
+    else patchById(activeLoc.id, p);
+  }, [activeLoc, patchById, patchByIdSilent]);
 
   const openLoc = id => { setState(s => ({ ...s, activeId: id })); setView('file'); setMobileTab('file'); };
   const renameLoc = (id, name) => setState(s => {

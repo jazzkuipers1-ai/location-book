@@ -109,7 +109,7 @@ function Annotator({ originalId, init, onSave, onClose }) {
   useEffect(() => {
     if (zoom <= 1) { setPan({ x: 0, y: 0 }); setPanMode(false); }
     else setPanMode(true);
-  }, [zoom > 1]);  // only toggle on zoom crossing 1 threshold
+  }, [zoom]);
 
   const redraw = useCallback(() => {
     const can = canRef.current, img = imgRef.current;

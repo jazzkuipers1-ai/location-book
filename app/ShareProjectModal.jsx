@@ -154,6 +154,16 @@ function ShareProjectModal({ locations, edits, scheduleName, projectShareId, pro
         resultMap[loc.id] = { name, shareId: sid, coverUrl, regions: loc.regions || [], sceneCount: loc.sceneCount || 0 };
       } catch (e) {
         console.error('[ShareProject] failed for', loc.id, e);
+        setProgress('Fout bij ' + name + ' — opnieuw proberen…');
+        try {
+          const { sid, coverUrl } = await publishLocShare(loc, edit, name);
+          newShareIds[loc.id] = sid;
+          resultMap[loc.id] = { name, shareId: sid, coverUrl, regions: loc.regions || [], sceneCount: loc.sceneCount || 0 };
+        } catch (e2) {
+          console.error('[ShareProject] retry failed for', loc.id, e2);
+          setProgress('⚠ ' + name + ' kon niet gepubliceerd worden, rest gaat door…');
+          await new Promise(r => setTimeout(r, 1200));
+        }
       }
     }
 

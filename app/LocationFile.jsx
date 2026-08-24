@@ -79,10 +79,13 @@ function BulletNotes({ value, onChange }) {
   const [bullets, setBullets] = useState(() => parseBullets(value));
   const refs = useRef([]);
 
-  // Normalize old inline-bullet data on first mount
+  // Normalize old inline-bullet data on first mount — use ref to avoid undo history entry
+  const didNormalize = useRef(false);
   useEffect(() => {
+    if (didNormalize.current) return;
+    didNormalize.current = true;
     const normalized = serializeBullets(parseBullets(value));
-    if (normalized !== value) onChange(normalized);
+    if (normalized !== value) onChange(normalized, true); // true = skip undo history
   }, []);
 
   const update = next => { setBullets(next); onChange(serializeBullets(next)); };
@@ -261,18 +264,19 @@ function Lightbox({ imgIds, startIdx, items, onClose, onDraw, onCrop }) {
 
   useEffect(() => { setUrl(null); LB.db.getURL(imgId).then(setUrl); }, [imgId]);
 
+  const imgIdsLen = imgIds.length;
   const prev = () => setIdx(i => Math.max(0, i - 1));
-  const next = () => setIdx(i => Math.min(imgIds.length - 1, i + 1));
+  const next = () => setIdx(i => Math.min(imgIdsLen - 1, i + 1));
 
   useEffect(() => {
     const onKey = e => {
       if (e.key === 'Escape' || e.key === 'Backspace') onClose();
-      if (e.key === 'ArrowRight') next();
-      if (e.key === 'ArrowLeft') prev();
+      if (e.key === 'ArrowRight') setIdx(i => Math.min(imgIds.length - 1, i + 1));
+      if (e.key === 'ArrowLeft') setIdx(i => Math.max(0, i - 1));
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [onClose, imgIds.length]);
 
   const handleTouchStart = e => { touchStart.current = e.touches[0].clientX; };
   const handleTouchEnd = e => {
@@ -491,8 +495,8 @@ function Gallery({ catId, catColor, items, onChange, onDraw, onDropFromOther }) 
         <div style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', gap: 10, padding: '6px 2px', marginBottom: -4 }}>
           <span className="mono" style={{ fontSize: 11, color: 'var(--accent)' }}>{selCount} foto{selCount !== 1 ? "'s" : ''} geselecteerd</span>
           <button className="btn sm ghost" style={{ fontSize: 11 }} onClick={() => setSelected(new Set())}>Deselecteer</button>
-          <button className="btn sm ghost" style={{ fontSize: 11, color: 'var(--accent)' }} onClick={() => {
-            selected.forEach(async id => { const it = items.find(i => i.id === id); if (it) { if (it.annotatedId) await LB.db.delImage(it.annotatedId); await LB.db.delImage(it.id); } });
+          <button className="btn sm ghost" style={{ fontSize: 11, color: 'var(--accent)' }} onClick={async () => {
+            await Promise.all([...selected].map(async id => { const it = items.find(i => i.id === id); if (it) { if (it.annotatedId) await LB.db.delImage(it.annotatedId).catch(() => {}); await LB.db.delImage(it.id).catch(() => {}); } }));
             onChange(items.filter(it => !selected.has(it.id)));
             setSelected(new Set());
           }}>Verwijder selectie</button>
@@ -1241,7 +1245,7 @@ function LocationFile({ loc, edit, name, onPatch, onRename, onRemove, onCombine,
       {/* notes */}
       <div className="sec">
         <div className="sec-h"><span className="num">01</span><h2>Notes</h2><span className="ln" /></div>
-        <BulletNotes key={'notes' + loc.id} value={edit.notes || ''} onChange={v => onPatch({ notes: v })} />
+        <BulletNotes key={'notes' + loc.id} value={edit.notes || ''} onChange={(v, skipHistory) => onPatch({ notes: v }, skipHistory)} />
       </div>
 
       {/* shoot days */}

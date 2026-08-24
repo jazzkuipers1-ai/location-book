@@ -25,8 +25,20 @@ function drawStroke(ctx, s, w, h) {
   ctx.stroke();
 }
 
-async function bakeAnnotation(imgEl, strokes) {
-  let W = imgEl.naturalWidth, H = imgEl.naturalHeight;
+async function bakeAnnotation(imgEl, strokes, originalId) {
+  // Prefer a local blob URL to avoid cross-origin canvas taint (Safari/WebKit)
+  let drawSrc = imgEl;
+  if (originalId) {
+    const blob = await LB.db.getBlob(originalId).catch(() => null);
+    if (blob) {
+      const blobUrl = URL.createObjectURL(blob);
+      const tempImg = new Image();
+      await new Promise((res, rej) => { tempImg.onload = res; tempImg.onerror = rej; tempImg.src = blobUrl; });
+      URL.revokeObjectURL(blobUrl);
+      drawSrc = tempImg;
+    }
+  }
+  let W = drawSrc.naturalWidth, H = drawSrc.naturalHeight;
   if (!W || !H) throw new Error('Image not loaded');
   // iOS Safari canvas limit ~16MP — cap to 2048px on longest side
   const MAX = 2048;
@@ -47,7 +59,7 @@ async function bakeAnnotation(imgEl, strokes) {
   ictx.globalAlpha = 1; ictx.globalCompositeOperation = 'source-over';
   const out = document.createElement('canvas'); out.width = W; out.height = H;
   const ctx = out.getContext('2d');
-  ctx.drawImage(imgEl, 0, 0, W, H);
+  ctx.drawImage(drawSrc, 0, 0, W, H);
   ctx.drawImage(ink, 0, 0);
   const blob = await new Promise((res, rej) => {
     out.toBlob(b => b ? res(b) : rej(new Error('toBlob returned null')), 'image/jpeg', 0.9);
@@ -280,7 +292,7 @@ function Annotator({ originalId, init, onSave, onClose }) {
   async function save() {
     setSaving(true);
     let annotatedId = null;
-    try { if (strokes.length && imgRef.current) annotatedId = await bakeAnnotation(imgRef.current, strokes); }
+    try { if (strokes.length && imgRef.current) annotatedId = await bakeAnnotation(imgRef.current, strokes, originalId); }
     catch (e) { console.warn('bake failed', e); }
     finally { setSaving(false); }
     onSave({ strokes, note, annotatedId });

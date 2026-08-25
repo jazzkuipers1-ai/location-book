@@ -194,7 +194,7 @@ function ShareView({ shareId, onBack }) {
       {data.coverUrl && (
         <div style={{ width: '100%', height: 340, overflow: 'hidden', cursor: 'zoom-in' }}
           onClick={() => setLightbox({ images: [{ url: data.coverUrl }], idx: 0 })}>
-          <img src={data.coverUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          <img src={data.coverThumbUrl || data.coverUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
         </div>
       )}
 
@@ -385,7 +385,7 @@ function ShareView({ shareId, onBack }) {
                     <div key={i} style={{ border: '2px solid ' + color, borderRadius: 12, overflow: 'hidden', background: 'var(--card)', display: 'flex', flexDirection: 'column' }}>
                       <div style={{ aspectRatio: '4/3', overflow: 'hidden', cursor: 'zoom-in', background: 'var(--card-2)' }}
                         onClick={() => openLightbox(it.url)}>
-                        <img src={it.url} alt={it.cap || ''} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        <img src={it.thumbUrl || it.url} alt={it.cap || ''} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                       </div>
                       {(it.cap || it.note) && (
                         <div style={{ padding: '10px 13px', borderTop: '2px solid ' + color }}>
@@ -429,7 +429,7 @@ function ShareView({ shareId, onBack }) {
                     <div key={i} style={{ border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden', background: 'var(--card)', display: 'flex', flexDirection: 'column' }}>
                       <div style={{ cursor: 'zoom-in', background: 'var(--card-2)' }}
                         onClick={() => setLightbox({ images: imgs, idx: i })}>
-                        <img src={it.url} alt={it.cap || ''} style={{ width: '100%', height: 'auto', display: 'block' }} />
+                        <img src={it.thumbUrl || it.url} alt={it.cap || ''} style={{ width: '100%', height: 'auto', display: 'block' }} />
                       </div>
                       {(it.cap || it.note) && (
                         <div style={{ padding: '10px 13px', borderTop: '1px solid var(--line)' }}>
@@ -471,7 +471,7 @@ function ShareView({ shareId, onBack }) {
                         <div key={i} style={{ border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden', background: 'var(--card)', display: 'flex', flexDirection: 'column' }}>
                           <div style={{ cursor: 'zoom-in', background: 'var(--card-2)' }}
                             onClick={() => setLightbox({ images: imgs, idx: i })}>
-                            <img src={it.url} alt={it.cap || ''} style={{ width: '100%', height: 'auto', display: 'block' }} />
+                            <img src={it.thumbUrl || it.url} alt={it.cap || ''} style={{ width: '100%', height: 'auto', display: 'block' }} />
                           </div>
                           {(it.cap || it.note) && (
                             <div style={{ padding: '10px 13px', borderTop: '1px solid var(--line)' }}>
@@ -815,7 +815,7 @@ function ProjectShareView({ projId }) {
               {/* Cover */}
               <div style={{ height: 180, background: 'var(--card-2)', overflow: 'hidden' }}>
                 {loc.coverUrl
-                  ? <img src={loc.coverUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  ? <img src={loc.coverThumbUrl || loc.coverUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                   : <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-3)', fontFamily: 'var(--mono)', fontSize: 11 }}>geen foto</div>
                 }
               </div>

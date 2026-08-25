@@ -139,6 +139,28 @@
     });
   }
 
+  // Resize blob to max width/height, returns a JPEG blob at given quality
+  function resizeBlob(blob, maxPx, quality) {
+    return new Promise((res, rej) => {
+      const img = new Image();
+      const burl = URL.createObjectURL(blob);
+      img.onload = () => {
+        URL.revokeObjectURL(burl);
+        let w = img.naturalWidth, h = img.naturalHeight;
+        if (w > maxPx || h > maxPx) {
+          const r = Math.min(maxPx / w, maxPx / h);
+          w = Math.round(w * r); h = Math.round(h * r);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        canvas.toBlob(b => b ? res(b) : rej(new Error('resize failed')), 'image/jpeg', quality);
+      };
+      img.onerror = () => { URL.revokeObjectURL(burl); rej(new Error('decode failed')); };
+      img.src = burl;
+    });
+  }
+
   async function uploadImage(blob, imageId) {
     let uploadBlob = blob;
     // Always convert HEIC/HEIF to JPEG before upload — Supabase serves to all browsers including Chrome
@@ -151,6 +173,22 @@
     if (error) throw error;
     const { data } = sb.storage.from('project-images').getPublicUrl(path);
     return data.publicUrl;
+  }
+
+  // Upload a thumbnail alongside the original — used at share-publish time
+  async function uploadThumb(blob, imageId) {
+    try {
+      const thumbBlob = await resizeBlob(blob, 900, 0.72);
+      const path = 'images/thumb_' + imageId;
+      const { error } = await sb.storage.from('project-images').upload(path, thumbBlob, { upsert: true, contentType: 'image/jpeg' });
+      if (error) throw error;
+      const { data } = sb.storage.from('project-images').getPublicUrl(path);
+      return data.publicUrl;
+    } catch (e) { return null; }
+  }
+
+  function getThumbUrl(imageId) {
+    return SUPABASE_URL + '/storage/v1/object/public/project-images/images/thumb_' + imageId;
   }
 
   /* ---- storage: share JSON ----------------------------------------------- */
@@ -369,5 +407,5 @@
     return { name, color, unsubscribe: () => { sb.removeChannel(ch); presenceChannel = null; } };
   }
 
-  window.LB_SYNC = { CLIENT_ID, loadState, saveState, subscribe, loadProjects, createProject, updateProject, deleteProject, getProjectByCode, uploadImage, getImageUrl, queueUpload, startQueue, flushUploadQueue, publishShare, loadShare, getShareUrl, publishProjectShare, loadProjectShare, getProjectShareUrl, publishAgendaShare, loadAgendaShare, getAgendaShareUrl, setProjectPassword, removeProjectPassword, getProjectPassword, signUp, signIn, signOut, getSession, onAuthChange, subscribePresence };
+  window.LB_SYNC = { CLIENT_ID, loadState, saveState, subscribe, loadProjects, createProject, updateProject, deleteProject, getProjectByCode, uploadImage, uploadThumb, getImageUrl, getThumbUrl, queueUpload, startQueue, flushUploadQueue, publishShare, loadShare, getShareUrl, publishProjectShare, loadProjectShare, getProjectShareUrl, publishAgendaShare, loadAgendaShare, getAgendaShareUrl, setProjectPassword, removeProjectPassword, getProjectPassword, signUp, signIn, signOut, getSession, onAuthChange, subscribePresence };
 })();

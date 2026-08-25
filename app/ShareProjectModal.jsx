@@ -67,20 +67,27 @@ function ShareProjectModal({ locations, edits, scheduleName, projectShareId, pro
     (edit.adjustments || []).forEach(adj => { if (adj.thumb) ids.add(adj.thumb); });
 
     const urlMap = {};
+    const thumbMap = {};
     for (const id of [...ids]) {
       const blob = await LB.db.getBlob(id);
       urlMap[id] = blob ? await LB_SYNC.uploadImage(blob, id) : LB_SYNC.getImageUrl(id);
+      if (blob) thumbMap[id] = await LB_SYNC.uploadThumb(blob, id);
+      if (!thumbMap[id]) thumbMap[id] = LB_SYNC.getThumbUrl(id);
     }
 
     const sid = edit.shareId || ('s' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6));
 
     const gals = {};
     Object.entries(edit.galleries || {}).forEach(([k, arr]) => {
-      gals[k] = (arr || []).map(it => ({
-        cap: it.cap || '', note: it.note || '',
-        url: (it.annotatedId && urlMap[it.annotatedId]) || urlMap[it.id] || null,
-        originalUrl: urlMap[it.id] || null,
-      })).filter(it => it.url);
+      gals[k] = (arr || []).map(it => {
+        const mainId = it.annotatedId || it.id;
+        return {
+          cap: it.cap || '', note: it.note || '',
+          url: urlMap[mainId] || null,
+          thumbUrl: thumbMap[mainId] || thumbMap[it.id] || null,
+          originalUrl: urlMap[it.id] || null,
+        };
+      }).filter(it => it.url);
     });
 
     const removedShootDays = new Set((edit.removedShootDays || []).map(String));
@@ -106,6 +113,7 @@ function ShareProjectModal({ locations, edits, scheduleName, projectShareId, pro
       })),
       galleries: gals, galCategories: edit.galCategories || null,
       coverUrl: edit.cover ? (urlMap[edit.cover] || null) : null,
+      coverThumbUrl: edit.cover ? (thumbMap[edit.cover] || null) : null,
       notes: edit.notes || '', regions: loc.regions || [], sets: loc.sets || [],
       sceneCount: loc.sceneCount || 0,
       scenes: (() => {
@@ -121,7 +129,7 @@ function ShareProjectModal({ locations, edits, scheduleName, projectShareId, pro
     };
 
     await LB_SYNC.publishShare(sid, shareData);
-    return { sid, coverUrl: shareData.coverUrl };
+    return { sid, coverUrl: shareData.coverUrl, coverThumbUrl: shareData.coverThumbUrl };
   }
 
   async function publish() {
@@ -138,7 +146,8 @@ function ShareProjectModal({ locations, edits, scheduleName, projectShareId, pro
       const edit = edits[loc.id] || {};
       if (edit.shareId) {
         const coverUrl = edit.cover ? LB_SYNC.getImageUrl(edit.cover) : null;
-        resultMap[loc.id] = { name: locName(loc), shareId: edit.shareId, coverUrl, regions: loc.regions || [], sceneCount: loc.sceneCount || 0 };
+        const coverThumbUrl = edit.cover ? LB_SYNC.getThumbUrl(edit.cover) : null;
+        resultMap[loc.id] = { name: locName(loc), shareId: edit.shareId, coverUrl, coverThumbUrl, regions: loc.regions || [], sceneCount: loc.sceneCount || 0 };
       }
     }
 
@@ -149,16 +158,16 @@ function ShareProjectModal({ locations, edits, scheduleName, projectShareId, pro
       const name = locName(loc);
       setProgress('Publiceren ' + (i + 1) + ' / ' + needsPublish.length + ' — ' + name);
       try {
-        const { sid, coverUrl } = await publishLocShare(loc, edit, name);
+        const { sid, coverUrl, coverThumbUrl } = await publishLocShare(loc, edit, name);
         newShareIds[loc.id] = sid;
-        resultMap[loc.id] = { name, shareId: sid, coverUrl, regions: loc.regions || [], sceneCount: loc.sceneCount || 0 };
+        resultMap[loc.id] = { name, shareId: sid, coverUrl, coverThumbUrl, regions: loc.regions || [], sceneCount: loc.sceneCount || 0 };
       } catch (e) {
         console.error('[ShareProject] failed for', loc.id, e);
         setProgress('Fout bij ' + name + ' — opnieuw proberen…');
         try {
-          const { sid, coverUrl } = await publishLocShare(loc, edit, name);
+          const { sid, coverUrl, coverThumbUrl } = await publishLocShare(loc, edit, name);
           newShareIds[loc.id] = sid;
-          resultMap[loc.id] = { name, shareId: sid, coverUrl, regions: loc.regions || [], sceneCount: loc.sceneCount || 0 };
+          resultMap[loc.id] = { name, shareId: sid, coverUrl, coverThumbUrl, regions: loc.regions || [], sceneCount: loc.sceneCount || 0 };
         } catch (e2) {
           console.error('[ShareProject] retry failed for', loc.id, e2);
           setProgress('⚠ ' + name + ' kon niet gepubliceerd worden, rest gaat door…');

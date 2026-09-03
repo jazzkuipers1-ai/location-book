@@ -67,6 +67,7 @@ function ShareModal({ loc, edit, deletedPhotoIds, name, scheduleName, onClose, o
           : [{ id: 'photos' }]
         ).map(c => c.id),
         ...(edit.measCategories || []).map(c => c.id),
+        ...(edit.designCategories || []).map(c => c.id),
       ]);
       const gals = {};
       Object.entries(edit.galleries || {}).forEach(([k, arr]) => {

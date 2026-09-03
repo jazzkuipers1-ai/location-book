@@ -482,7 +482,7 @@ function Gallery({ catId, catColor, items, onChange, onDraw, onDropFromOther }) 
   const zoneProps = {
     onDragOver: e => { if (_drag.catId && _drag.catId !== catId) { e.preventDefault(); setDropZoneOver(true); } },
     onDragLeave: () => setDropZoneOver(false),
-    onDrop: e => { e.preventDefault(); if (_drag.catId && _drag.catId !== catId) { onDropFromOther(_drag.catId, _drag.idx); setDropZoneOver(false); } },
+    onDrop: e => { e.preventDefault(); if (_drag.catId && _drag.catId !== catId) { onDropFromOther(_drag.catId, _drag.idx); _drag.catId = null; setDropZoneOver(false); } },
   };
 
   const accentColor = catColor ? catColor.hex : 'var(--accent)';

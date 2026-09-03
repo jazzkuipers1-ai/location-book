@@ -148,6 +148,7 @@ function ShareModal({ loc, edit, deletedPhotoIds, name, scheduleName, onClose, o
         wrapTiming: (edit && edit.wrapTiming) || null,
         wrapDates: (edit && edit.wrapDates) || [],
         measCategories: (edit && edit.measCategories) || null,
+        designCategories: (edit && edit.designCategories) || null,
         updatedAt: Date.now(),
       };
 

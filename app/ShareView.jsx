@@ -862,7 +862,7 @@ function ProjectShareView({ projId }) {
               {/* Cover */}
               <div style={{ height: 180, background: 'var(--card-2)', overflow: 'hidden' }}>
                 {loc.coverUrl
-                  ? <img src={loc.coverThumbUrl || loc.coverUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  ? <img src={loc.coverThumbUrl || loc.coverUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => { if (e.target.src !== loc.coverUrl) e.target.src = loc.coverUrl; }} />
                   : <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-3)', fontFamily: 'var(--mono)', fontSize: 11 }}>geen foto</div>
                 }
               </div>

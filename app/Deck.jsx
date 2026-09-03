@@ -33,9 +33,33 @@ const DECK_CSS = `
   .deck-page:last-child{break-after:auto;}
 }`;
 
+function PrepWrapRow({ edit, light }) {
+  const prepDates = (edit.prepDates || []).filter(Boolean);
+  const wrapDates = (edit.wrapDates || []).filter(Boolean);
+  if (!edit.prepDays && !edit.wrapDays) return null;
+  const ink = light ? 'rgba(255,255,255,.85)' : 'var(--dk-ink2)';
+  const ink3 = light ? 'rgba(255,255,255,.55)' : 'var(--dk-ink3)';
+  const accent = light ? '#f0b8ad' : 'var(--dk-accent)';
+  const renderDates = (dates, days, timing, map) => dates.length > 0
+    ? dates.map((d, i) => <span key={i} style={{ fontFamily: 'var(--mono)', fontSize: 13, color: ink }}>{fmtDate(d)}{dates.length > 1 && i < dates.length - 1 ? '  ·' : ''}</span>)
+    : <span style={{ fontFamily: 'var(--mono)', fontSize: 13, color: ink3 }}>{days} dag{days !== 1 ? 'en' : ''}{timing ? ' — ' + (map[timing] || timing) : ''}</span>;
+  return (
+    <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
+      {edit.prepDays > 0 && <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <span style={{ fontFamily: 'var(--mono)', fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: accent }}>Prep</span>
+        {renderDates(prepDates, edit.prepDays, edit.prepTiming, { before_shooting: 'voor opname', after_wrap: 'na wrap' })}
+      </div>}
+      {edit.wrapDays > 0 && <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <span style={{ fontFamily: 'var(--mono)', fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: accent }}>Wrap</span>
+        {renderDates(wrapDates, edit.wrapDays, edit.wrapTiming, { after_wrap: 'na wrap', before_shooting: 'voor opname' })}
+      </div>}
+    </div>
+  );
+}
+
 function CoverPage({ loc, edit, name, scheduleName }) {
   const adj = edit.adjustments || [];
-  const stats = [['Scenes', loc.sceneCount], ['Shoot days', loc.dayNums.length], ['Prep', (edit.prepDays || 0) + ' d'], ['Wrap', (edit.wrapDays || 0) + ' d'], ['Adjustments', adj.length]];
+  const stats = [['Scenes', loc.sceneCount], ['Shoot days', loc.dayNums.length], ['Adjustments', adj.length]];
   const sz = name.length > 18 ? 60 : name.length > 12 ? 80 : 104;
   if (edit.cover) {
     return (
@@ -52,12 +76,17 @@ function CoverPage({ loc, edit, name, scheduleName }) {
             <div className="dk-serif" style={{ fontSize: sz, fontWeight: 600, lineHeight: .94, letterSpacing: '-.025em' }}>{name}</div>
             {edit.address && <div style={{ fontSize: 18, color: 'rgba(255,255,255,.85)', marginTop: 16 }}>{edit.address}</div>}
             {edit.mapsUrl && <a href={edit.mapsUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: 8, fontSize: 13, color: '#f0b8ad', textDecoration: 'underline', fontFamily: 'var(--mono)', fontWeight: 600 }}>View on Google Maps ↗</a>}
-            <div style={{ display: 'flex', gap: 34, marginTop: 26 }}>
+            <div style={{ display: 'flex', gap: 40, marginTop: 26 }}>
               {stats.map(([k, v]) => (
-                <div key={k}><div className="dk-serif" style={{ fontSize: 32, fontWeight: 600, lineHeight: 1 }}>{v}</div>
-                  <div className="dk-mono" style={{ fontSize: 10, letterSpacing: '.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,.75)', marginTop: 6 }}>{k}</div></div>
+                <div key={k}><div className="dk-serif" style={{ fontSize: 48, fontWeight: 600, lineHeight: 1 }}>{v}</div>
+                  <div className="dk-mono" style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,.75)', marginTop: 7 }}>{k}</div></div>
               ))}
+              {edit.prepDays > 0 && <div><div className="dk-serif" style={{ fontSize: 48, fontWeight: 600, lineHeight: 1, color: '#f0b8ad' }}>{edit.prepDays}</div>
+                <div className="dk-mono" style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,.75)', marginTop: 7 }}>Prep</div></div>}
+              {edit.wrapDays > 0 && <div><div className="dk-serif" style={{ fontSize: 48, fontWeight: 600, lineHeight: 1, color: '#f0b8ad' }}>{edit.wrapDays}</div>
+                <div className="dk-mono" style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,.75)', marginTop: 7 }}>Wrap</div></div>}
             </div>
+            {(edit.prepDays > 0 || edit.wrapDays > 0) && <div style={{ marginTop: 14 }}><PrepWrapRow edit={edit} light /></div>}
           </div>
         </div>
       </div>
@@ -75,11 +104,18 @@ function CoverPage({ loc, edit, name, scheduleName }) {
           {edit.address && <div style={{ fontSize: 18, color: 'var(--dk-ink2)', marginTop: 18 }}>{edit.address}</div>}
           {edit.mapsUrl && <a href={edit.mapsUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: 6, fontSize: 13, color: 'var(--dk-accent)', textDecoration: 'underline', fontFamily: 'var(--mono)', fontWeight: 600 }}>View on Google Maps ↗</a>}
         </div>
-        <div style={{ display: 'flex', gap: 40, borderTop: '2px solid #221d15', paddingTop: 18 }}>
-          {stats.map(([k, v]) => (
-            <div key={k}><div className="dk-serif" style={{ fontSize: 38, fontWeight: 600, lineHeight: 1 }}>{v}</div>
-              <div className="dk-mono" style={{ fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--dk-ink2)', marginTop: 7 }}>{k}</div></div>
-          ))}
+        <div>
+          <div style={{ display: 'flex', gap: 48, borderTop: '2px solid #221d15', paddingTop: 18, marginBottom: (edit.prepDays > 0 || edit.wrapDays > 0) ? 14 : 0 }}>
+            {stats.map(([k, v]) => (
+              <div key={k}><div className="dk-serif" style={{ fontSize: 48, fontWeight: 600, lineHeight: 1 }}>{v}</div>
+                <div className="dk-mono" style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--dk-ink2)', marginTop: 7 }}>{k}</div></div>
+            ))}
+            {edit.prepDays > 0 && <div><div className="dk-serif" style={{ fontSize: 48, fontWeight: 600, lineHeight: 1, color: 'var(--dk-accent)' }}>{edit.prepDays}</div>
+              <div className="dk-mono" style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--dk-ink2)', marginTop: 7 }}>Prep</div></div>}
+            {edit.wrapDays > 0 && <div><div className="dk-serif" style={{ fontSize: 48, fontWeight: 600, lineHeight: 1, color: 'var(--dk-accent)' }}>{edit.wrapDays}</div>
+              <div className="dk-mono" style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--dk-ink2)', marginTop: 7 }}>Wrap</div></div>}
+          </div>
+          <PrepWrapRow edit={edit} />
         </div>
       </div>
     </div>
@@ -137,6 +173,8 @@ function OverviewPage({ loc, edit, name, scheduleName }) {
             ))}
           </div>
         </div>
+
+        {(edit.prepDays > 0 || edit.wrapDays > 0) && <div style={{ padding: '8px 0', borderBottom: '1px solid var(--dk-line)', marginBottom: 4 }}><PrepWrapRow edit={edit} /></div>}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1.06fr 1fr 232px', gap: 26, flex: 1, minHeight: 0, marginTop: 20 }}>
           {/* Adjustments */}
@@ -206,7 +244,7 @@ function OverviewPage({ loc, edit, name, scheduleName }) {
             </div>
             {edit.access && <div><div className="dk-kick" style={{ fontSize: 10, marginBottom: 6 }}>Access</div>
               <div style={{ fontSize: 11.5, lineHeight: 1.4, color: 'var(--dk-ink2)' }}>{edit.access}</div></div>}
-            <div><div className="dk-kick" style={{ fontSize: 10, marginBottom: 6 }}>Visual references</div>
+<div><div className="dk-kick" style={{ fontSize: 10, marginBottom: 6 }}>Visual references</div>
               <div style={{ fontSize: 11.5, color: 'var(--dk-ink2)' }}>{visualCount} image{visualCount !== 1 ? 's' : ''} — see appendix</div></div>
           </div>
         </div>

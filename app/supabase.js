@@ -177,11 +177,13 @@
 
   // Upload a thumbnail alongside the original — used at share-publish time
   async function uploadThumb(blob, imageId) {
+    if (isThumbUploaded(imageId)) return getThumbUrl(imageId);
     try {
       const thumbBlob = await resizeBlob(blob, 900, 0.72);
       const path = 'images/thumb_' + imageId;
       const { error } = await sb.storage.from('project-images').upload(path, thumbBlob, { upsert: true, contentType: 'image/jpeg' });
       if (error) throw error;
+      markThumbUploaded(imageId);
       const { data } = sb.storage.from('project-images').getPublicUrl(path);
       return data.publicUrl;
     } catch (e) { return null; }
@@ -243,6 +245,17 @@
   /* ---- offline upload queue ---------------------------------------------- */
   const QUEUE_KEY = 'lb_upload_queue';
   const UPLOADED_KEY = 'lb_uploaded_ids'; // IDs confirmed uploaded to Supabase
+  const THUMB_KEY = 'lb_uploaded_thumbs';
+
+  function markThumbUploaded(id) {
+    try {
+      const arr = JSON.parse(localStorage.getItem(THUMB_KEY) || '[]');
+      if (!arr.includes(id)) { arr.push(id); localStorage.setItem(THUMB_KEY, JSON.stringify(arr)); }
+    } catch(e) {}
+  }
+  function isThumbUploaded(id) {
+    try { return JSON.parse(localStorage.getItem(THUMB_KEY) || '[]').includes(id); } catch(e) { return false; }
+  }
 
   function markUploaded(id) {
     try {
@@ -407,5 +420,5 @@
     return { name, color, unsubscribe: () => { sb.removeChannel(ch); presenceChannel = null; } };
   }
 
-  window.LB_SYNC = { CLIENT_ID, loadState, saveState, subscribe, loadProjects, createProject, updateProject, deleteProject, getProjectByCode, uploadImage, uploadThumb, getImageUrl, getThumbUrl, queueUpload, startQueue, flushUploadQueue, publishShare, loadShare, getShareUrl, publishProjectShare, loadProjectShare, getProjectShareUrl, publishAgendaShare, loadAgendaShare, getAgendaShareUrl, setProjectPassword, removeProjectPassword, getProjectPassword, signUp, signIn, signOut, getSession, onAuthChange, subscribePresence };
+  window.LB_SYNC = { CLIENT_ID, loadState, saveState, subscribe, loadProjects, createProject, updateProject, deleteProject, getProjectByCode, uploadImage, uploadThumb, getImageUrl, getThumbUrl, isUploaded, queueUpload, startQueue, flushUploadQueue, publishShare, loadShare, getShareUrl, publishProjectShare, loadProjectShare, getProjectShareUrl, publishAgendaShare, loadAgendaShare, getAgendaShareUrl, setProjectPassword, removeProjectPassword, getProjectPassword, signUp, signIn, signOut, getSession, onAuthChange, subscribePresence };
 })();

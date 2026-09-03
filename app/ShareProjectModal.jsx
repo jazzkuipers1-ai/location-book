@@ -69,10 +69,15 @@ function ShareProjectModal({ locations, edits, scheduleName, projectShareId, pro
     const urlMap = {};
     const thumbMap = {};
     for (const id of [...ids]) {
-      const blob = await LB.db.getBlob(id);
-      urlMap[id] = blob ? await LB_SYNC.uploadImage(blob, id) : LB_SYNC.getImageUrl(id);
-      if (blob) thumbMap[id] = await LB_SYNC.uploadThumb(blob, id);
-      if (!thumbMap[id]) thumbMap[id] = LB_SYNC.getThumbUrl(id);
+      if (LB_SYNC.isUploaded(id)) {
+        urlMap[id] = LB_SYNC.getImageUrl(id);
+        thumbMap[id] = LB_SYNC.getThumbUrl(id);
+      } else {
+        const blob = await LB.db.getBlob(id);
+        urlMap[id] = blob ? await LB_SYNC.uploadImage(blob, id) : LB_SYNC.getImageUrl(id);
+        if (blob) thumbMap[id] = await LB_SYNC.uploadThumb(blob, id);
+        if (!thumbMap[id]) thumbMap[id] = LB_SYNC.getThumbUrl(id);
+      }
     }
 
     const sid = edit.shareId || ('s' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6));
@@ -139,24 +144,13 @@ function ShareProjectModal({ locations, edits, scheduleName, projectShareId, pro
     // Build result map keyed by loc.id so we can sort back at the end
     const resultMap = {};
     const toPublish = locations.filter(l => selected.has(l.id));
-    const needsPublish = toPublish.filter(l => !(edits[l.id] || {}).shareId);
 
-    // Already-published: include instantly without re-uploading
-    for (const loc of toPublish) {
-      const edit = edits[loc.id] || {};
-      if (edit.shareId) {
-        const coverUrl = edit.cover ? LB_SYNC.getImageUrl(edit.cover) : null;
-        const coverThumbUrl = edit.cover ? LB_SYNC.getThumbUrl(edit.cover) : null;
-        resultMap[loc.id] = { name: locName(loc), shareId: edit.shareId, coverUrl, coverThumbUrl, regions: loc.regions || [], sceneCount: loc.sceneCount || 0 };
-      }
-    }
-
-    // New locations: publish (upload images + create share JSON)
-    for (let i = 0; i < needsPublish.length; i++) {
-      const loc = needsPublish[i];
+    // Publish all selected locations (re-publish updates data if prep/wrap/notes changed)
+    for (let i = 0; i < toPublish.length; i++) {
+      const loc = toPublish[i];
       const edit = edits[loc.id] || {};
       const name = locName(loc);
-      setProgress('Publiceren ' + (i + 1) + ' / ' + needsPublish.length + ' — ' + name);
+      setProgress('Publiceren ' + (i + 1) + ' / ' + toPublish.length + ' — ' + name);
       try {
         const { sid, coverUrl, coverThumbUrl } = await publishLocShare(loc, edit, name);
         newShareIds[loc.id] = sid;

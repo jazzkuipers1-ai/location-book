@@ -69,12 +69,14 @@ function ShareProjectModal({ locations, edits, scheduleName, projectShareId, pro
     const urlMap = {};
     const thumbMap = {};
     for (const id of [...ids]) {
-      if (LB_SYNC.isUploaded(id)) {
+      const alreadyUp = LB_SYNC.isUploaded(id);
+      const thumbUp = LB_SYNC.isThumbUploaded(id);
+      if (alreadyUp && thumbUp) {
         urlMap[id] = LB_SYNC.getImageUrl(id);
         thumbMap[id] = LB_SYNC.getThumbUrl(id);
       } else {
         const blob = await LB.db.getBlob(id);
-        urlMap[id] = blob ? await LB_SYNC.uploadImage(blob, id) : LB_SYNC.getImageUrl(id);
+        urlMap[id] = alreadyUp ? LB_SYNC.getImageUrl(id) : (blob ? await LB_SYNC.uploadImage(blob, id) : LB_SYNC.getImageUrl(id));
         if (blob) thumbMap[id] = await LB_SYNC.uploadThumb(blob, id);
         if (!thumbMap[id]) thumbMap[id] = LB_SYNC.getThumbUrl(id);
       }

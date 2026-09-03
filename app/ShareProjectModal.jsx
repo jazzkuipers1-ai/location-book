@@ -131,6 +131,7 @@ function ShareProjectModal({ locations, edits, scheduleName, projectShareId, pro
       wrapDays: edit.wrapDays || 0, wrapTiming: edit.wrapTiming || null, wrapDates: edit.wrapDates || [],
       categoryPropLists: edit.categoryPropLists || {},
       measCategories: edit.measCategories || null,
+      designCategories: edit.designCategories || null,
       galCategories: edit.galCategories || null,
       updatedAt: Date.now(),
     };

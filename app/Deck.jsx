@@ -429,7 +429,7 @@ function Deck({ entries, scheduleName, opts, onClose }) {
         }
       });
     // Fixed sections — only shown when non-empty and not turned off in export opts
-    [['sketches', 'Sketches'], ['measurements', 'Measurements'], ['designs', 'Designs'], ['moodboard', 'Moodboard']]
+    [['sketches', 'Sketches'], ['measurements', 'Measurements'], ['moodboard', 'Moodboard']]
       .filter(([k]) => o[k] !== false && ((gal[k] || []).length > 0 || (catAdjs[k] || []).length > 0))
       .forEach(([k, label]) => {
         const imgs = gal[k] || [];
@@ -441,6 +441,23 @@ function Deck({ entries, scheduleName, opts, onClose }) {
             items={imgs.slice(p * PER_APPENDIX, (p + 1) * PER_APPENDIX)} part={p + 1} parts={aParts} />);
         }
       });
+    // Design sub-categories
+    if (o.designs !== false) {
+      const designCats = edit.designCategories && edit.designCategories.length
+        ? edit.designCategories
+        : [{ id: 'designs', label: 'Designs' }];
+      designCats.forEach(dc => {
+        const imgs = gal[dc.id] || [];
+        const adj = catAdjs[dc.id] || [];
+        if (!imgs.length && !adj.length) return;
+        const aParts = Math.ceil(imgs.length / PER_APPENDIX) || 1;
+        for (let p = 0; p < aParts; p++) {
+          pages.push(<AppendixPage key={loc.id + '-' + dc.id + p} name={name} scheduleName={scheduleName}
+            label={dc.label === 'General' ? 'Designs' : 'Designs — ' + dc.label} color={null}
+            adjItems={adj} items={imgs.slice(p * PER_APPENDIX, (p + 1) * PER_APPENDIX)} part={p + 1} parts={aParts} />);
+        }
+      });
+    }
   });
 
   const multi = entries.length > 1;

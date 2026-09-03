@@ -446,9 +446,13 @@ function ShareView({ shareId, onBack }) {
 
         {/* Designs — with sub-categories */}
         {(() => {
-          const designCats = data.designCategories && data.designCategories.length
-            ? data.designCategories
-            : [{ id: 'designs', label: 'General' }];
+          const designCats = (() => {
+            if (data.designCategories && data.designCategories.length) return data.designCategories;
+            // Infer from gallery keys when designCategories not in JSON (old shares)
+            const desKeys = Object.keys(data.galleries || {}).filter(k => k.startsWith('des_') && (data.galleries[k] || []).length > 0);
+            if (!desKeys.length) return [{ id: 'designs', label: 'General' }];
+            return [{ id: 'designs', label: 'General' }, ...desKeys.map(k => ({ id: k, label: k }))];
+          })();
           const totalDesigns = designCats.reduce((n, c) => n + ((data.galleries && data.galleries[c.id]) || []).length, 0);
           if (totalDesigns === 0) return null;
           return (

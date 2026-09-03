@@ -136,6 +136,7 @@ function ShareProjectModal({ locations, edits, scheduleName, projectShareId, pro
       updatedAt: Date.now(),
     };
 
+    console.log('[Share] publishing', name, { designCategories: shareData.designCategories, galleryKeys: Object.keys(shareData.galleries) });
     await LB_SYNC.publishShare(sid, shareData);
     return { sid, coverUrl: shareData.coverUrl, coverThumbUrl: shareData.coverThumbUrl };
   }

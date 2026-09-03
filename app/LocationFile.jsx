@@ -754,7 +754,7 @@ function VisualSection({ edit, loc, onPatch, onDraw, onSketch }) {
                   items={gal[dc.id] || []}
                   onChange={arr => setGal(dc.id, arr)}
                   onDraw={it => onDraw(dc.id, it)}
-                  onDropFromOther={() => {}}
+                  onDropFromOther={(fromCatId, fromIdx) => movePhoto(fromCatId, fromIdx, dc.id)}
                 />
               </div>
             ))}

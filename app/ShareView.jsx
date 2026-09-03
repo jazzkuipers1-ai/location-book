@@ -385,7 +385,7 @@ function ShareView({ shareId, onBack }) {
                     <div key={i} style={{ border: '2px solid ' + color, borderRadius: 12, overflow: 'hidden', background: 'var(--card)', display: 'flex', flexDirection: 'column' }}>
                       <div style={{ aspectRatio: '4/3', overflow: 'hidden', cursor: 'zoom-in', background: 'var(--card-2)' }}
                         onClick={() => openLightbox(it.url)}>
-                        <img src={it.thumbUrl || it.url} alt={it.cap || ''} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        <img src={it.thumbUrl || it.url} alt={it.cap || ''} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => { if (it.url && e.target.src !== it.url) e.target.src = it.url; }} />
                       </div>
                       {(it.cap || it.note) && (
                         <div style={{ padding: '10px 13px', borderTop: '2px solid ' + color }}>
@@ -428,7 +428,7 @@ function ShareView({ shareId, onBack }) {
                     <div key={i} style={{ border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden', background: 'var(--card)', display: 'flex', flexDirection: 'column' }}>
                       <div style={{ cursor: 'zoom-in', background: 'var(--card-2)' }}
                         onClick={() => setLightbox({ images: imgs, idx: i })}>
-                        <img src={it.thumbUrl || it.url} alt={it.cap || ''} style={{ width: '100%', height: 'auto', display: 'block' }} />
+                        <img src={it.thumbUrl || it.url} alt={it.cap || ''} style={{ width: '100%', height: 'auto', display: 'block' }} onError={e => { if (it.url && e.target.src !== it.url) e.target.src = it.url; }} />
                       </div>
                       {(it.cap || it.note) && (
                         <div style={{ padding: '10px 13px', borderTop: '1px solid var(--line)' }}>
@@ -474,7 +474,7 @@ function ShareView({ shareId, onBack }) {
                         <div key={i} style={{ border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden', background: 'var(--card)', display: 'flex', flexDirection: 'column' }}>
                           <div style={{ cursor: 'zoom-in', background: 'var(--card-2)' }}
                             onClick={() => setLightbox({ images: imgs, idx: i })}>
-                            <img src={it.thumbUrl || it.url} alt={it.cap || ''} style={{ width: '100%', height: 'auto', display: 'block' }} />
+                            <img src={it.thumbUrl || it.url} alt={it.cap || ''} style={{ width: '100%', height: 'auto', display: 'block' }} onError={e => { if (it.url && e.target.src !== it.url) e.target.src = it.url; }} />
                           </div>
                           {(it.cap || it.note) && (
                             <div style={{ padding: '10px 13px', borderTop: '1px solid var(--line)' }}>
@@ -518,7 +518,7 @@ function ShareView({ shareId, onBack }) {
                         <div key={i} style={{ border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden', background: 'var(--card)', display: 'flex', flexDirection: 'column' }}>
                           <div style={{ cursor: 'zoom-in', background: 'var(--card-2)' }}
                             onClick={() => setLightbox({ images: imgs, idx: i })}>
-                            <img src={it.thumbUrl || it.url} alt={it.cap || ''} style={{ width: '100%', height: 'auto', display: 'block' }} />
+                            <img src={it.thumbUrl || it.url} alt={it.cap || ''} style={{ width: '100%', height: 'auto', display: 'block' }} onError={e => { if (it.url && e.target.src !== it.url) e.target.src = it.url; }} />
                           </div>
                           {(it.cap || it.note) && (
                             <div style={{ padding: '10px 13px', borderTop: '1px solid var(--line)' }}>

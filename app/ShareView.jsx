@@ -194,7 +194,7 @@ function ShareView({ shareId, onBack }) {
       {data.coverUrl && (
         <div style={{ width: '100%', height: 340, overflow: 'hidden', cursor: 'zoom-in' }}
           onClick={() => setLightbox({ images: [{ url: data.coverUrl }], idx: 0 })}>
-          <img src={data.coverThumbUrl || data.coverUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          <img src={data.coverThumbUrl || data.coverUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => { if (e.target.src !== data.coverUrl) e.target.src = data.coverUrl; }} />
         </div>
       )}
 

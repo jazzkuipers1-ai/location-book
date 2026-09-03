@@ -159,7 +159,7 @@ function ShareView({ shareId, onBack }) {
     : [{ id: 'photos', label: 'Photos', colorId: 'slate' }];
   const knownIds = new Set(baseCats.map(c => c.id));
   const extraCats = Object.keys(data.galleries || {})
-    .filter(k => !knownIds.has(k) && !FIXED_IDS.has(k) && (data.galleries[k] || []).length > 0)
+    .filter(k => !knownIds.has(k) && !FIXED_IDS.has(k) && !k.startsWith('des_') && (data.galleries[k] || []).length > 0)
     .map(k => ({ id: k, label: 'Photos', colorId: 'slate' }));
   const galCats = [...baseCats, ...extraCats];
 

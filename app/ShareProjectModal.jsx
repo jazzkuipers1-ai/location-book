@@ -65,6 +65,9 @@ function ShareProjectModal({ locations, edits, scheduleName, projectShareId, pro
       (arr || []).forEach(it => { if (it.id) ids.add(it.id); if (it.annotatedId) ids.add(it.annotatedId); })
     );
     (edit.adjustments || []).forEach(adj => { if (adj.thumb) ids.add(adj.thumb); });
+    Object.values(edit.categoryAdjustments || {}).forEach(arr =>
+      (arr || []).forEach(adj => { if (adj.thumb) ids.add(adj.thumb); })
+    );
 
     const urlMap = {};
     const thumbMap = {};
@@ -118,6 +121,26 @@ function ShareProjectModal({ locations, edits, scheduleName, projectShareId, pro
         done: !!adj.done, measure: adj.measure || '',
         thumbUrl: adj.thumb ? (urlMap[adj.thumb] || null) : null,
       })),
+      categoryAdjustments: (() => {
+        const res = {};
+        Object.entries(edit.categoryAdjustments || {}).forEach(([k, arr]) => {
+          res[k] = (arr || []).map(adj => ({
+            id: adj.id, cat: adj.cat, text: adj.text, area: adj.area || '',
+            done: !!adj.done, measure: adj.measure || '',
+            thumbUrl: adj.thumb ? (urlMap[adj.thumb] || null) : null,
+          }));
+        });
+        // Migrate legacy flat adjustments into first gallery category if no categoryAdjustments
+        const firstCatId = (edit.galCategories && edit.galCategories[0] && edit.galCategories[0].id) || 'photos';
+        if (!Object.keys(res).length && (edit.adjustments || []).length > 0) {
+          res[firstCatId] = (edit.adjustments || []).map(adj => ({
+            id: adj.id, cat: adj.cat, text: adj.text, area: adj.area || '',
+            done: !!adj.done, measure: adj.measure || '',
+            thumbUrl: adj.thumb ? (urlMap[adj.thumb] || null) : null,
+          }));
+        }
+        return res;
+      })(),
       galleries: gals, galCategories: edit.galCategories || null,
       coverUrl: edit.cover ? (urlMap[edit.cover] || null) : null,
       coverThumbUrl: edit.cover ? (thumbMap[edit.cover] || null) : null,

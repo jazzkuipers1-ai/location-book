@@ -531,6 +531,7 @@ function VisualSection({ edit, loc, onPatch, onDraw, onSketch }) {
     : [{ id: 'photos', label: 'Photos', colorId: 'slate' }];
   const gal = edit.galleries || {};
   const catAdjs = edit.categoryAdjustments || {};
+  const [moodOpen, setMoodOpen] = useState({});
 
   const setCats = newCats => onPatch({ galCategories: newCats });
   // Functional form: always read current galleries from state, never from stale closure
@@ -614,6 +615,11 @@ function VisualSection({ edit, loc, onPatch, onDraw, onSketch }) {
               </span>
               <span className="vc">{(gal[cat.id] || []).length}</span>
               <span className="ln" />
+              <button className="btn sm ghost" style={{ padding: '3px 7px', gap: 4, color: (gal['mood_' + cat.id] || []).length ? color.hex : 'var(--ink-3)' }}
+                onClick={() => setMoodOpen(o => ({ ...o, [cat.id]: !o[cat.id] }))}
+                title="Toggle moodboard for this category">
+                <Icon name="grid" size={12} />Mood
+              </button>
               {cats.length > 1 && (
                 <button className="btn sm ghost" style={{ padding: '3px 7px', color: 'var(--ink-3)' }}
                   onClick={() => removeCat(cat.id)} title="Remove category (photos move to first)">
@@ -655,6 +661,23 @@ function VisualSection({ edit, loc, onPatch, onDraw, onSketch }) {
               }))}
               inline
             />
+            {(moodOpen[cat.id] || (gal['mood_' + cat.id] || []).length > 0) && (
+              <div style={{ marginTop: 10, borderTop: '1px solid var(--line-2)', paddingTop: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                  <Icon name="grid" size={12} style={{ color: 'var(--ink-3)' }} />
+                  <span style={{ fontFamily: 'var(--mono)', fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>Moodboard</span>
+                  <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink-3)' }}>{(gal['mood_' + cat.id] || []).length || ''}</span>
+                </div>
+                <Gallery
+                  catId={'mood_' + cat.id}
+                  catColor={null}
+                  items={gal['mood_' + cat.id] || []}
+                  onChange={arr => setGal('mood_' + cat.id, arr)}
+                  onDraw={it => onDraw('mood_' + cat.id, it)}
+                  onDropFromOther={() => {}}
+                />
+              </div>
+            )}
           </div>
         );
       })}

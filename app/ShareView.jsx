@@ -159,7 +159,7 @@ function ShareView({ shareId, onBack }) {
     : [{ id: 'photos', label: 'Photos', colorId: 'slate' }];
   const knownIds = new Set(baseCats.map(c => c.id));
   const extraCats = Object.keys(data.galleries || {})
-    .filter(k => !knownIds.has(k) && !FIXED_IDS.has(k) && !k.startsWith('des_') && (data.galleries[k] || []).length > 0)
+    .filter(k => !knownIds.has(k) && !FIXED_IDS.has(k) && !k.startsWith('des_') && !k.startsWith('mood_') && (data.galleries[k] || []).length > 0)
     .map(k => ({ id: k, label: 'Photos', colorId: 'slate' }));
   const galCats = [...baseCats, ...extraCats];
 
@@ -361,12 +361,13 @@ function ShareView({ shareId, onBack }) {
         {/* Gallery sections — adjustments above photos per category */}
         {galCats.map((cat, catIdx) => {
           const imgs = data.galleries && data.galleries[cat.id];
+          const moodImgs = (data.galleries && data.galleries['mood_' + cat.id]) || [];
           // Per-category adjustments; first category falls back to legacy flat list
           const hasCatAdjs = data.categoryAdjustments && Object.keys(data.categoryAdjustments).length > 0;
           const catAdjs = hasCatAdjs
             ? ((data.categoryAdjustments[cat.id]) || [])
             : (catIdx === 0 ? (data.adjustments || []) : []);
-          if ((!imgs || imgs.length === 0) && catAdjs.length === 0) return null;
+          if ((!imgs || imgs.length === 0) && catAdjs.length === 0 && moodImgs.length === 0) return null;
           const color = SV_CAT_COLORS[cat.colorId] || SV_CAT_COLORS.slate;
           const cols = Math.min((imgs || []).length, 3);
           return (
@@ -402,6 +403,26 @@ function ShareView({ shareId, onBack }) {
                 shareId={shareId}
                 catId={cat.id}
               />
+              {moodImgs.length > 0 && (
+                <div style={{ marginTop: 16, borderTop: '1px solid var(--line)', paddingTop: 14 }}>
+                  <div style={{ fontFamily: 'var(--mono)', fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 10 }}>Moodboard</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(' + Math.min(moodImgs.length, 3) + ', 1fr)', gap: 10 }}>
+                    {moodImgs.map((it, i) => (
+                      <div key={i} style={{ border: '1px solid var(--line)', borderRadius: 10, overflow: 'hidden', background: 'var(--card)' }}>
+                        <div style={{ cursor: 'zoom-in' }} onClick={() => setLightbox({ images: moodImgs, idx: i })}>
+                          <img src={it.thumbUrl || it.url} alt={it.cap || ''} style={{ width: '100%', height: 'auto', display: 'block' }} onError={e => { if (it.url && e.target.src !== it.url) e.target.src = it.url; }} />
+                        </div>
+                        {(it.cap || it.note) && (
+                          <div style={{ padding: '8px 10px', borderTop: '1px solid var(--line)' }}>
+                            {it.cap && <div style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 600 }}>{it.cap}</div>}
+                            {it.note && <div style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 2, whiteSpace: 'pre-wrap' }}>{it.note}</div>}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </SV_Section>
           );
         })}

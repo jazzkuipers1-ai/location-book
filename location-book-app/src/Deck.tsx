@@ -178,7 +178,12 @@ function OverviewPage({ loc, edit, name, scheduleName }: any) {
     const removedScenes: string[] = edit.removedScenes || [];
     const addedScenes: any[] = edit.addedScenes || [];
     [...loc.scenes].filter((s: any) => !removedScenes.includes(s.number + '_' + s.idx)).forEach((s: any) => { const k = s.dayNumber || '—'; (g[k] = g[k] || []).push(s); });
-    addedScenes.forEach((s: any) => { (g['—'] = g['—'] || []).push({ ...s, _ovKey: 'added_' + s._id }); });
+    addedScenes.forEach((s: any) => {
+      const ov = (edit.sceneOverrides || {})['added_' + s._id] || {};
+      const merged = { ...s, ...ov, _ovKey: 'added_' + s._id };
+      const k = merged.date ? ('date:' + merged.date) : '—';
+      (g[k] = g[k] || []).push(merged);
+    });
     return Object.entries(g).sort((a, b) => (a[0] === '—' ? 999 : +a[0]) - (b[0] === '—' ? 999 : +b[0]));
   })();
 
@@ -246,7 +251,7 @@ function OverviewPage({ loc, edit, name, scheduleName }: any) {
               {scenesByDay.map(([day, scs]) => (
                 <div key={day} style={{ breakInside: 'avoid', marginBottom: 9 }}>
                   <div className="dk-mono" style={{ fontSize: 9, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--dk-accent)', marginBottom: 3 }}>
-                    {day === '—' ? 'Unscheduled' : 'Day ' + day}{scs[0].date ? ' · ' + fmtDate(scs[0].date) : ''}
+                    {day === '—' ? 'Unscheduled' : day.startsWith('date:') ? fmtDate(day.slice(5)) : ('Day ' + day + (scs[0].date ? ' · ' + fmtDate(scs[0].date) : ''))}
                   </div>
                   {scs.map((s: any) => {
                     const ovKey = s._ovKey || (s.number + '_' + s.idx);
@@ -452,7 +457,30 @@ export function Deck({ entries, scheduleName, opts, onClose, readonly }: any) {
       }
     }
     const gal = edit.galleries || {};
-    [['photos', 'Photos'], ['sketches', 'Sketches'], ['measurements', 'Measurements'], ['designs', 'Designs'], ['moodboard', 'Moodboard']]
+
+    // Custom photo gallery categories (each with optional per-category moodboard)
+    const galCats = (edit.galCategories && edit.galCategories.length) ? edit.galCategories : [{ id: 'photos', label: 'Photos' }];
+    galCats.forEach((cat: any) => {
+      const imgs = gal[cat.id] || [];
+      if (imgs.length) {
+        const aParts = Math.ceil(imgs.length / PER_APPENDIX);
+        for (let p = 0; p < aParts; p++) {
+          locPages.push(<AppendixPage key={loc.id + '-' + cat.id + p} name={name} scheduleName={scheduleName} label={cat.label || 'Photos'}
+            items={imgs.slice(p * PER_APPENDIX, (p + 1) * PER_APPENDIX)} part={p + 1} parts={aParts} onZoom={setLightbox} />);
+        }
+      }
+      const moodImgs = gal['mood_' + cat.id] || [];
+      if (moodImgs.length) {
+        const mParts = Math.ceil(moodImgs.length / PER_APPENDIX);
+        for (let p = 0; p < mParts; p++) {
+          locPages.push(<AppendixPage key={loc.id + '-mood_' + cat.id + p} name={name} scheduleName={scheduleName} label={(cat.label || 'Photos') + ' — Moodboard'}
+            items={moodImgs.slice(p * PER_APPENDIX, (p + 1) * PER_APPENDIX)} part={p + 1} parts={mParts} onZoom={setLightbox} />);
+        }
+      }
+    });
+
+    // Fixed gallery sections
+    [['sketches', 'Sketches'], ['measurements', 'Measurements'], ['moodboard', 'Moodboard']]
       .filter(([k]) => o[k] !== false && (gal[k] || []).length)
       .forEach(([k, label]) => {
         const imgs = gal[k];
@@ -462,6 +490,36 @@ export function Deck({ entries, scheduleName, opts, onClose, readonly }: any) {
             items={imgs.slice(p * PER_APPENDIX, (p + 1) * PER_APPENDIX)} part={p + 1} parts={aParts} onZoom={setLightbox} />);
         }
       });
+
+    // Measurement subcategories
+    (edit.measCategories || []).forEach((cat: any) => {
+      const imgs = gal[cat.id] || [];
+      if (!imgs.length) return;
+      const aParts = Math.ceil(imgs.length / PER_APPENDIX);
+      for (let p = 0; p < aParts; p++) {
+        locPages.push(<AppendixPage key={loc.id + '-' + cat.id + p} name={name} scheduleName={scheduleName} label={'Measurements — ' + (cat.label || '')}
+          items={imgs.slice(p * PER_APPENDIX, (p + 1) * PER_APPENDIX)} part={p + 1} parts={aParts} onZoom={setLightbox} />);
+      }
+    });
+
+    // Design subcategories
+    [['designs', 'Designs']].filter(([k]) => o[k] !== false && (gal[k] || []).length).forEach(([k, label]) => {
+      const imgs = gal[k];
+      const aParts = Math.ceil(imgs.length / PER_APPENDIX) || 1;
+      for (let p = 0; p < aParts; p++) {
+        locPages.push(<AppendixPage key={loc.id + '-' + k + p} name={name} scheduleName={scheduleName} label={label}
+          items={imgs.slice(p * PER_APPENDIX, (p + 1) * PER_APPENDIX)} part={p + 1} parts={aParts} onZoom={setLightbox} />);
+      }
+    });
+    (edit.designCategories || []).forEach((cat: any) => {
+      const imgs = gal[cat.id] || [];
+      if (!imgs.length) return;
+      const aParts = Math.ceil(imgs.length / PER_APPENDIX);
+      for (let p = 0; p < aParts; p++) {
+        locPages.push(<AppendixPage key={loc.id + '-' + cat.id + p} name={name} scheduleName={scheduleName} label={'Designs — ' + (cat.label || '')}
+          items={imgs.slice(p * PER_APPENDIX, (p + 1) * PER_APPENDIX)} part={p + 1} parts={aParts} onZoom={setLightbox} />);
+      }
+    });
 
     // Wrap the first page of each location in an anchor div
     locPages.forEach((page, pi) => {

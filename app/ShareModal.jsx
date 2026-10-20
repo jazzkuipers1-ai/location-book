@@ -71,7 +71,7 @@ function ShareModal({ loc, edit, deletedPhotoIds, name, scheduleName, onClose, o
       ]);
       const gals = {};
       Object.entries(edit.galleries || {}).forEach(([k, arr]) => {
-        if (!FIXED_GAL_IDS.has(k) && !activeCatIds.has(k)) return; // skip deleted categories
+        if (!FIXED_GAL_IDS.has(k) && !activeCatIds.has(k) && !k.startsWith('mood_')) return; // skip deleted categories
         gals[k] = (arr || [])
           .filter(it => !deleted.has(it.id))
           .map(it => ({

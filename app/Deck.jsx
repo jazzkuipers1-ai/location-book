@@ -414,7 +414,7 @@ function Deck({ entries, scheduleName, opts, onClose }) {
       ? edit.galCategories
       : [{ id: 'photos', label: 'Photos', colorId: 'slate' }];
     const CAT_COLORS_MAP = { slate:'#6b7a8d', rust:'#9e3b2e', forest:'#3d6b4f', gold:'#a07020', ocean:'#2c5f8a', plum:'#6b3d7a', terra:'#8a5a35', steel:'#3d5a6b' };
-    // Custom photo categories
+    // Custom photo categories (with per-category moodboard)
     galCats
       .filter(cat => o[cat.id] !== false && ((gal[cat.id] || []).length > 0 || (catAdjs[cat.id] || []).length > 0))
       .forEach(cat => {
@@ -426,6 +426,17 @@ function Deck({ entries, scheduleName, opts, onClose }) {
             label={cat.label} color={color}
             adjItems={catAdjs[cat.id] || []}
             items={imgs.slice(p * PER_APPENDIX, (p + 1) * PER_APPENDIX)} part={p + 1} parts={aParts} />);
+        }
+        // Per-category moodboard pages
+        const moodImgs = gal['mood_' + cat.id] || [];
+        if (moodImgs.length) {
+          const mParts = Math.ceil(moodImgs.length / PER_APPENDIX);
+          for (let p = 0; p < mParts; p++) {
+            pages.push(<AppendixPage key={loc.id + '-mood_' + cat.id + p} name={name} scheduleName={scheduleName}
+              label={cat.label + ' — Moodboard'} color={color}
+              adjItems={[]}
+              items={moodImgs.slice(p * PER_APPENDIX, (p + 1) * PER_APPENDIX)} part={p + 1} parts={mParts} />);
+          }
         }
       });
     // Fixed sections — only shown when non-empty and not turned off in export opts

@@ -615,6 +615,11 @@ function VisualSection({ edit, loc, onPatch, onDraw, onSketch }) {
               </span>
               <span className="vc">{(gal[cat.id] || []).length}</span>
               <span className="ln" />
+              <button className="btn sm ghost" style={{ padding: '3px 7px', gap: 4, color: (gal['catdes_' + cat.id] || []).length ? color.hex : 'var(--ink-3)' }}
+                onClick={() => setMoodOpen(o => ({ ...o, ['catdes_' + cat.id]: !o['catdes_' + cat.id] }))}
+                title="Toggle designs for this category">
+                <Icon name="layers" size={12} />Design
+              </button>
               <button className="btn sm ghost" style={{ padding: '3px 7px', gap: 4, color: (gal['mood_' + cat.id] || []).length ? color.hex : 'var(--ink-3)' }}
                 onClick={() => setMoodOpen(o => ({ ...o, [cat.id]: !o[cat.id] }))}
                 title="Toggle moodboard for this category">
@@ -661,6 +666,17 @@ function VisualSection({ edit, loc, onPatch, onDraw, onSketch }) {
               }))}
               inline
             />
+            {(moodOpen['catdes_' + cat.id] || (gal['catdes_' + cat.id] || []).length > 0) && (
+              <div style={{ marginTop: 10, borderTop: '1px solid var(--line-2)', paddingTop: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                  <Icon name="layers" size={12} style={{ color: 'var(--ink-3)' }} />
+                  <span style={{ fontFamily: 'var(--mono)', fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>Design</span>
+                  <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink-3)' }}>{(gal['catdes_' + cat.id] || []).length || ''}</span>
+                </div>
+                <Gallery catId={'catdes_' + cat.id} catColor={null} items={gal['catdes_' + cat.id] || []}
+                  onChange={arr => setGal('catdes_' + cat.id, arr)} onDraw={it => onDraw('catdes_' + cat.id, it)} onDropFromOther={() => {}} />
+              </div>
+            )}
             {(moodOpen[cat.id] || (gal['mood_' + cat.id] || []).length > 0) && (
               <div style={{ marginTop: 10, borderTop: '1px solid var(--line-2)', paddingTop: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
@@ -668,14 +684,8 @@ function VisualSection({ edit, loc, onPatch, onDraw, onSketch }) {
                   <span style={{ fontFamily: 'var(--mono)', fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>Moodboard</span>
                   <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink-3)' }}>{(gal['mood_' + cat.id] || []).length || ''}</span>
                 </div>
-                <Gallery
-                  catId={'mood_' + cat.id}
-                  catColor={null}
-                  items={gal['mood_' + cat.id] || []}
-                  onChange={arr => setGal('mood_' + cat.id, arr)}
-                  onDraw={it => onDraw('mood_' + cat.id, it)}
-                  onDropFromOther={() => {}}
-                />
+                <Gallery catId={'mood_' + cat.id} catColor={null} items={gal['mood_' + cat.id] || []}
+                  onChange={arr => setGal('mood_' + cat.id, arr)} onDraw={it => onDraw('mood_' + cat.id, it)} onDropFromOther={() => {}} />
               </div>
             )}
           </div>
@@ -753,7 +763,7 @@ function VisualSection({ edit, loc, onPatch, onDraw, onSketch }) {
             {designCats.map((dc, dci) => (
               <div key={dc.id} style={{ marginBottom: dci < designCats.length - 1 ? 12 : 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, paddingBottom: 4, borderBottom: '1px solid var(--line-2)' }}>
-                  {(designCats.length > 1 || dc.id !== 'designs') ? (
+                  {(designCats.length > 1 || dc.id !== 'designs') && (
                     <span
                       contentEditable suppressContentEditableWarning
                       onBlur={e => renameDesignCat(dc.id, e.currentTarget.textContent.trim() || dc.label)}
@@ -761,14 +771,9 @@ function VisualSection({ edit, loc, onPatch, onDraw, onSketch }) {
                       style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', cursor: 'text', outline: 'none', textTransform: 'uppercase', letterSpacing: '.04em' }}>
                       {dc.label}
                     </span>
-                  ) : <span style={{ flex: 0 }} />}
+                  )}
                   <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>{(gal[dc.id] || []).length}</span>
                   <span style={{ flex: 1 }} />
-                  <button className="btn sm ghost" style={{ padding: '3px 7px', gap: 4, color: (gal['mood_' + dc.id] || []).length ? 'var(--ink)' : 'var(--ink-3)' }}
-                    onClick={() => setMoodOpen(o => ({ ...o, [dc.id]: !o[dc.id] }))}
-                    title="Toggle moodboard for this design category">
-                    <Icon name="grid" size={12} />Mood
-                  </button>
                   {designCats.length > 1 && (
                     <button className="btn sm ghost" style={{ padding: '2px 6px', color: 'var(--ink-3)' }}
                       onClick={() => removeDesignCat(dc.id)}>
@@ -784,17 +789,6 @@ function VisualSection({ edit, loc, onPatch, onDraw, onSketch }) {
                   onDraw={it => onDraw(dc.id, it)}
                   onDropFromOther={(fromCatId, fromIdx) => movePhoto(fromCatId, fromIdx, dc.id)}
                 />
-                {(moodOpen[dc.id] || (gal['mood_' + dc.id] || []).length > 0) && (
-                  <div style={{ marginTop: 10, borderTop: '1px solid var(--line-2)', paddingTop: 10 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                      <Icon name="grid" size={12} style={{ color: 'var(--ink-3)' }} />
-                      <span style={{ fontFamily: 'var(--mono)', fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>Moodboard</span>
-                      <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink-3)' }}>{(gal['mood_' + dc.id] || []).length || ''}</span>
-                    </div>
-                    <Gallery catId={'mood_' + dc.id} catColor={null} items={gal['mood_' + dc.id] || []}
-                      onChange={arr => setGal('mood_' + dc.id, arr)} onDraw={it => onDraw('mood_' + dc.id, it)} onDropFromOther={() => {}} />
-                  </div>
-                )}
               </div>
             ))}
           </div>
@@ -858,11 +852,6 @@ function VisualSection({ edit, loc, onPatch, onDraw, onSketch }) {
                   </span>
                   <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>{(gal[mc.id] || []).length}</span>
                   <span style={{ flex: 1 }} />
-                  <button className="btn sm ghost" style={{ padding: '3px 7px', gap: 4, color: (gal['mood_' + mc.id] || []).length ? 'var(--ink)' : 'var(--ink-3)' }}
-                    onClick={() => setMoodOpen(o => ({ ...o, [mc.id]: !o[mc.id] }))}
-                    title="Toggle moodboard for this measurement category">
-                    <Icon name="grid" size={12} />Mood
-                  </button>
                   {measCats.length > 1 && (
                     <button className="btn sm ghost" style={{ padding: '2px 6px', color: 'var(--ink-3)' }}
                       onClick={() => removeMeasCat(mc.id)}>
@@ -878,17 +867,6 @@ function VisualSection({ edit, loc, onPatch, onDraw, onSketch }) {
                   onDraw={it => onDraw(mc.id, it)}
                   onDropFromOther={() => {}}
                 />
-                {(moodOpen[mc.id] || (gal['mood_' + mc.id] || []).length > 0) && (
-                  <div style={{ marginTop: 10, borderTop: '1px solid var(--line-2)', paddingTop: 10 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                      <Icon name="grid" size={12} style={{ color: 'var(--ink-3)' }} />
-                      <span style={{ fontFamily: 'var(--mono)', fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>Moodboard</span>
-                      <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink-3)' }}>{(gal['mood_' + mc.id] || []).length || ''}</span>
-                    </div>
-                    <Gallery catId={'mood_' + mc.id} catColor={null} items={gal['mood_' + mc.id] || []}
-                      onChange={arr => setGal('mood_' + mc.id, arr)} onDraw={it => onDraw('mood_' + mc.id, it)} onDropFromOther={() => {}} />
-                  </div>
-                )}
               </div>
             ))}
           </div>

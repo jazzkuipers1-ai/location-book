@@ -427,6 +427,17 @@ function Deck({ entries, scheduleName, opts, onClose }) {
             adjItems={catAdjs[cat.id] || []}
             items={imgs.slice(p * PER_APPENDIX, (p + 1) * PER_APPENDIX)} part={p + 1} parts={aParts} />);
         }
+        // Per-category design pages
+        const catDesImgs = gal['catdes_' + cat.id] || [];
+        if (catDesImgs.length) {
+          const dParts = Math.ceil(catDesImgs.length / PER_APPENDIX);
+          for (let p = 0; p < dParts; p++) {
+            pages.push(<AppendixPage key={loc.id + '-catdes_' + cat.id + p} name={name} scheduleName={scheduleName}
+              label={cat.label + ' — Design'} color={color}
+              adjItems={[]}
+              items={catDesImgs.slice(p * PER_APPENDIX, (p + 1) * PER_APPENDIX)} part={p + 1} parts={dParts} />);
+          }
+        }
         // Per-category moodboard pages
         const moodImgs = gal['mood_' + cat.id] || [];
         if (moodImgs.length) {

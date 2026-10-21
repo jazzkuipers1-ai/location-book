@@ -752,8 +752,8 @@ function VisualSection({ edit, loc, onPatch, onDraw, onSketch }) {
             </div>
             {designCats.map((dc, dci) => (
               <div key={dc.id} style={{ marginBottom: dci < designCats.length - 1 ? 12 : 0 }}>
-                {(designCats.length > 1 || dc.id !== 'designs') && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, paddingBottom: 4, borderBottom: '1px solid var(--line-2)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, paddingBottom: 4, borderBottom: '1px solid var(--line-2)' }}>
+                  {(designCats.length > 1 || dc.id !== 'designs') ? (
                     <span
                       contentEditable suppressContentEditableWarning
                       onBlur={e => renameDesignCat(dc.id, e.currentTarget.textContent.trim() || dc.label)}
@@ -761,16 +761,21 @@ function VisualSection({ edit, loc, onPatch, onDraw, onSketch }) {
                       style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', cursor: 'text', outline: 'none', textTransform: 'uppercase', letterSpacing: '.04em' }}>
                       {dc.label}
                     </span>
-                    <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>{(gal[dc.id] || []).length}</span>
-                    <span style={{ flex: 1 }} />
-                    {designCats.length > 1 && (
-                      <button className="btn sm ghost" style={{ padding: '2px 6px', color: 'var(--ink-3)' }}
-                        onClick={() => removeDesignCat(dc.id)}>
-                        <Icon name="trash" size={12} />
-                      </button>
-                    )}
-                  </div>
-                )}
+                  ) : <span style={{ flex: 0 }} />}
+                  <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>{(gal[dc.id] || []).length}</span>
+                  <span style={{ flex: 1 }} />
+                  <button className="btn sm ghost" style={{ padding: '3px 7px', gap: 4, color: (gal['mood_' + dc.id] || []).length ? 'var(--ink)' : 'var(--ink-3)' }}
+                    onClick={() => setMoodOpen(o => ({ ...o, [dc.id]: !o[dc.id] }))}
+                    title="Toggle moodboard for this design category">
+                    <Icon name="grid" size={12} />Mood
+                  </button>
+                  {designCats.length > 1 && (
+                    <button className="btn sm ghost" style={{ padding: '2px 6px', color: 'var(--ink-3)' }}
+                      onClick={() => removeDesignCat(dc.id)}>
+                      <Icon name="trash" size={12} />
+                    </button>
+                  )}
+                </div>
                 <Gallery
                   catId={dc.id}
                   catColor={null}
@@ -790,11 +795,6 @@ function VisualSection({ edit, loc, onPatch, onDraw, onSketch }) {
                       onChange={arr => setGal('mood_' + dc.id, arr)} onDraw={it => onDraw('mood_' + dc.id, it)} onDropFromOther={() => {}} />
                   </div>
                 )}
-                <button className="btn sm ghost" style={{ marginTop: 4, padding: '3px 7px', gap: 4, color: (gal['mood_' + dc.id] || []).length ? 'var(--ink)' : 'var(--ink-3)' }}
-                  onClick={() => setMoodOpen(o => ({ ...o, [dc.id]: !o[dc.id] }))}
-                  title="Toggle moodboard for this design category">
-                  <Icon name="grid" size={12} />Mood
-                </button>
               </div>
             ))}
           </div>
@@ -858,6 +858,11 @@ function VisualSection({ edit, loc, onPatch, onDraw, onSketch }) {
                   </span>
                   <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>{(gal[mc.id] || []).length}</span>
                   <span style={{ flex: 1 }} />
+                  <button className="btn sm ghost" style={{ padding: '3px 7px', gap: 4, color: (gal['mood_' + mc.id] || []).length ? 'var(--ink)' : 'var(--ink-3)' }}
+                    onClick={() => setMoodOpen(o => ({ ...o, [mc.id]: !o[mc.id] }))}
+                    title="Toggle moodboard for this measurement category">
+                    <Icon name="grid" size={12} />Mood
+                  </button>
                   {measCats.length > 1 && (
                     <button className="btn sm ghost" style={{ padding: '2px 6px', color: 'var(--ink-3)' }}
                       onClick={() => removeMeasCat(mc.id)}>
@@ -884,11 +889,6 @@ function VisualSection({ edit, loc, onPatch, onDraw, onSketch }) {
                       onChange={arr => setGal('mood_' + mc.id, arr)} onDraw={it => onDraw('mood_' + mc.id, it)} onDropFromOther={() => {}} />
                   </div>
                 )}
-                <button className="btn sm ghost" style={{ marginTop: 4, padding: '3px 7px', gap: 4, color: (gal['mood_' + mc.id] || []).length ? 'var(--ink)' : 'var(--ink-3)' }}
-                  onClick={() => setMoodOpen(o => ({ ...o, [mc.id]: !o[mc.id] }))}
-                  title="Toggle moodboard for this measurement category">
-                  <Icon name="grid" size={12} />Mood
-                </button>
               </div>
             ))}
           </div>

@@ -790,13 +790,11 @@ function VisualSection({ edit, loc, onPatch, onDraw, onSketch }) {
                       onChange={arr => setGal('mood_' + dc.id, arr)} onDraw={it => onDraw('mood_' + dc.id, it)} onDropFromOther={() => {}} />
                   </div>
                 )}
-                {(designCats.length > 1 || dc.id !== 'designs') && (
-                  <button className="btn sm ghost" style={{ marginTop: 4, padding: '3px 7px', gap: 4, color: (gal['mood_' + dc.id] || []).length ? 'var(--ink)' : 'var(--ink-3)' }}
-                    onClick={() => setMoodOpen(o => ({ ...o, [dc.id]: !o[dc.id] }))}
-                    title="Toggle moodboard for this design category">
-                    <Icon name="grid" size={12} />Mood
-                  </button>
-                )}
+                <button className="btn sm ghost" style={{ marginTop: 4, padding: '3px 7px', gap: 4, color: (gal['mood_' + dc.id] || []).length ? 'var(--ink)' : 'var(--ink-3)' }}
+                  onClick={() => setMoodOpen(o => ({ ...o, [dc.id]: !o[dc.id] }))}
+                  title="Toggle moodboard for this design category">
+                  <Icon name="grid" size={12} />Mood
+                </button>
               </div>
             ))}
           </div>

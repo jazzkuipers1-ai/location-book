@@ -506,6 +506,23 @@ function ShareView({ shareId, onBack }) {
                         </div>
                       ))}
                     </div>
+                    {(() => {
+                      const moodImgs = (data.galleries && data.galleries['mood_' + dc.id]) || [];
+                      if (!moodImgs.length) return null;
+                      return (
+                        <div style={{ marginTop: 16, borderTop: '1px solid var(--line)', paddingTop: 14 }}>
+                          <div style={{ fontFamily: 'var(--mono)', fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 10 }}>Moodboard</div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(' + Math.min(moodImgs.length, 3) + ', 1fr)', gap: 10 }}>
+                            {moodImgs.map((it, i) => (
+                              <div key={i} style={{ borderRadius: 10, overflow: 'hidden', background: 'var(--card-2)', cursor: 'zoom-in' }}
+                                onClick={() => setLightbox({ images: moodImgs, idx: i })}>
+                                <img src={it.thumbUrl || it.url} alt={it.cap || ''} style={{ width: '100%', height: 'auto', display: 'block' }} onError={e => { if (it.url && e.target.src !== it.url) e.target.src = it.url; }} />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })}
@@ -550,6 +567,23 @@ function ShareView({ shareId, onBack }) {
                         </div>
                       ))}
                     </div>
+                    {(() => {
+                      const moodImgs = (data.galleries && data.galleries['mood_' + mc.id]) || [];
+                      if (!moodImgs.length) return null;
+                      return (
+                        <div style={{ marginTop: 16, borderTop: '1px solid var(--line)', paddingTop: 14 }}>
+                          <div style={{ fontFamily: 'var(--mono)', fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 10 }}>Moodboard</div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(' + Math.min(moodImgs.length, 3) + ', 1fr)', gap: 10 }}>
+                            {moodImgs.map((it, i) => (
+                              <div key={i} style={{ borderRadius: 10, overflow: 'hidden', background: 'var(--card-2)', cursor: 'zoom-in' }}
+                                onClick={() => setLightbox({ images: moodImgs, idx: i })}>
+                                <img src={it.thumbUrl || it.url} alt={it.cap || ''} style={{ width: '100%', height: 'auto', display: 'block' }} onError={e => { if (it.url && e.target.src !== it.url) e.target.src = it.url; }} />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })}

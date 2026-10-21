@@ -467,6 +467,42 @@ function Deck({ entries, scheduleName, opts, onClose }) {
             label={dc.label === 'General' ? 'Designs' : 'Designs — ' + dc.label} color={null}
             adjItems={adj} items={imgs.slice(p * PER_APPENDIX, (p + 1) * PER_APPENDIX)} part={p + 1} parts={aParts} />);
         }
+        const moodImgs = gal['mood_' + dc.id] || [];
+        if (moodImgs.length) {
+          const mParts = Math.ceil(moodImgs.length / PER_APPENDIX);
+          for (let p = 0; p < mParts; p++) {
+            pages.push(<AppendixPage key={loc.id + '-mood_' + dc.id + p} name={name} scheduleName={scheduleName}
+              label={(dc.label === 'General' ? 'Designs' : 'Designs — ' + dc.label) + ' — Moodboard'} color={null}
+              adjItems={[]} items={moodImgs.slice(p * PER_APPENDIX, (p + 1) * PER_APPENDIX)} part={p + 1} parts={mParts} />);
+          }
+        }
+      });
+    }
+
+    // Measurement sub-categories with moodboards
+    if (o.measurements !== false) {
+      const measCats = edit.measCategories && edit.measCategories.length
+        ? edit.measCategories
+        : [{ id: 'measurements', label: 'Measurements' }];
+      measCats.forEach(mc => {
+        const imgs = gal[mc.id] || [];
+        const adj = catAdjs[mc.id] || [];
+        if (!imgs.length && !adj.length) return;
+        const aParts = Math.ceil(imgs.length / PER_APPENDIX) || 1;
+        for (let p = 0; p < aParts; p++) {
+          pages.push(<AppendixPage key={loc.id + '-meas_sub_' + mc.id + p} name={name} scheduleName={scheduleName}
+            label={mc.label === 'General' ? 'Measurements' : 'Measurements — ' + mc.label} color={null}
+            adjItems={adj} items={imgs.slice(p * PER_APPENDIX, (p + 1) * PER_APPENDIX)} part={p + 1} parts={aParts} />);
+        }
+        const moodImgs = gal['mood_' + mc.id] || [];
+        if (moodImgs.length) {
+          const mParts = Math.ceil(moodImgs.length / PER_APPENDIX);
+          for (let p = 0; p < mParts; p++) {
+            pages.push(<AppendixPage key={loc.id + '-mood_' + mc.id + p} name={name} scheduleName={scheduleName}
+              label={(mc.label === 'General' ? 'Measurements' : 'Measurements — ' + mc.label) + ' — Moodboard'} color={null}
+              adjItems={[]} items={moodImgs.slice(p * PER_APPENDIX, (p + 1) * PER_APPENDIX)} part={p + 1} parts={mParts} />);
+          }
+        }
       });
     }
   });
